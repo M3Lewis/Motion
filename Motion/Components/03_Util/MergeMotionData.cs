@@ -101,6 +101,7 @@ namespace Motion
         private void Document_SolutionEnd(object sender, GH_SolutionEventArgs e)
         {
             bool valueChanged = false;
+            bool nicknameChanged = false;
             var currentSliders = GetTimelineSliders();
 
             foreach (var slider in currentSliders)
@@ -108,15 +109,11 @@ namespace Motion
                 if (slider == null) continue;
 
                 // 检查昵称变化
-                if (!_previousNicknames.ContainsKey(slider))
+                string currentNickname = slider.NickName;
+                if (!_previousNicknames.ContainsKey(slider) || _previousNicknames[slider] != currentNickname)
                 {
-                    _previousNicknames[slider] = slider.NickName;
-                    valueChanged = true;
-                }
-                else if (_previousNicknames[slider] != slider.NickName)
-                {
-                    _previousNicknames[slider] = slider.NickName;
-                    valueChanged = true;
+                    _previousNicknames[slider] = currentNickname;
+                    nicknameChanged = true;
                 }
 
                 // 检查最大最小值变化
@@ -141,8 +138,10 @@ namespace Motion
                 }
             }
 
-            if (valueChanged)
+            // 如果昵称或值发生变化，则更新参数
+            if (nicknameChanged || valueChanged)
             {
+                _isUpdatingParameters = false; // 重置标志位以确保可以更新
                 UpdateInputParameters();
             }
         }
@@ -234,38 +233,45 @@ namespace Motion
 
         public void CallBack(GH_Document gdoc)
         {
-            var currentSliders = GetTimelineSliders();
-            _currentSliders = new List<IGH_DocumentObject>(currentSliders);
-
-            // 更新参数数量
-            while (Params.Input.Count > currentSliders.Count)
+            try 
             {
-                Params.UnregisterInputParameter(Params.Input[Params.Input.Count - 1]);
-            }
+                var currentSliders = GetTimelineSliders();
+                _currentSliders = new List<IGH_DocumentObject>(currentSliders);
 
-            while (Params.Input.Count < currentSliders.Count)
-            {
-                var param = new Param_GenericObject
+                // 更新参数数量
+                while (Params.Input.Count > currentSliders.Count)
                 {
-                    Access = GH_ParamAccess.tree,
-                    Optional = true
-                };
-                Params.RegisterInputParam(param);
-            }
-
-            // 更新参数名称
-            for (int i = 0; i < currentSliders.Count; i++)
-            {
-                if (i < Params.Input.Count)
-                {
-                    var slider = currentSliders[i];
-                    Params.Input[i].Name = slider.Name; // 更新名称
-                    Params.Input[i].NickName = slider.NickName; // 更新昵称
+                    Params.UnregisterInputParameter(Params.Input[Params.Input.Count - 1]);
                 }
-            }
 
-            Params.OnParametersChanged();
-            ExpireSolution(true); // 确保解决方案被标记为过期
+                while (Params.Input.Count < currentSliders.Count)
+                {
+                    var param = new Param_GenericObject
+                    {
+                        Access = GH_ParamAccess.tree,
+                        Optional = true
+                    };
+                    Params.RegisterInputParam(param);
+                }
+
+                // 更新参数名称
+                for (int i = 0; i < currentSliders.Count; i++)
+                {
+                    if (i < Params.Input.Count)
+                    {
+                        var slider = currentSliders[i];
+                        Params.Input[i].Name = slider.Name;
+                        Params.Input[i].NickName = slider.NickName;
+                    }
+                }
+
+                Params.OnParametersChanged();
+                ExpireSolution(true);
+            }
+            finally
+            {
+                _isUpdatingParameters = false; // 确保标志位被重置
+            }
         }
 
         // IGH_VariableParameterComponent 接口实现
