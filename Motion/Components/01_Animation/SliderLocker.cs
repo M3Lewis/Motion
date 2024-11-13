@@ -1,13 +1,8 @@
-using Grasshopper;
 using Grasshopper.Kernel;
-using Rhino.Geometry;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Grasshopper.Kernel.Special;
-using Grasshopper.Kernel.Graphs;
 using Grasshopper.Kernel.Parameters;
-using System.Drawing.Printing;
+using Grasshopper.Kernel.Special;
+using System;
+using System.Linq;
 
 namespace Motion
 {

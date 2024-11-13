@@ -1,24 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Windows.Forms;
-using GH_IO.Serialization;
-using Grasshopper;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
-using Rhino.Geometry;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Forms;
 
-namespace Motion
+namespace Motion.Components
 {
     public class MergeMotionData : GH_Component, IGH_VariableParameterComponent
     {
         protected override System.Drawing.Bitmap Icon => null;
         public override Guid ComponentGuid => new Guid("ECA244CD-0484-45D8-B516-833938CDDFE6");
-        public override GH_Exposure Exposure => GH_Exposure.secondary;
+        public override GH_Exposure Exposure => GH_Exposure.tertiary;
 
         private List<IGH_DocumentObject> _currentSliders = new List<IGH_DocumentObject>();
         private Dictionary<IGH_DocumentObject, (decimal min, decimal max)> _previousValues = new Dictionary<IGH_DocumentObject, (decimal min, decimal max)>();
@@ -32,7 +28,7 @@ namespace Motion
                 "MergeMotionData",
                 "根据slider数量生成输入端，合并数据",
                 "Motion",
-                "03_Util"
+                "01_Animation"
             )
         {
             _previousNicknames = new Dictionary<IGH_DocumentObject, string>();

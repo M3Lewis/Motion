@@ -7,6 +7,8 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Motion.Params;
+using Motion.Components;
 
 namespace Motion
 {
@@ -272,7 +274,6 @@ namespace Motion
                 newDataParam.Attributes.ExpireLayout();
             }
             
-
             return GH_ObjectResponse.Handled;
         }
     }

@@ -1,37 +1,38 @@
 ﻿using Grasshopper.GUI;
+using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Drawing;
 using System.Windows.Forms;
-using Grasshopper.GUI.Canvas;
 
 namespace Motion.UI
 {
     public abstract class MotionButtonTemplate : GH_ComponentAttributes
     {
-        public bool Pressed { get; set; }
+        public bool PressedOpen { get; set; }
+        public bool PressedExport { get; set; }
         public bool Active { get; set; }
-        protected MotionButtonTemplate(IGH_Component component,string buttonText,Action<object,GH_CanvasMouseEvent> buttonClickHandler) :base(component)
+        
+        protected MotionButtonTemplate(IGH_Component component, string openButtonText, string exportButtonText, 
+            Action<object, GH_CanvasMouseEvent, bool> buttonClickHandler) : base(component)
         {
-            Pressed = false;
+            PressedOpen = false;
+            PressedExport = false;
             Active = false;
-            ButtonText = buttonText;
+            OpenButtonText = openButtonText;
+            ExportButtonText = exportButtonText;
             ButtonClickHandler = buttonClickHandler;
         }
         
-        public string ButtonText { get; set; }
-        public Action<object, GH_CanvasMouseEvent> ButtonClickHandler { get; set; }
+        public string OpenButtonText { get; set; }
+        public string ExportButtonText { get; set; }
+        public Action<object, GH_CanvasMouseEvent, bool> ButtonClickHandler { get; set; }
 
-       
         protected override void Layout()
         {
             base.Layout();
-            Bounds = new RectangleF(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height+20);
+            Bounds = new RectangleF(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height + 40); // 增加高度以容纳两个按钮
         }
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
@@ -39,19 +40,40 @@ namespace Motion.UI
             base.Render(canvas, graphics, channel);
             if (channel == GH_CanvasChannel.Objects)
             {
-                RectangleF buttonRect = new RectangleF(Bounds.X, Bounds.Bottom-20, Bounds.Width, 20.0f);
-                buttonRect.Inflate(-2.0f, -2.0f);
+                // Open 按钮 (放在底部)
+                RectangleF openButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
+                openButtonRect.Inflate(-2.0f, -2.0f);
 
-                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(buttonRect, (Pressed) ? GH_Palette.Grey:GH_Palette.Black))
+                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(openButtonRect, (PressedOpen) ? GH_Palette.Grey : GH_Palette.Black))
                 {
                     capsule.Render(graphics, Selected, Owner.Locked, Owner.Hidden);
                 }
 
                 graphics.DrawString(
-                    ButtonText,
+                    OpenButtonText,
                     new Font(GH_FontServer.ConsoleSmall, FontStyle.Regular),
                     Brushes.Azure,
-                    buttonRect,
+                    openButtonRect,
+                    new StringFormat()
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center
+                    });
+
+                // Export 按钮 (放在 Open 按钮上面)
+                RectangleF exportButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 40, Bounds.Width, 20.0f);
+                exportButtonRect.Inflate(-2.0f, -2.0f);
+
+                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(exportButtonRect, (PressedExport) ? GH_Palette.Grey : GH_Palette.Black))
+                {
+                    capsule.Render(graphics, Selected, Owner.Locked, Owner.Hidden);
+                }
+
+                graphics.DrawString(
+                    ExportButtonText,
+                    new Font(GH_FontServer.ConsoleSmall, FontStyle.Regular),
+                    Brushes.Azure,
+                    exportButtonRect,
                     new StringFormat()
                     {
                         Alignment = StringAlignment.Center,
@@ -59,28 +81,39 @@ namespace Motion.UI
                     });
             }
         }
+
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            RectangleF buttonRect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
-            if (e.Button == MouseButtons.Left && buttonRect.Contains(e.CanvasLocation))//如果按下了鼠标左键且按钮范围内包含鼠标点击时的位置
+            // 确保按钮区域计算与渲染一致
+            RectangleF openButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
+            RectangleF exportButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 40, Bounds.Width, 20.0f);
+
+            if (e.Button == MouseButtons.Left)
             {
-                Pressed = true;
-                Active = true;
-                //在做事件处理时，调用abstract方法来做真正的事件处理
-                ButtonClickHandler(sender, e);//触发事件
-                sender.Refresh();
-                
-                return GH_ObjectResponse.Handled;//返回处理结果（已处理）
+                if (exportButtonRect.Contains(e.CanvasLocation))  // 先检查上面的按钮
+                {
+                    PressedExport = true;
+                    Active = true;
+                    ButtonClickHandler(sender, e, true);
+                    sender.Refresh();
+                    return GH_ObjectResponse.Handled;
+                }
+                else if (openButtonRect.Contains(e.CanvasLocation))  // 再检查下面的按钮
+                {
+                    PressedOpen = true;
+                    Active = true;
+                    ButtonClickHandler(sender, e, false);
+                    sender.Refresh();
+                    return GH_ObjectResponse.Handled;
+                }
             }
-            return GH_ObjectResponse.Ignore;//返回处理结果（忽略）
+            return GH_ObjectResponse.Ignore;
         }
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            RectangleF buttonRect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
-
-            Pressed = false;
-            
+            PressedOpen = false;
+            PressedExport = false;
             sender.Refresh();
             return GH_ObjectResponse.Ignore;
         }

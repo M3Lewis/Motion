@@ -7,13 +7,13 @@ using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Rhino.Geometry;
 using Point = System.Drawing.Point;
-public class SliderControlComponent : GH_Component
+public class SliderControlWinformComponent : GH_Component
 {
     private GH_NumberSlider connectedSlider;
 
     public override Guid ComponentGuid => new Guid("1e5547b0-8195-49ef-b0a4-00eb2f9beb60");
 
-    public SliderControlComponent()
+    public SliderControlWinformComponent()
         : base("Slider Control", "SldCtrl",
             "Control a slider through a floating window",
             "Category", "Subcategory")
@@ -72,7 +72,7 @@ public class CustomComponentAttributes : Grasshopper.Kernel.Attributes.GH_Compon
 
     public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
     {
-        SliderControlComponent comp = Owner as SliderControlComponent;
+        SliderControlWinformComponent comp = Owner as SliderControlWinformComponent;
         if (comp != null)
         {
             comp.OpenControlWindow(null, null);

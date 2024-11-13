@@ -10,7 +10,7 @@ using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using Rhino.Geometry;
 
-namespace Motion
+namespace Motion.Components
 {
     public class SliderInterval : GH_Component
     {

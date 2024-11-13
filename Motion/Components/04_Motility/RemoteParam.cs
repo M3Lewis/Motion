@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Forms;
 using System;
 using GH_IO.Serialization;
+using Motion.Utils;
 
 namespace Motion
 {
@@ -50,7 +51,6 @@ namespace Motion
 
         public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
         {
-            base.AppendAdditionalMenuItems(menu);
             Menu_AppendSeparator(menu);
 
             ToolStripMenuItem hideItem = Menu_AppendItem(menu, "Hide Components When Empty", HideWhenEmpty_Clicked, true, _hideWhenEmpty);
@@ -67,8 +67,6 @@ namespace Motion
                     ToolStripMenuItem keyitem = Menu_AppendItem(recentKeyMenu.DropDown, key, new EventHandler(Menu_KeyClicked));
                 }
             }
-
-            base.AppendAdditionalMenuItems(menu);
         }
 
         protected void Menu_KeyClicked(object sender, EventArgs e)

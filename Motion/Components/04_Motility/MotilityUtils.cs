@@ -5,8 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using Microsoft.VisualBasic.CompilerServices;
+using Motion.Params;
 
-namespace Motion
+namespace Motion.Utils
 {
     public static class MotilityUtils
     {

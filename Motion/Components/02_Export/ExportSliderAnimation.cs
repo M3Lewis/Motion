@@ -1,6 +1,8 @@
-using Grasshopper.Kernel;
+ï»¿using Grasshopper.Kernel;
+using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
 using Motion.UI;
 using Rhino;
 using Rhino.Geometry;
@@ -8,180 +10,287 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Motion
 {
-
     public class ExportSliderAnimation : MotionButtonComponent
     {
         protected override System.Drawing.Bitmap Icon => null;
         public override GH_Exposure Exposure => GH_Exposure.primary;
         public override Guid ComponentGuid => new Guid("7b8d5ff6-c766-4ae3-a832-95861edb9fde");
 
-        private string currentPath = "";  // Ìí¼Ó×Ö¶Î±£´æµ±Ç°Â·¾¶
+        
+
         public ExportSliderAnimation()
             : base(
                 "ExportSliderAnimation",
                 "ExportSliderAnimation",
-                "Slider×Ô¶¯µ¼³öRhinoÊÓ´°Í¼Æ¬£¬Ö§³ÖÍ¸Ã÷±³¾°ºÍCyclesÄ£Ê½£¬¿ÉÖ¸¶¨slider·¶Î§",
+                "Sliderè‡ªåŠ¨å¯¼å‡ºRhinoè§†çª—å›¾ç‰‡ï¼Œæ”¯æŒé€æ˜èƒŒæ™¯å’ŒCyclesæ¨¡å¼ï¼Œå¯æŒ‡å®šsliderèŒƒå›´",
                 "Motion",
                 "02_Export"
             )
         { }
+
         public override void CreateAttributes()
         {
-            Attributes = new MotionButton(this, "Open", (o, e) =>
+            Attributes = new MotionButton(this, "Open", "Export", async (sender, e, isExport) =>
             {
-                // ÔÚ°´Å¥µã»÷Ê±Ö±½Ó´ò¿ªÎÄ¼ş¼Ğ
-                if (!string.IsNullOrEmpty(currentPath) && Directory.Exists(currentPath))
+                if (isExport)
                 {
-                    OpenDirectoryWithDirectoryOpus(currentPath);
+                    // ç›´æ¥æ‰§è¡Œæ¸²æŸ“ï¼Œä¸é€šè¿‡ Run è¾“å…¥ç«¯
+                    await ExecuteRenderingAsync();
                 }
                 else
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"ÕÒ²»µ½Â·¾¶ÎÄ¼ş¼Ğ¡£");
+                    // ä»è¾“å…¥ç«¯è·å–è·¯å¾„
+                    string pathString = "";
+                    if (this.Params.Input[3].SourceCount > 0)
+                    {
+                        var pathData = this.Params.Input[3].VolatileData.AllData(true).FirstOrDefault();
+                        if (pathData != null)
+                        {
+                            pathString = pathData.ToString();
+                        }
+                    }
+                    else
+                    {
+                        // å¦‚æœæ²¡æœ‰è¿æ¥æºï¼Œä½¿ç”¨é»˜è®¤å€¼
+                        pathString = this.Params.Input[3].VolatileData.AllData(true).FirstOrDefault()?.ToString();
+                    }
+
+                    // æ‰§è¡Œæ‰“å¼€æ–‡ä»¶å¤¹åŠŸèƒ½
+                    if (!string.IsNullOrEmpty(pathString) && Directory.Exists(pathString))
+                    {
+                        OpenDirectoryWithDirectoryOpus(pathString);
+                    }
+                    else
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"æ‰¾ä¸åˆ°è·¯å¾„æ–‡ä»¶å¤¹ã€‚");
+                    }
                 }
             });
         }
+
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("View Name", "V", "ÊÓÍ¼Ãû³Æ", GH_ParamAccess.item,"Perspective");
-            pManager.AddIntegerParameter("Image Width", "W", "Í¼Æ¬¿í¶È", GH_ParamAccess.item,1920);
-            pManager.AddIntegerParameter("Image Height", "H", "Í¼Æ¬¸ß¶È", GH_ParamAccess.item,1080);
-            pManager.AddParameter(new Param_FilePath(), "Full Path", "P", "Êä³öÂ·¾¶", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("IsTransparent", "T", "Í¼Æ¬ÊÇ·ñÍ¸Ã÷", GH_ParamAccess.item,true);
-            pManager.AddBooleanParameter("IsCycles", "C", "ÊÇ·ñÊ¹ÓÃCyclesäÖÈ¾", GH_ParamAccess.item,false);
-            pManager.AddIntegerParameter("Passes", "Pa", "CyclesäÖÈ¾´ÎÊı", GH_ParamAccess.item,500);
-            pManager.AddIntervalParameter("Range", "Ra", "µ¼³ö·¶Î§£¨¿ÉÑ¡£©", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Run", "R", "ÔËĞĞ", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Frame", "F", "µ±Ç°Ö¡", GH_ParamAccess.item);
+            pManager.AddTextParameter("View Name", "V", "è§†å›¾åç§°", GH_ParamAccess.item, "Perspective");
+            pManager.AddIntegerParameter("Image Width", "W", "å›¾ç‰‡å®½åº¦", GH_ParamAccess.item, 1920);
+            pManager.AddIntegerParameter("Image Height", "H", "å›¾ç‰‡é«˜åº¦", GH_ParamAccess.item, 1080);
+
+            // æ·»åŠ æ–‡ä»¶è·¯å¾„å‚æ•°
+            Param_FilePath pathParam = new Param_FilePath();
+            pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)+"\\Motion");  // è®¾ç½®é»˜è®¤ä¸ºæ¡Œé¢è·¯å¾„
+            pManager.AddParameter(pathParam, "Full Path", "P", "è¾“å‡ºè·¯å¾„", GH_ParamAccess.item);
+            
+            pManager.AddBooleanParameter("IsTransparent", "T", "å›¾ç‰‡æ˜¯å¦é€æ˜", GH_ParamAccess.item, true);
+            pManager.AddBooleanParameter("IsCycles", "C", "æ˜¯å¦ä½¿ç”¨Cyclesæ¸²æŸ“", GH_ParamAccess.item, false);
+            pManager.AddIntegerParameter("Passes", "Pa", "Cyclesæ¸²æŸ“æ¬¡æ•°", GH_ParamAccess.item, 500);
+            pManager.AddIntervalParameter("Range", "Ra", "å¯¼å‡ºèŒƒå›´ï¼ˆå¯é€‰ï¼‰", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Run", "R", "è¿è¡Œ", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Frame", "F", "å½“å‰å¸§", GH_ParamAccess.item);
 
             pManager[7].Optional = true;
+            pManager[8].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("Output Path", "Op", "µ¼³öÂ·¾¶", GH_ParamAccess.list);
+            pManager.AddTextParameter("Output Path", "Op", "Â·", GH_ParamAccess.list);
             pManager[0].DataMapping = GH_DataMapping.Flatten;
         }
 
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
-            string iViewName = "";
-            int iWidth = 1920;
-            int iHeight = 1080;
-            string iFullPath = "";
-            bool iIsTransparent = false;
-            bool iIsCycles = false;
-            int iRealtimeRenderPasses = 1;
-            Interval iRange = new Interval(0, 0);
-            bool iRun = false;
-            double iFrame = 0;
-
-            bool iIsCustomRange = false;
-            List<string> oPath = new List<string>();
-
-            if (!DA.GetData(0, ref iViewName))
-                return;
-            if (!DA.GetData(1, ref iWidth))
-                return;
-            if (!DA.GetData(2, ref iHeight))
-                return;
-            if (!DA.GetData(3, ref iFullPath))
-                return;
-            if (!DA.GetData(4, ref iIsTransparent))
-                return;
-            if (!DA.GetData(5, ref iIsCycles))
-                return;
-            if (!DA.GetData(6, ref iRealtimeRenderPasses))
+            // è·å–æ‰€æœ‰è¾“å…¥å‚æ•°
+            if (!GetInputParams(DA, out RenderParameters parameters))
                 return;
 
-            iIsCustomRange = DA.GetData(7, ref iRange);
+            //currentPath = parameters.FullPath;
 
-            if (!DA.GetData(8, ref iRun))
-                return;
-            if (!DA.GetData(9, ref iFrame))
+            if (!parameters.Run)
                 return;
 
-            if (!iRun)
+            await ExecuteRenderingWithParams(parameters, DA);
+        }
+
+        private async Task ExecuteRenderingAsync()
+        {
+            // è·å–å½“å‰ç»„ä»¶çš„å‚æ•°
+            var parameters = new RenderParameters();
+            if (!GetCurrentParams(parameters))
                 return;
 
-            currentPath = iFullPath;
+            await ExecuteRenderingWithParams(parameters, null);
+        }
 
+        private bool GetCurrentParams(RenderParameters parameters)
+        {
+            try
+            {
+                // è·å–å¹¶è½¬æ¢æ¯ä¸ªè¾“å…¥å‚æ•°
+                var viewNameGoo = this.Params.Input[0].VolatileData.AllData(true).First();
+                parameters.ViewName = viewNameGoo.ToString();
+
+                var widthGoo = this.Params.Input[1].VolatileData.AllData(true).First();
+                parameters.Width = Convert.ToInt32(widthGoo.ToString());
+
+                var heightGoo = this.Params.Input[2].VolatileData.AllData(true).First();
+                parameters.Height = Convert.ToInt32(heightGoo.ToString());
+
+                var pathGoo = this.Params.Input[3].VolatileData.AllData(true).First();
+                parameters.FullPath = pathGoo.ToString();
+
+                var transparentGoo = this.Params.Input[4].VolatileData.AllData(true).First();
+                parameters.IsTransparent = Convert.ToBoolean(transparentGoo.ToString());
+
+                var cyclesGoo = this.Params.Input[5].VolatileData.AllData(true).First();
+                parameters.IsCycles = Convert.ToBoolean(cyclesGoo.ToString());
+
+                var passesGoo = this.Params.Input[6].VolatileData.AllData(true).First();
+                parameters.RealtimeRenderPasses = Convert.ToInt32(passesGoo.ToString());
+
+                // å¤„ç†å¯é€‰çš„åŒºé—´å‚æ•°
+                var rangeGoo = this.Params.Input[7].VolatileData.AllData(true).FirstOrDefault();
+                if (rangeGoo != null)
+                {
+                    if (rangeGoo is GH_Interval ghInterval)
+                    {
+                        parameters.Range = ghInterval.Value;
+                        parameters.IsCustomRange = true;
+                    }
+                }
+
+                parameters.Run = true;  // æŒ‰é’®ç‚¹å‡»æ—¶æ€»æ˜¯ä¸º true
+
+                var frameGoo = this.Params.Input[9].VolatileData.AllData(true).First();
+                parameters.Frame = Convert.ToDouble(frameGoo.ToString());
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"è·å–å‚æ•°å¤±è´¥: {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task ExecuteRenderingWithParams(RenderParameters parameters, IGH_DataAccess DA = null)
+        {
+            // æ£€æŸ¥ Frame è¾“å…¥æº
             if (this.Params.Input[9].Sources.Count == 0)
                 return;
-            IGH_DocumentObject unionSliderObject = this.Params.Input[9].Sources[0];
-            if (!(unionSliderObject is GH_NumberSlider))
+            
+            if (!(this.Params.Input[9].Sources[0] is GH_NumberSlider unionSlider))
                 return;
 
             var views = RhinoDoc.ActiveDoc.Views;
             views.RedrawEnabled = true;
 
-            GH_NumberSlider unionSlider = (GH_NumberSlider)unionSliderObject;
-
             await Task.Run(() =>
-           {
-               int currentFrame = 0;
-               int total =  (int)unionSlider.Slider.Maximum;
-               // ´´½¨½ø¶È¸üĞÂµÄÎ¯ÍĞ
-               Action<int, int> updateProgress = (frame, total) =>
-               {
-                   this.Message = $"Rendering Frame.. {frame + 1}/{total}";
+            {
+                int currentFrame = 0;
+                int total = (int)unionSlider.Slider.Maximum;
+                
+                Action<int, int> updateProgress = (frame, total) =>
+                {
+                    this.Message = $"Rendering Frame.. {frame + 1}/{total}";
+                    this.OnDisplayExpired(true);
+                };
 
-                   // Ç¿ÖÆ×é¼şÖØ»æÒÔ¸üĞÂÏÔÊ¾
-                   this.OnDisplayExpired(true);
-               };
+                List<string> outputPaths = new List<string>();
 
-               Rhino.RhinoApp.InvokeOnUiThread(
-                   new Action(() =>
-                   {
-                       MotionSliderAnimator sliderAnimator =
-                           new MotionSliderAnimator(unionSlider);
+                RhinoApp.InvokeOnUiThread(new Action(() =>
+                {
+                    var sliderAnimator = new MotionSliderAnimator(unionSlider)
+                    {
+                        Width = parameters.Width,
+                        Height = parameters.Height,
+                        Folder = parameters.FullPath
+                    };
 
-                       sliderAnimator.Width = iWidth;
-                       sliderAnimator.Height = iHeight;
-                       sliderAnimator.Folder = iFullPath;
+                    if (parameters.IsCustomRange)
+                    {
+                        sliderAnimator.CustomRange = parameters.Range;
+                        sliderAnimator.FrameCount = (int)(parameters.Range.Max - parameters.Range.Min + 1);
+                        sliderAnimator.UseCustomRange = true;
+                    }
+                    else
+                    {
+                        sliderAnimator.FrameCount = (int)unionSlider.Slider.Maximum;
+                        sliderAnimator.UseCustomRange = false;
+                    }
 
-                       if (iIsCustomRange)
-                       {
-                           sliderAnimator.CustomRange = iRange;
-                           sliderAnimator.FrameCount = (int)(iRange.Max - iRange.Min + 1);
-                           sliderAnimator.UseCustomRange = true;
-                       }
-                       else
-                       {
-                           sliderAnimator.FrameCount = (int)unionSlider.Slider.Maximum;
-                           sliderAnimator.UseCustomRange = false;
-                       }
+                    if (!sliderAnimator.SetupAnimationProperties())
+                        return;
 
-                       if (!sliderAnimator.SetupAnimationProperties())
-                           return;
+                    currentFrame = sliderAnimator.MotionStartAnimation(
+                        parameters.IsTransparent,
+                        parameters.ViewName,
+                        parameters.IsCycles,
+                        parameters.RealtimeRenderPasses,
+                        out outputPaths,
+                        updateProgress
+                    );
+                }));
 
-                       currentFrame = sliderAnimator.MotionStartAnimation(
-                           iIsTransparent,
-                           iViewName,
-                           iIsCycles,
-                           iRealtimeRenderPasses,
-                           out oPath,
-                           (frame, total) => { updateProgress(frame, total); }// ´«Èë½ø¶È¸üĞÂ»Øµ÷
-                       );
-
-                       DA.SetDataList(0, oPath);
-                   })
-               );
-           });
+                // åœ¨ä¸»çº¿ç¨‹ä¸­æ›´æ–°è¾“å‡º
+                if (DA != null)
+                {
+                    RhinoApp.InvokeOnUiThread(new Action(() =>
+                    {
+                        DA.SetDataList(0, outputPaths);
+                    }));
+                }
+            });
         }
-        static void OpenDirectoryWithDirectoryOpus(string path)
+
+        private bool GetInputParams(IGH_DataAccess DA, out RenderParameters parameters)
+        {
+            parameters = new RenderParameters();
+
+            if (!DA.GetData(0, ref parameters.ViewName)) return false;
+            if (!DA.GetData(1, ref parameters.Width)) return false;
+            if (!DA.GetData(2, ref parameters.Height)) return false;
+            if (!DA.GetData(3, ref parameters.FullPath)) return false;
+            if (!DA.GetData(4, ref parameters.IsTransparent)) return false;
+            if (!DA.GetData(5, ref parameters.IsCycles)) return false;
+            if (!DA.GetData(6, ref parameters.RealtimeRenderPasses)) return false;
+
+            parameters.IsCustomRange = DA.GetData(7, ref parameters.Range);
+            
+            if (!DA.GetData(8, ref parameters.Run)) return false;
+            if (!DA.GetData(9, ref parameters.Frame)) return false;
+
+            return true;
+        }
+
+        private class RenderParameters
+        {
+            public string ViewName = "";
+            public int Width = 1920;
+            public int Height = 1080;
+            public string FullPath = "";
+            public bool IsTransparent = false;
+            public bool IsCycles = false;
+            public int RealtimeRenderPasses = 1;
+            public Interval Range = new Interval(0, 0);
+            public bool Run = false;
+            public double Frame = 0;
+            public bool IsCustomRange = false;
+        }
+
+        private static void OpenDirectoryWithDirectoryOpus(string path)
         {
             try
             {
-                // Ê¹ÓÃ Process.Start Æô¶¯ Directory Opus ²¢´«µİÂ·¾¶²ÎÊı
+                // Ê¹ Process.Start  Directory Opus Â·
                 Process.Start("dopus.exe", $"/cmd \"{path}\"");
             }
             catch (Exception ex)
             {
-                RhinoApp.WriteLine($"ÎŞ·¨´ò¿ªÄ¿Â¼: {ex.Message}");
+                RhinoApp.WriteLine($"æ— æ³•æ‰“å¼€ç›®å½•: {ex.Message}");
             }
         }
     }

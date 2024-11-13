@@ -1,85 +1,115 @@
-using Grasshopper;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Parameters;
+using Grasshopper.Kernel.Special;
 using Rhino.Geometry;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using Grasshopper.Kernel.Special;
-using Grasshopper.Kernel.Graphs;
-using Grasshopper.Kernel.Parameters;
 
 namespace Motion
 {
     public class GraphMapperChanger : GH_Component
     {
+        private Interval _lastDomain = new Interval(0, 1);
+        private GH_GraphMapper _lastMapper = null;
+
         public GraphMapperChanger()
-          : base("GraphMapperChanger", "GraphMapperChanger",
-            "¸ü¸ÄGraphMapperµÄXÇø¼äÎªÇ°ÖÃpOd_Timeline SliderµÄÇø¼ä£¬YÇø¼äÎªÊäÈëÖµ",
+          : base("GraphMapper Changer", "Graph Mapper Changer",
+            "å°†GraphMapperçš„Xè½´åŸŸè®¾ä¸ºå‰ç½®pOd_Timeline Sliderçš„åŒºé—´ï¼ŒYè½´åŸŸä¸ºè¾“å…¥å€¼",
             "Motion", "01_Animation")
         {
         }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddNumberParameter("GraphMapper Data", "G", "GraphMapperÊý¾Ý", GH_ParamAccess.item);
-            pManager.AddIntervalParameter("Y Domain", "D", "YÖáÄ¿±êÇø¼ä", GH_ParamAccess.item, new Interval(0, 1));
+            pManager.AddNumberParameter("GraphMapper Data", "G", "GraphMapperæ•°æ®", GH_ParamAccess.item);
+            pManager.AddIntervalParameter("Y Domain", "D", "Yè½´ç›®æ ‡åŒºé—´", GH_ParamAccess.item, new Interval(0, 1));
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddNumberParameter("outValue", "V", "Êä³öÖµ", GH_ParamAccess.item);
+            pManager.AddNumberParameter("outValue", "V", "è¾“å‡ºå€¼", GH_ParamAccess.item);
         }
 
-        public bool expired = false;
+        //public override void CreateAttributes()
+        //{
+        //    m_attributes = new GraphMapperChangerAttributes(this);
+        //}
+
+        //private class GraphMapperChangerAttributes : GH_ComponentAttributes
+        //{
+        //    public GraphMapperChangerAttributes(GraphMapperChanger owner) : base(owner) { }
+
+        //    public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
+        //    {
+        //        Owner.ExpireSolution(true);
+        //        return GH_ObjectResponse.Handled;
+        //    }
+        //}
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             double iData = 0d;
             Interval iDomain = new Interval(0, 1);
             double oData = 0d;
-            DA.GetData(0, ref iData);
-            DA.GetData(1, ref iDomain);
 
-            GH_Document ghdoc = this.OnPingDocument();
+            if (!DA.GetData(0, ref iData)) return;
+            if (!DA.GetData(1, ref iDomain)) return;
 
-
-
-            IGH_DocumentObject mapperObject = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject;//»ñÈ¡ÉÏÒ»¸öµç³Ø
-            if (mapperObject.GetType().ToString() == "Grasshopper.Kernel.Special.GH_GraphMapper")//Èç¹ûµç³ØÃû³ÆÎªRichGraphMapper
+            // èŽ·å–Graph Mapper
+            var mapperObject = this.Params.Input[0].Sources.FirstOrDefault()?.Attributes.GetTopLevel.DocObject;
+            if (mapperObject is GH_GraphMapper graphMapper)
             {
-                GH_GraphMapper graphMapper = (GH_GraphMapper)mapperObject;
-                GH_GraphContainer container = graphMapper.Container;
-                container.Y0 = iDomain.T0;
-                container.Y1 = iDomain.T1;
+                // æ£€æŸ¥åŒºé—´æ˜¯å¦å‘ç”Ÿå˜åŒ–
+                bool domainChanged = !_lastDomain.EpsilonEquals(iDomain, 1e-6);
+                bool mapperChanged = _lastMapper != graphMapper;
 
+                if (domainChanged || mapperChanged)
+                {
+                    UpdateGraphMapper(graphMapper, iDomain);
+                    _lastDomain = iDomain;
+                    _lastMapper = graphMapper;
+                }
+
+                // è®¾ç½®Graph Mapperçš„æ˜¾ç¤ºæ ·å¼
                 graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
 
-                IGH_DocumentObject mapperSource = graphMapper.Sources[0];
-                //if (gdo2.GetType().ToString() == "pOd_Animation.L_TimeLine.pOd_TimeLineSlider")
-                //{
-                //    GH_NumberSlider ns = (GH_NumberSlider)gdo2;
-                //    container.X0 = (double)ns.Slider.Minimum;
-                //    container.X1 = (double)ns.Slider.Maximum;
-                //}
-                if (mapperSource.GetType().ToString() == "Motion.Param_RemoteReceiver")
+                // å¤„ç†Xè½´åŒºé—´
+                if (graphMapper.Sources.FirstOrDefault() is Param_GenericObject receiverObject)
                 {
-                    Param_GenericObject receiverObject = (Param_GenericObject)mapperSource;
-                    string[] splitedReceiverNickname = mapperSource.NickName.Split('-');
-                    container.X0 = Convert.ToDouble(splitedReceiverNickname[0]);
-                    container.X1 = Convert.ToDouble(splitedReceiverNickname[1]);
+                    string[] splitedReceiverNickname = receiverObject.NickName.Split('-');
+                    if (splitedReceiverNickname.Length == 2 &&
+                        double.TryParse(splitedReceiverNickname[0], out double x0) &&
+                        double.TryParse(splitedReceiverNickname[1], out double x1))
+                    {
+                        var container = graphMapper.Container;
+                        container.X0 = x0;
+                        container.X1 = x1;
+                    }
                 }
-                oData = iData;
 
-                //this.OnPingDocument().ScheduleSolution(100000, delegate { RefreshGraphMapper(gm); });
+                oData = iData;
             }
+
             DA.SetData(0, oData);
-            
         }
 
-        //public void RefreshGraphMapper(GH_GraphMapper mapper)
-        //{
-        //    mapper.ExpireSolution(false);
-        //}
+        private void UpdateGraphMapper(GH_GraphMapper mapper, Interval domain)
+        {
+            var container = mapper.Container;
+            container.Y0 = domain.T0;
+            container.Y1 = domain.T1;
+
+            // å¼ºåˆ¶Graph Mapperæ›´æ–°
+            mapper.ExpireSolution(true);
+        }
+
+        public override void AddedToDocument(GH_Document document)
+        {
+            base.AddedToDocument(document);
+            // åˆå§‹åŒ–çŠ¶æ€
+            _lastDomain = new Interval(0, 1);
+            _lastMapper = null;
+        }
 
         protected override System.Drawing.Bitmap Icon => Properties.Resources.GraphMapperChanger;
 

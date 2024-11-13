@@ -93,7 +93,6 @@ public class MotionSliderAnimator : GH_SliderAnimator
                 if (UseCustomRange)
                 {
                     RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex + (int)CustomRange.Min} of {(int)CustomRange.Min}-{(int)CustomRange.Max}. Total:{(int)CustomRange.Max - (int)CustomRange.Min + 1} Time left: {EstimateTimeLeft(ticks)}s";
-
                 }
                 else
                 {

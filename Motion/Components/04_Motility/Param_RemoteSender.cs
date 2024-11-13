@@ -7,8 +7,9 @@ using System.Collections.Generic;
 using Rhino.Geometry;
 using GH_IO.Serialization;
 using System.Windows.Forms;
+using Motion.Utils;
 
-namespace Motion
+namespace Motion.Params
 {
     public class Param_RemoteSender : RemoteParam
     {

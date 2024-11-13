@@ -7,8 +7,9 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Motion.Components;
 
-namespace Motion
+namespace Motion.Params
 {
     public class Param_RemoteData : Param_GenericObject
     {
@@ -60,7 +61,6 @@ namespace Motion
 
         internal void ShowConnectionMenu(GH_Canvas canvas, PointF canvasLocation)
         {
-            
             ContextMenuStrip menu = new ContextMenuStrip();
 
             ToolStripMenuItem locationItem = new ToolStripMenuItem("Location");
@@ -71,8 +71,32 @@ namespace Motion
             targetItem.Click += (sender, e) => ConnectToMergeComponent("MotionTarget");
             menu.Items.Add(targetItem);
 
-            // 在鼠标位置显示菜单
-            menu.Show(new Point((int)canvasLocation.X,(int)canvasLocation.Y+230));
+            // 将画布坐标转换为屏幕坐标
+            Point screenPoint = canvas.PointToScreen(new Point((int)canvasLocation.X, (int)canvasLocation.Y));
+
+            // 获取菜单的预期大小
+            Size menuSize = menu.PreferredSize;
+
+            // 确保菜单不会超出屏幕边界
+            Rectangle screenBounds = Screen.FromPoint(screenPoint).WorkingArea;
+            
+            int x = screenPoint.X;
+            int y = screenPoint.Y;
+
+            // 如果菜单会超出屏幕右边界，则向左偏移
+            if (x + menuSize.Width > screenBounds.Right)
+            {
+                x = screenBounds.Right - menuSize.Width;
+            }
+
+            // 如果菜单会超出屏幕下边界，则向上偏移
+            if (y + menuSize.Height > screenBounds.Bottom)
+            {
+                y = screenPoint.Y - menuSize.Height;
+            }
+
+            // 显示菜单
+            menu.Show(x, y);
         }
 
         private void ConnectToMergeComponent(string mergeNickName)
