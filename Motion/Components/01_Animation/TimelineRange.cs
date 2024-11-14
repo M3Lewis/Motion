@@ -7,7 +7,7 @@ using Rhino.Geometry;
 using System;
 using System.Collections.Generic;
 
-namespace Motion.Components
+namespace Motion.Animation
 {
     public class TimelineRangeComponent : GH_Component
     {
@@ -16,7 +16,7 @@ namespace Motion.Components
 
         public override Guid ComponentGuid => new Guid("0cad63d7-7a60-490b-b520-0ca19b310784");
         public override GH_Exposure Exposure => GH_Exposure.secondary;
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.TimelineRange;
 
         public TimelineRangeComponent()
             : base("Timeline Range", "TLRange",

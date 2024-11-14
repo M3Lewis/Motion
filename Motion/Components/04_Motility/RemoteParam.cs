@@ -7,7 +7,7 @@ using System;
 using GH_IO.Serialization;
 using Motion.Utils;
 
-namespace Motion
+namespace Motion.Motility
 {
     public abstract class RemoteParam : Param_GenericObject, IGH_InitCodeAware
     {

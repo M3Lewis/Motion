@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using Microsoft.VisualBasic.CompilerServices;
-using Motion.Params;
+using Motion.Motility;
 
 namespace Motion.Utils
 {

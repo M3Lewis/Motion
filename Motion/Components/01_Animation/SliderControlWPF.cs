@@ -5,7 +5,7 @@ using Grasshopper.Kernel;
 using System.Windows.Forms;
 using System;
 
-namespace Motion.Components
+namespace Motion.Animation
 {
     public class SliderControlWPFComponent : GH_Component
     {
@@ -13,6 +13,7 @@ namespace Motion.Components
 
         public override Guid ComponentGuid => new Guid("9a8572e5-5d62-436e-bcbf-0f31daf09978");
 
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.SliderControlWPF;
         public SliderControlWPFComponent()
             : base("Slider Control WPF", "SldCtrlWPF",
                 "Control a slider through a WPF window",

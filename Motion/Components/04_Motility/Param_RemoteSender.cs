@@ -9,7 +9,7 @@ using GH_IO.Serialization;
 using System.Windows.Forms;
 using Motion.Utils;
 
-namespace Motion.Params
+namespace Motion.Motility
 {
     public class Param_RemoteSender : RemoteParam
     {

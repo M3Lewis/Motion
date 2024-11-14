@@ -19,10 +19,10 @@ namespace Motion.Properties {
     // 类通过类似于 ResGen 或 Visual Studio 的工具自动生成的。
     // 若要添加或移除成员，请编辑 .ResX 文件，然后重新运行 ResGen
     // (以 /str 作为命令选项)，或重新生成 VS 项目。
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class Resources {
+    public class Resources {
         
         private static global::System.Resources.ResourceManager resourceMan;
         
@@ -36,7 +36,7 @@ namespace Motion.Properties {
         ///   返回此类使用的缓存的 ResourceManager 实例。
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Resources.ResourceManager ResourceManager {
+        public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
                     global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Motion.Properties.Resources", typeof(Resources).Assembly);
@@ -51,7 +51,7 @@ namespace Motion.Properties {
         ///   使用此强类型资源类的所有资源查找执行重写。
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Globalization.CultureInfo Culture {
+        public static global::System.Globalization.CultureInfo Culture {
             get {
                 return resourceCulture;
             }
@@ -63,7 +63,57 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        internal static System.Drawing.Bitmap GraphMapperChanger {
+        public static System.Drawing.Bitmap AddScribble {
+            get {
+                object obj = ResourceManager.GetObject("AddScribble", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap AdjustSearchCount {
+            get {
+                object obj = ResourceManager.GetObject("AdjustSearchCount", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ArrangeTabComponents {
+            get {
+                object obj = ResourceManager.GetObject("ArrangeTabComponents", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ExportSliderAnimation {
+            get {
+                object obj = ResourceManager.GetObject("ExportSliderAnimation", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap FilletEdgeIndex {
+            get {
+                object obj = ResourceManager.GetObject("FilletEdgeIndex", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap GraphMapperChanger {
             get {
                 object obj = ResourceManager.GetObject("GraphMapperChanger", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
@@ -73,7 +123,77 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        internal static System.Drawing.Bitmap SliderInterval {
+        public static System.Drawing.Bitmap MergeMotionData {
+            get {
+                object obj = ResourceManager.GetObject("MergeMotionData", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap Motion_Logo {
+            get {
+                object obj = ResourceManager.GetObject("Motion_Logo", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap NamedViewSwitch {
+            get {
+                object obj = ResourceManager.GetObject("NamedViewSwitch", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap RangeSelector {
+            get {
+                object obj = ResourceManager.GetObject("RangeSelector", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap Receiver {
+            get {
+                object obj = ResourceManager.GetObject("Receiver", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap Sender {
+            get {
+                object obj = ResourceManager.GetObject("Sender", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap SliderControlWPF {
+            get {
+                object obj = ResourceManager.GetObject("SliderControlWPF", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap SliderInterval {
             get {
                 object obj = ResourceManager.GetObject("SliderInterval", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
@@ -83,28 +203,29 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        internal static System.Drawing.Bitmap SliderLocker {
+        public static System.Drawing.Bitmap SliderLock {
             get {
-                object obj = ResourceManager.GetObject("SliderLocker", resourceCulture);
+                object obj = ResourceManager.GetObject("SliderLock", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-
-        internal static System.Drawing.Bitmap Sender
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("Sender", resourceCulture);
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap TimelineRange {
+            get {
+                object obj = ResourceManager.GetObject("TimelineRange", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-
-
-        internal static System.Drawing.Bitmap Receiver
-        {
-            get
-            {
-                object obj = ResourceManager.GetObject("Receiver", resourceCulture);
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ZDepth {
+            get {
+                object obj = ResourceManager.GetObject("ZDepth", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

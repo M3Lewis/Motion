@@ -11,15 +11,18 @@ using Grasshopper.Kernel.Data;
 using System.Drawing;
 using System.IO;
 
-namespace Motion
+namespace Motion.Utils
 {
     public class ZDepthComponent : GH_Component
     {
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.ZDepth;
+        public override Guid ComponentGuid => new Guid("93c51e48-2e19-49cc-a4bb-87d7e44e502d");
+
         private bool currentShowBufferState = false;
         public ZDepthComponent()
           : base("ZDepth", "ZDepth",
             "计算Rhino Viewport 的ZDepth",
-            "Motion", "03_Util")
+            "Motion", "03_Utils")
         {
         }
 
@@ -122,8 +125,6 @@ namespace Motion
                 bufferImage.Dispose(); // 确保释放资源
             }
         }
-        protected override System.Drawing.Bitmap Icon => null;
-
-        public override Guid ComponentGuid => new Guid("93c51e48-2e19-49cc-a4bb-87d7e44e502d");
+        
     }
 }

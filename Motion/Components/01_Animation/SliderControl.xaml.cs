@@ -5,7 +5,7 @@ using Grasshopper.Kernel.Special;
 using System.ComponentModel;
 using System;
 
-namespace Motion.Components
+namespace Motion.Animation
 {
     public partial class SliderControlWPF : Window, INotifyPropertyChanged
     {

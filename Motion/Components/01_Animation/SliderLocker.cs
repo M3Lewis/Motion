@@ -4,11 +4,15 @@ using Grasshopper.Kernel.Special;
 using System;
 using System.Linq;
 
-namespace Motion
+namespace Motion.Animation
 {
 
     public class SliderLocker : GH_Component
     {
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.SliderLock;
+
+        public override Guid ComponentGuid => new Guid("2FB92C8E-D75F-48B7-9F46-4365FD33A621");
         public SliderLocker()
           : base("SliderLocker", "SliderLocker",
             "判断主Slider数值是否在子Slider对应区间内",
@@ -56,9 +60,7 @@ namespace Motion
             this.Message = oLock.ToString();
             DA.SetData(0, oLock);
         }
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.SliderLocker;
-
-        public override Guid ComponentGuid => new Guid("2FB92C8E-D75F-48B7-9F46-4365FD33A621");
+        
     }
 
     

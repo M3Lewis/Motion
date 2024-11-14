@@ -11,6 +11,6 @@ namespace Motion.UI
 {
     public class MotionButton : MotionButtonTemplate
     {
-        public MotionButton(IGH_Component owner, string openButtonText, string exportButtonText, Action<object, GH_CanvasMouseEvent,bool> buttonClickHandler) : base(owner,openButtonText,exportButtonText,buttonClickHandler) { }
+        public MotionButton(IGH_Component owner, string button1Text, string button2Text, Action<object, GH_CanvasMouseEvent,bool> buttonClickHandler) : base(owner,button1Text, button2Text, buttonClickHandler) { }
     }
 }

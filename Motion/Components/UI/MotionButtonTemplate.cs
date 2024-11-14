@@ -14,19 +14,19 @@ namespace Motion.UI
         public bool PressedExport { get; set; }
         public bool Active { get; set; }
         
-        protected MotionButtonTemplate(IGH_Component component, string openButtonText, string exportButtonText, 
+        protected MotionButtonTemplate(IGH_Component component,  string button1Text, string button2Text,
             Action<object, GH_CanvasMouseEvent, bool> buttonClickHandler) : base(component)
         {
             PressedOpen = false;
             PressedExport = false;
             Active = false;
-            OpenButtonText = openButtonText;
-            ExportButtonText = exportButtonText;
+            Button1Text = button1Text;
+            Button2Text = button2Text;
             ButtonClickHandler = buttonClickHandler;
         }
         
-        public string OpenButtonText { get; set; }
-        public string ExportButtonText { get; set; }
+        public string Button2Text { get; set; }
+        public string Button1Text { get; set; }
         public Action<object, GH_CanvasMouseEvent, bool> ButtonClickHandler { get; set; }
 
         protected override void Layout()
@@ -41,19 +41,19 @@ namespace Motion.UI
             if (channel == GH_CanvasChannel.Objects)
             {
                 // Open 按钮 (放在底部)
-                RectangleF openButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
-                openButtonRect.Inflate(-2.0f, -2.0f);
+                RectangleF button2Rect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
+                button2Rect.Inflate(-2.0f, -2.0f);
 
-                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(openButtonRect, (PressedOpen) ? GH_Palette.Grey : GH_Palette.Black))
+                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(button2Rect, (PressedOpen) ? GH_Palette.Grey : GH_Palette.Black))
                 {
                     capsule.Render(graphics, Selected, Owner.Locked, Owner.Hidden);
                 }
 
                 graphics.DrawString(
-                    OpenButtonText,
+                    Button2Text,
                     new Font(GH_FontServer.ConsoleSmall, FontStyle.Regular),
                     Brushes.Azure,
-                    openButtonRect,
+                    button2Rect,
                     new StringFormat()
                     {
                         Alignment = StringAlignment.Center,
@@ -61,19 +61,19 @@ namespace Motion.UI
                     });
 
                 // Export 按钮 (放在 Open 按钮上面)
-                RectangleF exportButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 40, Bounds.Width, 20.0f);
-                exportButtonRect.Inflate(-2.0f, -2.0f);
+                RectangleF button1Rect = new RectangleF(Bounds.X, Bounds.Bottom - 40, Bounds.Width, 20.0f);
+                button1Rect.Inflate(-2.0f, -2.0f);
 
-                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(exportButtonRect, (PressedExport) ? GH_Palette.Grey : GH_Palette.Black))
+                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(button1Rect, (PressedExport) ? GH_Palette.Grey : GH_Palette.Black))
                 {
                     capsule.Render(graphics, Selected, Owner.Locked, Owner.Hidden);
                 }
 
                 graphics.DrawString(
-                    ExportButtonText,
+                    Button1Text,
                     new Font(GH_FontServer.ConsoleSmall, FontStyle.Regular),
                     Brushes.Azure,
-                    exportButtonRect,
+                    button1Rect,
                     new StringFormat()
                     {
                         Alignment = StringAlignment.Center,
@@ -85,12 +85,12 @@ namespace Motion.UI
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
             // 确保按钮区域计算与渲染一致
-            RectangleF openButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
-            RectangleF exportButtonRect = new RectangleF(Bounds.X, Bounds.Bottom - 40, Bounds.Width, 20.0f);
+            RectangleF button2Rect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
+            RectangleF button1Rect = new RectangleF(Bounds.X, Bounds.Bottom - 40, Bounds.Width, 20.0f);
 
             if (e.Button == MouseButtons.Left)
             {
-                if (exportButtonRect.Contains(e.CanvasLocation))  // 先检查上面的按钮
+                if (button1Rect.Contains(e.CanvasLocation))  // 先检查上面的按钮
                 {
                     PressedExport = true;
                     Active = true;
@@ -98,7 +98,7 @@ namespace Motion.UI
                     sender.Refresh();
                     return GH_ObjectResponse.Handled;
                 }
-                else if (openButtonRect.Contains(e.CanvasLocation))  // 再检查下面的按钮
+                else if (button2Rect.Contains(e.CanvasLocation))  // 再检查下面的按钮
                 {
                     PressedOpen = true;
                     Active = true;

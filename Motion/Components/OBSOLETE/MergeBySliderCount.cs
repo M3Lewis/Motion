@@ -12,11 +12,11 @@ using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
 using Rhino.Geometry;
 
-namespace Motion
+namespace Motion.Components.OBSOLETE
 {
     public class MergeBySliderCount : GH_Component, IGH_VariableParameterComponent
     {
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override Bitmap Icon => null;
         public override Guid ComponentGuid => new Guid("C43229D5-5C54-48D4-87A9-B3644A074937");
         public override GH_Exposure Exposure => GH_Exposure.hidden;
 
@@ -26,19 +26,19 @@ namespace Motion
                 "MergeBySliderCount",
                 "根据slider数量生成输入端，合并数据",
                 "Motion",
-                "03_Util"
+                "03_Utils"
             )
         {
             VariableParameterMaintenance();
         }
 
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager) 
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddGenericParameter(string.Empty, string.Empty, string.Empty, GH_ParamAccess.tree);
             pManager.AddGenericParameter(string.Empty, string.Empty, string.Empty, GH_ParamAccess.tree);
         }
 
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddGenericParameter("Result", "R", "Result of merge", GH_ParamAccess.tree);
         }
@@ -49,8 +49,8 @@ namespace Motion
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             List<Point3d> oPointList = new List<Point3d>();
-            sliderObject = this.OnPingDocument().Objects.Where((IGH_DocumentObject o) =>
-               Grasshopper.Utility.LikeOperator(o.GetType().ToString(), "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider"))
+            sliderObject = OnPingDocument().Objects.Where((o) =>
+               Utility.LikeOperator(o.GetType().ToString(), "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider"))
                .ToList();
             int sliderCount = sliderObject.Count;
 
@@ -109,7 +109,7 @@ namespace Motion
             VariableParameterMaintenance();
 
 
-            this.ExpireSolution(true);
+            ExpireSolution(true);
         }
 
         public bool CanInsertParameter(GH_ParameterSide side, int index)
@@ -148,12 +148,12 @@ namespace Motion
         public void VariableParameterMaintenance()
         {
             List<GH_NumberSlider> sliders = SortSliderObject();
-            for (int i = 0; i < this.Params.Input.Count; i++)
+            for (int i = 0; i < Params.Input.Count; i++)
             {
                 try
                 {
-                    this.Params.Input[i].Name = sliders[i].Name.ToString();
-                    this.Params.Input[i].NickName = sliders[i].NickName.ToString();
+                    Params.Input[i].Name = sliders[i].Name.ToString();
+                    Params.Input[i].NickName = sliders[i].NickName.ToString();
                 }
                 catch
                 {

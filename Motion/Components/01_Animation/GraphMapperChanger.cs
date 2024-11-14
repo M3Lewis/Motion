@@ -5,10 +5,14 @@ using Rhino.Geometry;
 using System;
 using System.Linq;
 
-namespace Motion
+namespace Motion.Animation
 {
     public class GraphMapperChanger : GH_Component
     {
+
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.GraphMapperChanger;
+        public override Guid ComponentGuid => new Guid("99B193E1-4328-467B-AC81-3D3C40FAC5CC");
+
         private Interval _lastDomain = new Interval(0, 1);
         private GH_GraphMapper _lastMapper = null;
 
@@ -29,22 +33,6 @@ namespace Motion
         {
             pManager.AddNumberParameter("outValue", "V", "输出值", GH_ParamAccess.item);
         }
-
-        //public override void CreateAttributes()
-        //{
-        //    m_attributes = new GraphMapperChangerAttributes(this);
-        //}
-
-        //private class GraphMapperChangerAttributes : GH_ComponentAttributes
-        //{
-        //    public GraphMapperChangerAttributes(GraphMapperChanger owner) : base(owner) { }
-
-        //    public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
-        //    {
-        //        Owner.ExpireSolution(true);
-        //        return GH_ObjectResponse.Handled;
-        //    }
-        //}
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
@@ -110,9 +98,5 @@ namespace Motion
             _lastDomain = new Interval(0, 1);
             _lastMapper = null;
         }
-
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.GraphMapperChanger;
-
-        public override Guid ComponentGuid => new Guid("99B193E1-4328-467B-AC81-3D3C40FAC5CC");
     }
 }

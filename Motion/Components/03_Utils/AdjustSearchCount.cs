@@ -9,14 +9,14 @@ using Grasshopper.Kernel.Graphs;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Data;
 
-namespace Motion
+namespace Motion.Utils
 {
     public class AdjustSearchCountComponent : GH_Component
     {
         public AdjustSearchCountComponent()
           : base("AdjustSearchCount", "AdjustSearchCount",
             "调整GH最大搜索数量",
-            "Motion", "03_Util")
+            "Motion", "03_Utils")
         {
         }
 
@@ -35,7 +35,7 @@ namespace Motion
             if (!DA.GetData(0, ref iCount)) return;
             Grasshopper.CentralSettings.CanvasMaxSearchResults = iCount;
         }
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.AdjustSearchCount;
 
         public override Guid ComponentGuid => new Guid("91f897b4-ad1b-4c35-bffa-8e944bc58955");
     }

@@ -8,11 +8,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace Motion.Components
+namespace Motion.Animation
 {
     public class MergeMotionData : GH_Component, IGH_VariableParameterComponent
     {
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.MergeMotionData;
         public override Guid ComponentGuid => new Guid("ECA244CD-0484-45D8-B516-833938CDDFE6");
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
 

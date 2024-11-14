@@ -6,11 +6,8 @@ using Grasshopper.Kernel.Parameters;
 using System;
 using System.Drawing;
 using System.Linq;
-using System.Windows.Forms;
-using Motion.Params;
-using Motion.Components;
 
-namespace Motion
+namespace Motion.Motility
 {
     // This class overrides the default display behavior of the params, to get the blue capsule
     // appearance and the little "Arrow" icons on the comp.

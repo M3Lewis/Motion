@@ -3,7 +3,7 @@ using System;
 using System.Drawing;
 using GH_IO.Serialization;
 
-namespace Motion
+namespace Motion.Motility
 {
     public class Param_RemoteReceiver : RemoteParam
     {

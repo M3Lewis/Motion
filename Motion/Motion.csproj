@@ -24,6 +24,40 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
+    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
+    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
+    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
+    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
+    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
+    <Compile Remove="Components\OBSOLETE\MergeByCount.cs" />
+    <Compile Remove="Components\OBSOLETE\MergeBySliderCount.cs" />
+    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUi.cs" />
+    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiLatest.cs" />
+    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
+    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
+    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
+    <Compile Remove="Toolbar\ViewSwitchButton.cs" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="Components\OBSOLETE\ExportRhinoViewport.cs" />
+    <None Include="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
+    <None Include="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
+    <None Include="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
+    <None Include="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
+    <None Include="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
+    <None Include="Components\OBSOLETE\MergeByCount.cs" />
+    <None Include="Components\OBSOLETE\MergeBySliderCount.cs" />
+    <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUi.cs" />
+    <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiLatest.cs" />
+    <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
+    <None Include="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
+    <None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
+    <None Include="Toolbar\ViewSwitchButton.cs" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <PackageReference Include="Grasshopper" Version="7.0.20314.3001" Condition="$(TargetFramework) == 'net48'" ExcludeAssets="runtime" />
     <PackageReference Include="Grasshopper" Version="8.12.24282.7001" Condition="!$(TargetFramework.StartsWith('net4'))" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
@@ -37,6 +71,25 @@
     <Reference Include="Telepathy">
       <HintPath>..\..\..\..\AppData\Roaming\Grasshopper\Libraries\telepathy.gha</HintPath>
     </Reference>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="Resources\" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   
   <!-- For Windows only builds -->

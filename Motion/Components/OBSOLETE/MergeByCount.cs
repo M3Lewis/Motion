@@ -11,7 +11,7 @@ using Grasshopper.Kernel.Data;
 using Grasshopper;
 using System.Windows.Forms;
 
-namespace MC_Components.Tree
+namespace Motion.Components.OBSOLETE
 {
     public class MergeByCount : GH_Component, IGH_VariableParameterComponent
     {
@@ -21,18 +21,18 @@ namespace MC_Components.Tree
 
         public MergeByCount()
           : base("MergeByCount", "MergeByCount", "合并数据",
-                   "Motion", "03_Util")
+                   "Motion", "03_Utils")
         {
             VariableParameterMaintenance();
         }
 
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            
+
             pManager.AddIntegerParameter("Count", "C", "Input count", GH_ParamAccess.item);
         }
 
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddIntegerParameter("Results", "R", "Result of merge", GH_ParamAccess.list);
         }
@@ -42,7 +42,7 @@ namespace MC_Components.Tree
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             int i = 0;
-            
+
             if (!DA.GetData(0, ref i))
             {
                 return;
@@ -51,7 +51,7 @@ namespace MC_Components.Tree
             //check outputs count
             int currentParamCount = Params.Input.Count;
             int targetParamCount = 1 + i;
-            
+
             paramDiff = currentParamCount - targetParamCount;
 
             if (paramDiff != 0)
@@ -61,7 +61,7 @@ namespace MC_Components.Tree
             }
             else
             {
-                DA.SetData(0, i);                
+                DA.SetData(0, i);
             }
         }
 
@@ -87,7 +87,7 @@ namespace MC_Components.Tree
 
             Params.OnParametersChanged();
             VariableParameterMaintenance();
-            this.ExpireSolution(true);
+            ExpireSolution(true);
         }
 
         public bool CanInsertParameter(GH_ParameterSide side, int index)
@@ -112,11 +112,11 @@ namespace MC_Components.Tree
 
         public void VariableParameterMaintenance()
         {
-            for (int i = 1; i < this.Params.Input.Count; i++)
+            for (int i = 1; i < Params.Input.Count; i++)
             {
-                this.Params.Input[i].Name = (i - 1).ToString();
-                this.Params.Input[i].NickName = (i - 1).ToString();
-            }           
+                Params.Input[i].Name = (i - 1).ToString();
+                Params.Input[i].NickName = (i - 1).ToString();
+            }
         }
     }
 }

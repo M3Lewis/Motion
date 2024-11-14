@@ -1,19 +1,21 @@
+using Grasshopper.Kernel;
+using Grasshopper.Kernel.Parameters;
+using Grasshopper.Kernel.Special;
+using Rhino.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using Grasshopper;
-using Grasshopper.GUI;
-using Grasshopper.Kernel;
-using Grasshopper.Kernel.Graphs;
-using Grasshopper.Kernel.Parameters;
-using Grasshopper.Kernel.Special;
-using Rhino.Geometry;
 
-namespace Motion.Components
+namespace Motion.Animation
 {
     public class SliderInterval : GH_Component
     {
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.SliderInterval;
+
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
+
+        public override Guid ComponentGuid => new Guid("D2C75940-DF88-4BFD-B398-4A77A488AF27");
         public SliderInterval()
             : base("SliderInterval", "SliderInterval", "获取Slider的区间", "Motion", "01_Animation")
         { }
@@ -178,9 +180,5 @@ namespace Motion.Components
             DA.SetData(0, oData);
             DA.SetData(1, oRange);
         }
-
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.SliderInterval;
-
-        public override Guid ComponentGuid => new Guid("D2C75940-DF88-4BFD-B398-4A77A488AF27");
     }
 }

@@ -3,13 +3,13 @@ using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
+using Motion.Animation;
 using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using Motion.Components;
 
-namespace Motion.Params
+namespace Motion.Motility
 {
     public class Param_RemoteData : Param_GenericObject
     {
@@ -28,7 +28,7 @@ namespace Motion.Params
         }
 
         public override Guid ComponentGuid => new Guid("A45D8759-6C07-4C65-8E99-D2E6E2E678D9");
-        protected override Bitmap Icon => null; // 需要添加相应的图标资源
+        protected override Bitmap Icon => null;
 
         public override GH_Exposure Exposure => GH_Exposure.hidden;
 

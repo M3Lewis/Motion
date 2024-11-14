@@ -13,10 +13,13 @@ namespace Motion
 {
     public class FilletEdgeIndexComponent : GH_Component
     {
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.FilletEdgeIndex;
+        public override Guid ComponentGuid => new Guid("4736a5be-2ecc-42b0-beaa-1cef9424375a");
+
         public FilletEdgeIndexComponent()
           : base("FilletEdgeIndex", "FilletEdgeIndex",
             "根据点获取Brep的边序号",
-            "Motion", "03_Util")
+            "Motion", "03_Utils")
         {
         }
 
@@ -264,8 +267,6 @@ namespace Motion
 
             return curveGroups;
         }
-        protected override System.Drawing.Bitmap Icon => null;
-
-        public override Guid ComponentGuid => new Guid("4736a5be-2ecc-42b0-beaa-1cef9424375a");
+        
     }
 }
