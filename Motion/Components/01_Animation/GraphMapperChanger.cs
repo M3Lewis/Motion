@@ -87,6 +87,9 @@ namespace Motion.Animation
             container.Y0 = domain.T0;
             container.Y1 = domain.T1;
 
+            // 清除运行时消息
+            mapper.ClearRuntimeMessages();
+            
             // 强制Graph Mapper更新
             mapper.ExpireSolution(true);
         }

@@ -3,6 +3,7 @@ using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
+using Motion.Motility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,6 +35,9 @@ namespace Motion.Animation
             _previousNicknames = new Dictionary<IGH_DocumentObject, string>();
             _previousValues = new Dictionary<IGH_DocumentObject, (decimal min, decimal max)>();
             _currentSliders = new List<IGH_DocumentObject>();
+            
+            // 添加参数源变化事件监听
+            Params.ParameterSourcesChanged += ParamSourcesChanged;
         }
 
         public override void AddedToDocument(GH_Document document)
@@ -234,6 +238,18 @@ namespace Motion.Animation
                 var currentSliders = GetTimelineSliders();
                 _currentSliders = new List<IGH_DocumentObject>(currentSliders);
 
+                // 记录现有的 RemoteData 连接
+                var remoteDataSources = new Dictionary<string, Param_RemoteData>();
+                foreach (var param in Params.Input)
+                {
+                    if (param.SourceCount > 0 && param.Sources[0] is Param_RemoteData remoteData)
+                    {
+                        remoteDataSources[remoteData.NickName] = remoteData;
+                        // 断开所有现有连接
+                        param.RemoveAllSources();
+                    }
+                }
+
                 // 更新参数数量
                 while (Params.Input.Count > currentSliders.Count)
                 {
@@ -250,14 +266,23 @@ namespace Motion.Animation
                     Params.RegisterInputParam(param);
                 }
 
-                // 更新参数名称
+                // 更新参数名称并建立正确的连接
                 for (int i = 0; i < currentSliders.Count; i++)
                 {
                     if (i < Params.Input.Count)
                     {
                         var slider = currentSliders[i];
-                        Params.Input[i].Name = slider.Name;
-                        Params.Input[i].NickName = slider.NickName;
+                        var param = Params.Input[i];
+                        
+                        // 更新名称
+                        param.Name = slider.Name;
+                        param.NickName = slider.NickName;
+
+                        // 只连接 NickName 完全匹配的 RemoteData
+                        if (remoteDataSources.TryGetValue(slider.NickName, out var matchingRemoteData))
+                        {
+                            param.AddSource(matchingRemoteData);
+                        }
                     }
                 }
 
@@ -266,7 +291,26 @@ namespace Motion.Animation
             }
             finally
             {
-                _isUpdatingParameters = false; // 确保标志位被重置
+                _isUpdatingParameters = false;
+            }
+        }
+
+        private void ParamSourcesChanged(object sender, GH_ParamServerEventArgs e)
+        {
+            if (e.ParameterSide == GH_ParameterSide.Input)
+            {
+                UpdateInputParameters();
+            }
+        }
+
+        public void VariableParameterMaintenance()
+        {
+            for (int i = 0; i < Params.Input.Count; i++)
+            {
+                var param = Params.Input[i];
+                param.Optional = true;
+                param.MutableNickName = false;
+                param.Access = GH_ParamAccess.tree;
             }
         }
 
@@ -275,10 +319,6 @@ namespace Motion.Animation
         public bool CanRemoveParameter(GH_ParameterSide side, int index) => false;
         public IGH_Param CreateParameter(GH_ParameterSide side, int index) => new Param_GenericObject();
         public bool DestroyParameter(GH_ParameterSide side, int index) => true;
-
-        public void VariableParameterMaintenance()
-        {
-        }
 
         public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
         {

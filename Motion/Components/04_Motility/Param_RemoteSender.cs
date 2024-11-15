@@ -217,5 +217,37 @@ namespace Motion.Motility
             
             return true;
         }
+
+        public override void RemovedFromDocument(GH_Document document)
+        {
+            try
+            {
+                // 在删除之前，查找并删除所有匹配的 RemoteData
+                if (document != null)
+                {
+                    // 获取所有 nickname 匹配的 RemoteData
+                    var matchingRemoteData = document.Objects
+                        .OfType<Param_RemoteData>()
+                        .Where(rd => rd.NickName == this.NickName)
+                        .ToList();
+
+                    // 删除匹配的 RemoteData
+                    foreach (var remoteData in matchingRemoteData)
+                    {
+                        document.RemoveObject(remoteData, false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 记录错误但不抛出异常，确保基类的 RemovedFromDocument 仍然会执行
+                Rhino.RhinoApp.WriteLine($"Error removing matching RemoteData: {ex.Message}");
+            }
+            finally
+            {
+                // 确保基类的删除逻辑仍然执行
+                base.RemovedFromDocument(document);
+            }
+        }
     }
 }

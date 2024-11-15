@@ -11,7 +11,7 @@ using System.Windows.Forms;
 
 namespace Motion.Motility
 {
-    public class Param_RemoteData : Param_GenericObject
+    public class Param_RemoteData : Param_GenericObject, ICloneable
     {
         private Param_RemoteReceiver _linkedReceiver;
         private Guid _linkedReceiverGuid = Guid.Empty;
@@ -71,6 +71,14 @@ namespace Motion.Motility
             targetItem.Click += (sender, e) => ConnectToMergeComponent("MotionTarget");
             menu.Items.Add(targetItem);
 
+            // 添加分隔线
+            menu.Items.Add(new ToolStripSeparator());
+
+            // 添加 Disconnect 按钮
+            ToolStripMenuItem disconnectItem = new ToolStripMenuItem("Disconnect");
+            disconnectItem.Click += (sender, e) => DisconnectOutputs();
+            menu.Items.Add(disconnectItem);
+
             // 将画布坐标转换为屏幕坐标
             Point screenPoint = canvas.PointToScreen(new Point((int)canvasLocation.X, (int)canvasLocation.Y));
 
@@ -124,6 +132,22 @@ namespace Motion.Motility
             }
 
             ExpireSolution(true);
+        }
+
+        private void DisconnectOutputs()
+        {
+            // 创建一个临时列表来存储需要断开的连接
+            var recipientsToDisconnect = this.Recipients.ToList();
+
+            // 断开所有输出端的连线
+            foreach (var recipient in recipientsToDisconnect)
+            {
+                recipient.RemoveSource(this);
+            }
+
+            // 强制更新
+            this.ExpireSolution(true);
+            this.OnDisplayExpired(true);
         }
 
         public void LinkToReceiver(Param_RemoteReceiver receiver)
@@ -239,9 +263,37 @@ namespace Motion.Motility
                 }
             }
         }
+
+        public object Clone()
+        {
+            // 创建新的 Param_RemoteData 实例
+            var dup = new Param_RemoteData();
+
+            // 复制基本属性
+            dup.Name = this.Name;
+            dup.NickName = this.NickName;
+            dup.Description = this.Description;
+            dup.Category = this.Category;
+            dup.SubCategory = this.SubCategory;
+            dup._linkedReceiverGuid = this._linkedReceiverGuid;
+
+            // 获取文档
+            var doc = OnPingDocument();
+            if (doc != null)
+            {
+                // 查找并链接到对应的 Receiver
+                var receiver = doc.FindObject(_linkedReceiverGuid, false) as Param_RemoteReceiver;
+                if (receiver != null)
+                {
+                    // 使用已有的 LinkToReceiver 方法建立连接
+                    dup.LinkToReceiver(receiver);
+                }
+            }
+
+            return dup;
+        }
     }
 
-    // 创建新的属性类来处理双击事件
     public class RemoteDataParamAttributes : RemoteParamAttributes
     {
         public RemoteDataParamAttributes(Param_RemoteData owner) : base(owner) { }
