@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace Motion.Motility
 {
@@ -19,6 +20,19 @@ namespace Motion.Motility
 
         private System.Drawing.Rectangle m_textBounds; //maintain a rectangle of the text bounds
         private GH_StateTagList m_stateTags; //state tags are like flatten/graft etc.
+
+        // 添加锁定按钮相关字段
+        private RectangleF HideButtonBounds;
+        private RectangleF LockButtonBounds;
+        private bool HideButtonDown;
+        private bool LockButtonDown;
+        private readonly int ButtonWidth = 18;
+        private readonly int ButtonHeight = 18;
+        private readonly int ButtonSpacing = 4;
+
+        // 添加记忆列表
+        private List<IGH_DocumentObject> hiddenObjects = new List<IGH_DocumentObject>();
+        private List<IGH_DocumentObject> lockedObjects = new List<IGH_DocumentObject>();
 
         //handles state tag tooltips
         public override void SetupTooltip(PointF point, GH_TooltipDisplayEventArgs e)
@@ -38,6 +52,8 @@ namespace Motion.Motility
         //This method figures out the size and shape of elements.
         protected override void Layout()
         {
+            base.Layout();
+            
             //establish the size based on the text content
             float textWidth = (float)System.Math.Max(GH_FontServer.MeasureString(this.Owner.NickName, GH_FontServer.StandardBold).Width + 10, 50);
             System.Drawing.RectangleF bounds = new System.Drawing.RectangleF(this.Pivot.X - 0.5f * textWidth, this.Pivot.Y - 10f, textWidth, 20f);
@@ -77,12 +93,28 @@ namespace Motion.Motility
 
             if (Owner is Param_RemoteReceiver)
             {
-                Bounds = new RectangleF(
+                // 减小按钮间距
+                float buttonHeight = 20.0f;
+                float spacing = 0.5f;  // 减小间距
+                
+                HideButtonBounds = new RectangleF(
                     Bounds.X,
-                    Bounds.Y,
+                    Bounds.Bottom + spacing,
                     Bounds.Width,
-                    Bounds.Height
-                );
+                    buttonHeight);
+                HideButtonBounds.Inflate(-1.0f, -1.0f);
+
+                LockButtonBounds = new RectangleF(
+                    Bounds.X,
+                    Bounds.Bottom + buttonHeight + spacing,  // 减小间距
+                    Bounds.Width,
+                    buttonHeight);
+                LockButtonBounds.Inflate(-1.0f, -1.0f);
+
+                // 扩展边界以包含按钮
+                var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
+                buttonArea.Inflate(2.0f, 2.0f);
+                Bounds = RectangleF.Union(Bounds, buttonArea);
             }
         }
 
@@ -96,15 +128,18 @@ namespace Motion.Motility
         //This method actually draws the parts
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
+            // 确保基类的渲染被正确调用
+            base.Render(canvas, graphics, channel);
+
+            // 如果是连线通道且有源，渲染连线
             if (channel == GH_CanvasChannel.Wires && Owner.SourceCount > 0)
             {
                 base.RenderIncomingWires(canvas.Painter, base.Owner.Sources, base.Owner.WireDisplay);
                 return;
             }
 
+            // 如果不是对象通道，直接返回
             if (channel != GH_CanvasChannel.Objects) return;
-
-            base.Render(canvas, graphics, channel);
 
             // 检查可见性
             GH_Viewport viewport = canvas.Viewport;
@@ -112,35 +147,83 @@ namespace Motion.Motility
             if (!viewport.IsVisible(ref bounds, 10f)) return;
             this.Bounds = bounds;
 
-            RenderCapsuleAndArrow(canvas, graphics, bounds);
+            // 首先渲染主要的胶囊和箭头
+            RenderCapsuleAndArrow(canvas, graphics, Bounds);
             RenderStateTagsIfNeeded(graphics);
-            
-            // 如果是 RemoteParam，渲染状态文字
+
+            // 如果是 Receiver，渲染状态文本和范围框
             if (Owner is RemoteParam remoteParam)
             {
-                RenderStatusText(graphics, bounds, remoteParam);
+                RenderStatusText(graphics, Bounds, remoteParam);
+                RenderAffectedComponentBoundsIfSelected(canvas, graphics);
             }
-            
-            // 如果被选中，处理 Scribble 和边界
-            if (Selected)
+
+            // 如果是 Receiver，渲染按钮
+            if (Owner is Param_RemoteReceiver)
             {
-                // 处理 Scribble（无论是否有被影响的对象）
-                HandleScribbles(canvas);
-                
-                // 渲染边界（只在有被影响对象时）
-                RenderGroupBoundsIfSelected(canvas, graphics);
+                // 检查记忆列表中的状态，添加防御性检查
+                bool anyHidden = false;
+                bool anyLocked = false;
+
+                if (hiddenObjects != null && hiddenObjects.Any())
+                {
+                    anyHidden = hiddenObjects
+                        .Where(obj => obj != null)  // 过滤掉空对象
+                        .Any(obj => obj is IGH_PreviewObject previewObj && previewObj.Hidden);
+                }
+
+                if (lockedObjects != null && lockedObjects.Any())
+                {
+                    anyLocked = lockedObjects
+                        .Where(obj => obj != null)  // 过滤掉空对象
+                        .Any(obj => obj is IGH_ActiveObject activeObj && activeObj.Locked);
+                }
+
+                // 绘制 Hide 按钮
+                var hideButtonPalette = anyHidden ? GH_Palette.Blue : (HideButtonDown ? GH_Palette.Grey : GH_Palette.Black);
+                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds, hideButtonPalette))
+                {
+                    capsule.Render(graphics, Selected, Owner.Locked, false);
+                    graphics.DrawString(
+                        "Hide",
+                        GH_FontServer.ConsoleSmall,
+                        Brushes.Azure,
+                        HideButtonBounds,
+                        new StringFormat()
+                        {
+                            Alignment = StringAlignment.Center,
+                            LineAlignment = StringAlignment.Center
+                        });
+                }
+
+                // 绘制 Lock 按钮
+                var lockButtonPalette = anyLocked ? GH_Palette.Blue : (LockButtonDown ? GH_Palette.Grey : GH_Palette.Black);
+                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds, lockButtonPalette))
+                {
+                    capsule.Render(graphics, Selected, Owner.Locked, false);
+                    graphics.DrawString(
+                        "Lock",
+                        GH_FontServer.ConsoleSmall,
+                        Brushes.Azure,
+                        LockButtonBounds,
+                        new StringFormat()
+                        {
+                            Alignment = StringAlignment.Center,
+                            LineAlignment = StringAlignment.Center
+                        });
+                }
             }
         }
 
         private void RenderCapsuleAndArrow(GH_Canvas canvas, Graphics graphics, RectangleF bounds)
         {
             // 渲染主要capsule
-            using (GH_Capsule capsule = GH_Capsule.CreateTextCapsule(this.Bounds, m_textBounds, GH_Palette.Black, Owner.NickName))
+            using (GH_Capsule capsule = GH_Capsule.CreateTextCapsule(bounds, m_textBounds, GH_Palette.Black, Owner.NickName))
             {
                 capsule.AddInputGrip(this.InputGrip.Y);
                 capsule.AddOutputGrip(this.OutputGrip.Y);
-                bool hidden = (this.Owner as Param_GenericObject).Hidden;
-                capsule.Render(graphics, this.Selected, this.Owner.Locked, hidden);
+                bool hidden = (Owner as IGH_PreviewObject)?.Hidden ?? false;
+                capsule.Render(graphics, Selected, Owner.Locked, hidden);
             }
 
             // 渲染箭头
@@ -154,7 +237,7 @@ namespace Motion.Motility
         private PointF GetArrowLocation(RectangleF bounds)
         {
             if (Owner is Param_RemoteReceiver)
-                return new PointF(bounds.Left + 10, this.OutputGrip.Y + 2);
+                return new PointF(bounds.Left + 10, this.OutputGrip.Y -20);
             if (Owner is Param_RemoteSender)
                 return new PointF(bounds.Right - 10, this.OutputGrip.Y + 2);
             return PointF.Empty;
@@ -191,6 +274,7 @@ namespace Motion.Motility
             }
         }
 
+        /*
         private void HandleScribbles(GH_Canvas canvas)
         {
             var doc = Owner.OnPingDocument();
@@ -207,36 +291,75 @@ namespace Motion.Motility
                 UpdateScribble(doc, group);
             }
         }
-
-        private void RenderGroupBoundsIfSelected(GH_Canvas canvas, Graphics graphics)
+        */
+        private void RenderAffectedComponentBoundsIfSelected(GH_Canvas canvas, Graphics graphics)
         {
-            if (!(Owner is RemoteParam remoteParam)) return;
+            // 只在 Receiver 被选中时显示范围框
+            if (!(Owner is RemoteParam remoteParam) || !this.Selected) return;
 
             var doc = Owner.OnPingDocument();
             if (doc == null) return;
 
-            // 查找包含当前组件的组
-            var containingGroups = doc.Objects
-                .OfType<GH_Group>()
-                .Where(g => g.ObjectIDs.Contains(Owner.InstanceGuid))
-                .ToList();
+            // 创建已处理对象的集合，避免重复绘制
+            HashSet<IGH_DocumentObject> processedObjects = new HashSet<IGH_DocumentObject>();
 
-            foreach (var group in containingGroups)
+            // 查找同时被隐藏和锁定的对象
+            if (hiddenObjects != null && lockedObjects != null)
             {
-                // 获取组内所有被影响的对象
-                var affectedObjects = GetAffectedObjects(group, remoteParam);
-                if (!affectedObjects.Any()) continue;
+                var bothAffectedObjects = hiddenObjects.Intersect(lockedObjects)
+                    .Where(obj => obj != null 
+                        && obj is IGH_PreviewObject previewObj 
+                        && obj is IGH_ActiveObject activeObj
+                        && previewObj.Hidden 
+                        && activeObj.Locked);
 
-                // 为每个对象绘制边界
-                foreach (var obj in affectedObjects)
+                foreach (var obj in bothAffectedObjects)
                 {
-                    var bounds = obj.Attributes.Bounds;
-                    bounds.Inflate(5, 5); // 扩大边界使其更容易看见
-                    DrawBoundary(graphics, bounds, remoteParam);
+                    if (processedObjects.Add(obj))  // 如果对象还未处理
+                    {
+                        var bounds = obj.Attributes.Bounds;
+                        bounds.Inflate(5, 5);
+                        DrawBoundary(graphics, bounds, Color.DarkOrange);  // 使用橙色表示同时被隐藏和锁定
+                    }
+                }
+            }
+
+            // 绘制仅被隐藏的组件边界
+            if (hiddenObjects != null)
+            {
+                foreach (var obj in hiddenObjects.Where(o => o != null))
+                {
+                    if (processedObjects.Contains(obj)) continue;  // 跳过已处理的对象
+
+                    if (obj is IGH_PreviewObject previewObj && previewObj.Hidden)
+                    {
+                        var bounds = obj.Attributes.Bounds;
+                        bounds.Inflate(5, 5);
+                        DrawBoundary(graphics, bounds, Color.DodgerBlue);
+                        processedObjects.Add(obj);
+                    }
+                }
+            }
+
+            // 绘制仅被锁定的组件边界
+            if (lockedObjects != null)
+            {
+                foreach (var obj in lockedObjects.Where(o => o != null))
+                {
+                    if (processedObjects.Contains(obj)) continue;  // 跳过已处理的对象
+
+                    if (obj is IGH_ActiveObject activeObj && activeObj.Locked)
+                    {
+                        var bounds = obj.Attributes.Bounds;
+                        bounds.Inflate(5, 5);
+                        DrawBoundary(graphics, bounds, Color.ForestGreen);
+                        processedObjects.Add(obj);
+                    }
                 }
             }
         }
 
+        /*
         private IEnumerable<IGH_DocumentObject> GetAffectedObjects(GH_Group group, RemoteParam remoteParam)
         {
             var doc = Owner.OnPingDocument();
@@ -261,7 +384,9 @@ namespace Motion.Motility
                 return Enumerable.Empty<IGH_DocumentObject>();
             }
         }
+        */
 
+        /*
         private void UpdateScribble(GH_Document doc, GH_Group group)
         {
             // 查找组内所有的 Scribble
@@ -308,18 +433,18 @@ namespace Motion.Motility
                 group.AddObject(scribble.InstanceGuid);
             }
         }
-
-        private void DrawBoundary(Graphics graphics, RectangleF bounds, RemoteParam remoteParam)
+        */
+        private void DrawBoundary(Graphics graphics, RectangleF bounds, Color color)
         {
-            // 绘制边界
-            Color penColor = GetBoundaryColor(remoteParam);
-            using (var pen = new Pen(penColor, 3f))
+            using (var pen = new Pen(color, 2f))
             {
                 pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+                pen.DashPattern = new float[] { 5, 5 };  // 设置虚线样式
                 graphics.DrawRectangle(pen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
             }
         }
 
+        /*
         private RectangleF CalculateAffectedBounds(IEnumerable<IGH_DocumentObject> objects)
         {
             var firstObject = objects.First();
@@ -334,6 +459,7 @@ namespace Motion.Motility
             bounds.Inflate(10, 10);
             return bounds;
         }
+        */
 
         private string GetStatusText(RemoteParam remoteParam)
         {
@@ -377,7 +503,7 @@ namespace Motion.Motility
 
             if (Owner is Param_RemoteData dataParam)
             {
-                // 查找同一位置的 Receiver
+                // 查找同一位置 Receiver
                 var receivers = ghDoc.Objects
                     .OfType<Param_RemoteReceiver>()
                     .Where(r => Math.Abs(r.Attributes.Pivot.Y - dataParam.Attributes.Pivot.Y) < 10)
@@ -453,6 +579,101 @@ namespace Motion.Motility
             }
             
             return GH_ObjectResponse.Handled;
+        }
+
+        public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (Owner is Param_RemoteReceiver)
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    if (HideButtonBounds.Contains(e.CanvasLocation))
+                    {
+                        HideButtonDown = true;
+                        sender.Refresh();
+                        return GH_ObjectResponse.Capture;
+                    }
+                    if (LockButtonBounds.Contains(e.CanvasLocation))
+                    {
+                        LockButtonDown = true;
+                        sender.Refresh();
+                        return GH_ObjectResponse.Capture;
+                    }
+                }
+            }
+            return base.RespondToMouseDown(sender, e);
+        }
+
+        public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (Owner is Param_RemoteReceiver)
+            {
+                if (HideButtonDown)
+                {
+                    HideButtonDown = false;
+                    sender.Refresh();
+
+                    if (HideButtonBounds.Contains(e.CanvasLocation))
+                    {
+                        // 如果有选中的对象，更新记忆列表
+                        var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
+                        if (selectedObjects.Any())
+                        {
+                            hiddenObjects = selectedObjects
+                                .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
+                                .ToList();
+                        }
+
+                        // 操作记忆列表中的对象
+                        if (hiddenObjects != null)
+                        {
+                            foreach (var obj in hiddenObjects.ToList())
+                            {
+                                if (obj != null && obj is IGH_PreviewObject previewObj)
+                                {
+                                    previewObj.Hidden = !previewObj.Hidden;
+                                    obj.Attributes.Selected = false;
+                                }
+                            }
+                        }
+                        sender.Document.ScheduleSolution(5);
+                        return GH_ObjectResponse.Release;
+                    }
+                }
+                if (LockButtonDown)
+                {
+                    LockButtonDown = false;
+                    sender.Refresh();
+
+                    if (LockButtonBounds.Contains(e.CanvasLocation))
+                    {
+                        // 如果有选中的对象，更新记忆列表
+                        var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
+                        if (selectedObjects.Any())
+                        {
+                            lockedObjects = selectedObjects
+                                .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
+                                .ToList();
+                        }
+
+                        // 操作记忆列表中的对象
+                        if (lockedObjects != null)
+                        {
+                            foreach (var obj in lockedObjects.ToList())
+                            {
+                                if (obj != null && obj is IGH_ActiveObject activeObject)
+                                {
+                                    activeObject.Locked = !activeObject.Locked;
+                                    obj.Attributes.Selected = false;
+                                }
+                            }
+                        }
+                        sender.Document.ScheduleSolution(5);
+                        return GH_ObjectResponse.Release;
+                    }
+                }
+            }
+            return base.RespondToMouseUp(sender, e);
         }
     }
 }

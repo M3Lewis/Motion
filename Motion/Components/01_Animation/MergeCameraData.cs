@@ -11,9 +11,9 @@ using System.Windows.Forms;
 
 namespace Motion.Animation
 {
-    public class MergeMotionData : GH_Component, IGH_VariableParameterComponent
+    public class MergeCameraData : GH_Component, IGH_VariableParameterComponent
     {
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.MergeMotionData;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.MergeCameraData;
         public override Guid ComponentGuid => new Guid("ECA244CD-0484-45D8-B516-833938CDDFE6");
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
 
@@ -23,11 +23,11 @@ namespace Motion.Animation
 
         private bool _isUpdatingParameters = false;
 
-        public MergeMotionData()
+        public MergeCameraData()
             : base(
-                "MergeMotionData",
-                "MergeMotionData",
-                "根据slider数量生成输入端，合并数据",
+                "MergeCameraData",
+                "MergeCameraData",
+                "根据slider数量生成输入端，合并Camera数据",
                 "Motion",
                 "01_Animation"
             )

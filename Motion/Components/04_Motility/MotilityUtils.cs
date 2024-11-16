@@ -15,8 +15,28 @@ namespace Motion.Utils
         //If scheduleNew is false it just does the same thing as the default method.
         public static void connectMatchingParams(GH_Document doc,bool scheduleNew)
         {
-            connectMatchingParams(doc);
-           if(scheduleNew) Grasshopper.Instances.ActiveCanvas.Document.ScheduleSolution(10);
+            try
+            {
+                // 检查 doc 是否为 null
+                if (doc == null)
+                {
+                    return;
+                }
+
+                connectMatchingParams(doc);
+
+                // 检查 ActiveCanvas 和其 Document 是否为 null
+                if (scheduleNew && 
+                    Grasshopper.Instances.ActiveCanvas != null && 
+                    Grasshopper.Instances.ActiveCanvas.Document != null)
+                {
+                    Grasshopper.Instances.ActiveCanvas.Document.ScheduleSolution(10);
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error in connectMatchingParams: {ex.Message}");
+            }
         }
 
 
@@ -24,27 +44,58 @@ namespace Motion.Utils
         //and rewires accordingly.
         public static void connectMatchingParams(GH_Document doc)
         {
-            //Get all the activeobjects. We have to call the
-            //Grasshopper.Instances.ActiveCanvas.Document rather than the 
-            //doc that's passed into the method because
-            //in copy-paste scenarios, that's actually a VIRTUAL doc with no other
-            //objects in it, whereas this one is the actually active document.
-            
-            var activeObjects = Grasshopper.Instances.ActiveCanvas?.Document?.ActiveObjects();
-           //get all the remote receiver params
-            var allReceivers = activeObjects?.Where(x => x is Param_RemoteReceiver).Cast<Param_RemoteReceiver>().ToList();
-
-            //get all the remote sender params
-            var allSenders = activeObjects?.Where(x => x is Param_RemoteSender).Cast<Param_RemoteSender>().ToList();
-
-
-            //for each receiver...
-            foreach (Param_RemoteReceiver receiver in allReceivers)
+            try
             {
-                //wire up that receiver to all matching senders
-                ProcessReceiver(allSenders, receiver);
+                // 获取活动画布和文档
+                var activeCanvas = Grasshopper.Instances.ActiveCanvas;
+                if (activeCanvas == null)
+                {
+                    return;
+                }
+
+                var activeDoc = activeCanvas.Document;
+                if (activeDoc == null)
+                {
+                    return;
+                }
+
+                var activeObjects = activeDoc.ActiveObjects();
+                if (activeObjects == null || !activeObjects.Any())
+                {
+                    return;
+                }
+
+                // 获取所有接收器和发送器
+                var allReceivers = activeObjects
+                    .Where(x => x is Param_RemoteReceiver)
+                    .Cast<Param_RemoteReceiver>()
+                    .ToList();
+
+                var allSenders = activeObjects
+                    .Where(x => x is Param_RemoteSender)
+                    .Cast<Param_RemoteSender>()
+                    .ToList();
+
+                // 如果没有接收器，直接返回
+                if (allReceivers == null || !allReceivers.Any())
+                {
+                    return;
+                }
+
+                // 处理每个接收器
+                foreach (var receiver in allReceivers)
+                {
+                    if (receiver != null)
+                    {
+                        ProcessReceiver(allSenders ?? new List<Param_RemoteSender>(), receiver);
+                    }
+                }
             }
-         
+            catch (Exception ex)
+            {
+                // 可以选择记录错误或显示给用户
+                Rhino.RhinoApp.WriteLine($"Error in connectMatchingParams: {ex.Message}");
+            }
         }
 
 

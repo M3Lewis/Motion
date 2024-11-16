@@ -24,6 +24,8 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <Compile Remove="Components\01_Animation\SliderControlWinform.cs" />
+    <Compile Remove="Components\01_Animation\SliderControlWPF.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
@@ -46,6 +48,8 @@
   </ItemGroup>
   
   <ItemGroup>
+    <None Include="Components\OBSOLETE\SliderControlWPFComponent.cs" />
+    <None Include="Components\OBSOLETE\SliderControlWinform.cs" />
     <None Include="Components\OBSOLETE\ExportRhinoViewport.cs" />
     <None Include="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
     <None Include="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
@@ -64,7 +68,7 @@
     <None Include="tele\Param_RemoteSender.cs" />
     <None Include="tele\RemoteParam.cs" />
     <None Include="tele\RemoteParamAttributes.cs" />
-    <None Include="Toolbar\ViewSwitchButton.cs" />
+    <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
   </ItemGroup>
   
   <ItemGroup>

@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 
 namespace Motion.Export
 {
@@ -21,7 +22,7 @@ namespace Motion.Export
         public override GH_Exposure Exposure => GH_Exposure.primary;
         public override Guid ComponentGuid => new Guid("7b8d5ff6-c766-4ae3-a832-95861edb9fde");
 
-        
+
 
         public ExportSliderAnimation()
             : base(
@@ -35,7 +36,7 @@ namespace Motion.Export
 
         public override void CreateAttributes()
         {
-            Attributes = new MotionButton(this, "Open", "Export", async (sender, e, isExport) =>
+            Attributes = new MotionButton(this, "Export", "Open", async (sender, e, isExport) =>
             {
                 if (isExport)
                 {
@@ -81,9 +82,9 @@ namespace Motion.Export
 
             // 添加文件路径参数
             Param_FilePath pathParam = new Param_FilePath();
-            pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)+"\\Motion");  // 设置默认为桌面路径
+            pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\Motion");  // 设置默认为桌面路径
             pManager.AddParameter(pathParam, "Full Path", "P", "输出路径", GH_ParamAccess.item);
-            
+
             pManager.AddBooleanParameter("IsTransparent", "T", "图片是否透明", GH_ParamAccess.item, true);
             pManager.AddBooleanParameter("IsCycles", "C", "是否使用Cycles渲染", GH_ParamAccess.item, false);
             pManager.AddIntegerParameter("Passes", "Pa", "Cycles渲染次数", GH_ParamAccess.item, 500);
@@ -181,7 +182,7 @@ namespace Motion.Export
             // 检查 Frame 输入源
             if (this.Params.Input[9].Sources.Count == 0)
                 return;
-            
+
             if (!(this.Params.Input[9].Sources[0] is GH_NumberSlider unionSlider))
                 return;
 
@@ -191,8 +192,9 @@ namespace Motion.Export
             await Task.Run(() =>
             {
                 int currentFrame = 0;
-                int total = (int)unionSlider.Slider.Maximum;
-                
+                int total = 0;
+                bool wasAborted = false;
+
                 Action<int, int> updateProgress = (frame, total) =>
                 {
                     this.Message = $"Rendering Frame.. {frame + 1}/{total}";
@@ -231,8 +233,11 @@ namespace Motion.Export
                         parameters.IsCycles,
                         parameters.RealtimeRenderPasses,
                         out outputPaths,
+                        out wasAborted,
                         updateProgress
                     );
+
+                    this.Message = wasAborted ? "Render Aborted!" : "Render Finished!";
                 }));
 
                 // 在主线程中更新输出
@@ -259,7 +264,7 @@ namespace Motion.Export
             if (!DA.GetData(6, ref parameters.RealtimeRenderPasses)) return false;
 
             parameters.IsCustomRange = DA.GetData(7, ref parameters.Range);
-            
+
             if (!DA.GetData(8, ref parameters.Run)) return false;
             if (!DA.GetData(9, ref parameters.Frame)) return false;
 

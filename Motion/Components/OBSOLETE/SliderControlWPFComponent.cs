@@ -58,8 +58,8 @@ namespace Motion.Animation
                 return;
             }
 
-            var window = new SliderControlWPF(connectedSlider);
-            window.Show();
+            //var window = new SliderControlWPF(connectedSlider);
+            //window.Show();
         }
     }
 

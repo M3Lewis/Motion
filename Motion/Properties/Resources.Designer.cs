@@ -93,6 +93,16 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap ClickFinder {
+            get {
+                object obj = ResourceManager.GetObject("ClickFinder", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap ExportSliderAnimation {
             get {
                 object obj = ResourceManager.GetObject("ExportSliderAnimation", resourceCulture);
@@ -123,9 +133,9 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        public static System.Drawing.Bitmap MergeMotionData {
+        public static System.Drawing.Bitmap MergeCameraData {
             get {
-                object obj = ResourceManager.GetObject("MergeMotionData", resourceCulture);
+                object obj = ResourceManager.GetObject("MergeCameraData", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -216,6 +226,16 @@ namespace Motion.Properties {
         public static System.Drawing.Bitmap TimelineRange {
             get {
                 object obj = ResourceManager.GetObject("TimelineRange", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap UpdateSender {
+            get {
+                object obj = ResourceManager.GetObject("UpdateSender", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

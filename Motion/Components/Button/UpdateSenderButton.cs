@@ -12,7 +12,7 @@ namespace Motion.Button
     {
         private List<GH_NumberSlider> allTimelineSliders = new List<GH_NumberSlider>();
 
-        protected override Bitmap Icon => null;
+        protected override Bitmap Icon => Properties.Resources.UpdateSender;
 
         public override GH_Exposure Exposure => GH_Exposure.primary;
 
@@ -36,6 +36,11 @@ namespace Motion.Button
                     {
                         // 检查 slider 是否已经连接到 sender
                         bool isConnectedToSender = false;
+                        bool isUnionSlider = false;
+                        if (timelineSlider.NickName == "TimeLine(Union)")
+                        {
+                            isUnionSlider = true;
+                        }
                         foreach (var recipient in timelineSlider.Recipients)
                         {
                             if (recipient is Param_RemoteSender)
@@ -46,7 +51,7 @@ namespace Motion.Button
                         }
 
                         // 如果已经连接到 sender，跳过这个 slider
-                        if (isConnectedToSender) continue;
+                        if (isConnectedToSender||isUnionSlider) continue;
 
                         // 创建新的 Param_RemoteSender
                         Param_RemoteSender remoteSender = new Param_RemoteSender();
@@ -74,16 +79,36 @@ namespace Motion.Button
 
         public override void FindAssociatedComponents()
         {
-            allTimelineSliders = new List<GH_NumberSlider>();
-            GH_Document gH_Document = OnPingDocument();
+            try
+            {
+                allTimelineSliders = new List<GH_NumberSlider>();
+                GH_Document gH_Document = OnPingDocument();
 
-            // 查找所有 pOd_TimeLineSlider
-            var sliders = gH_Document.Objects
-                .Where(o => o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider")
-                .Cast<GH_NumberSlider>()
-                .ToList();
+                // 检查文档是否为空
+                if (gH_Document == null || gH_Document.Objects == null)
+                {
+                    return;
+                }
 
-            allTimelineSliders.AddRange(sliders);
+                // 查找所有 pOd_TimeLineSlider
+                var sliders = gH_Document.Objects
+                    .Where(o => o != null && 
+                              o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider")
+                    .Cast<GH_NumberSlider>()
+                    .ToList();
+
+                // 检查 sliders 是否为空
+                if (sliders != null && sliders.Any())
+                {
+                    allTimelineSliders.AddRange(sliders);
+                }
+            }
+            catch (Exception ex)
+            {
+                // 记录错误但不中断程序
+                Rhino.RhinoApp.WriteLine($"Error in FindAssociatedComponents: {ex.Message}");
+                allTimelineSliders = new List<GH_NumberSlider>(); // 确保列表不为 null
+            }
         }
     }
 }

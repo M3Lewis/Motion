@@ -24,12 +24,13 @@ namespace Motion.Export
             UseCustomRange = false;
         }
 
-        public int MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses, out List<string> outputPathList, Action<int, int> progressCallback = null)
+        public int MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses,  out List<string> outputPathList, out bool wasAborted, Action<int, int> progressCallback = null)
         {
             outputPathList = new List<string>();
+            wasAborted = false;
             StoreSettingsAsDefault();
 
-            // 基本验证
+            // 证
             if (m_fileTemplate == null)
                 throw new Exception("File name mask is not valid");
             if (m_folder == null)
@@ -39,7 +40,7 @@ namespace Motion.Export
             if (m_frameCount < 1)
                 throw new Exception("Insufficient frames for animation");
 
-            // 创建输出目录
+            // 目录
             if (!Directory.Exists(m_folder))
             {
                 try
@@ -52,20 +53,20 @@ namespace Motion.Export
                 }
             }
 
-            // 设置分辨率
+            // 梅直
             m_resolution.Width = Math.Max(m_resolution.Width, 24);
             m_resolution.Height = Math.Max(m_resolution.Height, 24);
             m_frameIndex = 0;
 
-            // 获取文档引用
+            // 取牡
             GH_Document gH_Document = m_owner.OnPingDocument();
             if (gH_Document == null)
                 return 0;
 
-            // 初始化计时器
+            // 始时
             long ticks = DateTime.Now.Ticks;
 
-            // 设置范围
+            // 梅围
             double currentValue, maxValue;
             if (UseCustomRange)
             {
@@ -89,9 +90,12 @@ namespace Motion.Export
                 while (m_currentValue <= maxValue)
                 {
                     if (GH_Document.IsEscapeKeyDown())
+                    {
+                        wasAborted = true;
                         break;
+                    }
 
-                    // 更新进度提示
+                    // 陆示
                     if (UseCustomRange)
                     {
                         RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex + (int)CustomRange.Min} of {(int)CustomRange.Min}-{(int)CustomRange.Max}. Total:{(int)CustomRange.Max - (int)CustomRange.Min + 1} Time left: {EstimateTimeLeft(ticks)}s";
@@ -101,19 +105,19 @@ namespace Motion.Export
                         RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex} of {m_owner.Slider.Minimum}-{m_owner.Slider.Maximum}. Total:{m_owner.Slider.Maximum - m_owner.Slider.Minimum + 1} Time left: {EstimateTimeLeft(ticks)}s";
                     }
 
-                    // 更新slider值
+                    // slider值
                     m_owner.Slider.Value = Convert.ToDecimal(m_currentValue);
 
-                    // 刷新视图
+                    // 刷图
                     doc.Views.Redraw();
                     Grasshopper.Instances.ActiveCanvas.Refresh();
                     Grasshopper.Instances.RedrawAll();
 
-                    progressCallback?.Invoke(m_frameIndex, (int)m_owner.Slider.Maximum - (int)m_owner.Slider.Minimum + 1);
+                    progressCallback?.Invoke(m_frameIndex, (int)maxValue + 1);
 
                     //Stopwatch stopwatch = new Stopwatch();
                     //stopwatch.Start();
-                    // 捕获并保存图片
+                    // 癫⒈图片
                     Bitmap bitmap = MotionCreateFrame(isTransparent, myView, isCycles, realtimeRenderPasses, cycles, oldPasses);
                     if (bitmap != null)
                     {
@@ -136,16 +140,19 @@ namespace Motion.Export
                     m_currentValue += 1.0;
                 }
 
-                // 重置到初始帧
+                // 玫始帧
                 m_owner.Slider.Value = UseCustomRange ? (int)CustomRange.Min : 0;
                 doc.Views.Redraw();
             }
             catch (Exception ex)
             {
                 RhinoApp.WriteLine($"Error during animation: {ex.Message}");
+                wasAborted = true;
             }
 
-            RhinoApp.WriteLine($"Animation saved to disk: {m_folder}\\");
+            RhinoApp.WriteLine(wasAborted ? 
+                "Animation aborted by user." : 
+                $"Animation saved to disk: {m_folder}\\");
             RhinoApp.CommandPrompt = string.Empty;
             return m_frameIndex;
         }

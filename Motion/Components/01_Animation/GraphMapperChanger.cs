@@ -83,15 +83,24 @@ namespace Motion.Animation
 
         private void UpdateGraphMapper(GH_GraphMapper mapper, Interval domain)
         {
-            var container = mapper.Container;
-            container.Y0 = domain.T0;
-            container.Y1 = domain.T1;
-
-            // 清除运行时消息
-            mapper.ClearRuntimeMessages();
-            
-            // 强制Graph Mapper更新
-            mapper.ExpireSolution(true);
+            try
+            {
+                var container = mapper.Container;
+                
+                // 只在值真正改变时才更新
+                if (Math.Abs(container.Y0 - domain.T0) > 1e-6 || 
+                    Math.Abs(container.Y1 - domain.T1) > 1e-6)
+                {
+                    container.Y0 = domain.T0;
+                    container.Y1 = domain.T1;
+                    mapper.Description = string.Empty;
+                    mapper.ExpireSolution(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"更新Graph Mapper失败: {ex.Message}");
+            }
         }
 
         public override void AddedToDocument(GH_Document document)

@@ -114,7 +114,7 @@ namespace Motion.Motility
 
             // 查找所有 MergeMotionData 组件
             var mergeComps = doc.Objects
-                .OfType<MergeMotionData>()
+                .OfType<MergeCameraData>()
                 .Where(m => m.NickName == mergeNickName)
                 .ToList();
 
