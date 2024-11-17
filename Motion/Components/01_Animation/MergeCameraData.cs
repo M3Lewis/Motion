@@ -238,16 +238,50 @@ namespace Motion.Animation
                 var currentSliders = GetTimelineSliders();
                 _currentSliders = new List<IGH_DocumentObject>(currentSliders);
 
-                // 记录现有的 RemoteData 连接
-                var remoteDataSources = new Dictionary<string, Param_RemoteData>();
+                // 保存现有的正确连接信息，包括Y坐标
+                var existingConnections = new List<(string nickname, Param_RemoteData remoteData, float sliderY)>();
+                
+                // 创建 slider 位置映射，处理重复的 nickname
+                var sliderPositions = new Dictionary<(string nickname, float y), IGH_DocumentObject>();
+                foreach (var slider in currentSliders)
+                {
+                    var y = slider.Attributes.Bounds.Y;
+                    sliderPositions.Add((slider.NickName, y), slider);
+                }
+
+                // 保存现有的正确连接
                 foreach (var param in Params.Input)
                 {
                     if (param.SourceCount > 0 && param.Sources[0] is Param_RemoteData remoteData)
                     {
-                        remoteDataSources[remoteData.NickName] = remoteData;
-                        // 断开所有现有连接
-                        param.RemoveAllSources();
+                        // 找到最近的匹配 slider
+                        var matchingSlider = sliderPositions
+                            .Where(kvp => kvp.Key.nickname == param.NickName)
+                            .OrderBy(kvp => Math.Abs(kvp.Key.y - param.Attributes.Bounds.Y))
+                            .FirstOrDefault();
+
+                        // 只保存完全匹配的连接
+                        if (param.NickName == remoteData.NickName && 
+                            !matchingSlider.Equals(default(KeyValuePair<(string, float), IGH_DocumentObject>)))
+                        {
+                            existingConnections.Add((
+                                param.NickName,
+                                remoteData,
+                                matchingSlider.Key.y
+                            ));
+                        }
                     }
+                }
+
+                // 按Y坐标排序连接信息
+                existingConnections = existingConnections
+                    .OrderBy(c => c.sliderY)
+                    .ToList();
+
+                // 断开所有现有连接
+                foreach (var param in Params.Input)
+                {
+                    param.RemoveAllSources();
                 }
 
                 // 更新参数数量
@@ -266,7 +300,7 @@ namespace Motion.Animation
                     Params.RegisterInputParam(param);
                 }
 
-                // 更新参数名称并建立正确的连接
+                // 更新参数名称
                 for (int i = 0; i < currentSliders.Count; i++)
                 {
                     if (i < Params.Input.Count)
@@ -274,14 +308,34 @@ namespace Motion.Animation
                         var slider = currentSliders[i];
                         var param = Params.Input[i];
                         
-                        // 更新名称
                         param.Name = slider.Name;
                         param.NickName = slider.NickName;
+                    }
+                }
 
-                        // 只连接 NickName 完全匹配的 RemoteData
-                        if (remoteDataSources.TryGetValue(slider.NickName, out var matchingRemoteData))
+                // 恢复连接，按照Y坐标顺序
+                foreach (var connection in existingConnections)
+                {
+                    // 找到对应的slider
+                    var slider = currentSliders.FirstOrDefault(s => 
+                        Math.Abs(s.Attributes.Bounds.Y - connection.sliderY) < 0.1);
+
+                    if (slider != null)
+                    {
+                        // 找到对应的参数
+                        var param = Params.Input.FirstOrDefault(p => p.NickName == slider.NickName);
+                        if (param != null && param.NickName == connection.nickname)
                         {
-                            param.AddSource(matchingRemoteData);
+                            // 确保这个RemoteData没有被其他参数使用
+                            bool isRemoteDataInUse = Params.Input
+                                .Any(p => p != param && 
+                                        p.SourceCount > 0 && 
+                                        p.Sources[0] == connection.remoteData);
+
+                            if (!isRemoteDataInUse)
+                            {
+                                param.AddSource(connection.remoteData);
+                            }
                         }
                     }
                 }
