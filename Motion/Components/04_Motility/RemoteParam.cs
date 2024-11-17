@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System;
 using GH_IO.Serialization;
 using Motion.Utils;
+using System.Collections.Generic;
 
 namespace Motion.Motility
 {
@@ -13,6 +14,37 @@ namespace Motion.Motility
     {
         internal bool _hideWhenEmpty = false;
         internal bool _lockWhenEmpty = false;
+
+        internal List<IGH_DocumentObject> affectedObjects = new List<IGH_DocumentObject>();
+
+        private bool isUpdating = false;
+        private bool? lastEmptyState = null;
+
+        public bool HideButtonEnabled
+        {
+            get => _hideWhenEmpty;
+            set
+            {
+                if (_hideWhenEmpty != value)
+                {
+                    _hideWhenEmpty = value;
+                    UpdateGroupVisibilityAndLock();
+                }
+            }
+        }
+
+        public bool LockButtonEnabled
+        {
+            get => _lockWhenEmpty;
+            set
+            {
+                if (_lockWhenEmpty != value)
+                {
+                    _lockWhenEmpty = value;
+                    UpdateGroupVisibilityAndLock();
+                }
+            }
+        }
 
         public void SetInitCode(string code)
         {
@@ -53,12 +85,6 @@ namespace Motion.Motility
         {
             Menu_AppendSeparator(menu);
 
-            ToolStripMenuItem hideItem = Menu_AppendItem(menu, "Hide Components When Empty", HideWhenEmpty_Clicked, true, _hideWhenEmpty);
-            hideItem.ToolTipText = "Hide all components in the same group when this sender is empty";
-
-            ToolStripMenuItem lockItem = Menu_AppendItem(menu, "Lock Components When Empty", LockWhenEmpty_Clicked, true, _lockWhenEmpty);
-            lockItem.ToolTipText = "Lock all components in the same group when this sender is empty";
-
             ToolStripMenuItem recentKeyMenu = GH_DocumentObject.Menu_AppendItem(menu, "Keys");
             foreach (string key in MotilityUtils.GetAllKeys(Grasshopper.Instances.ActiveCanvas.Document).OrderBy(s => s))
             {
@@ -76,75 +102,6 @@ namespace Motion.Motility
             this.Attributes.ExpireLayout();
         }
 
-        private void HideWhenEmpty_Clicked(object sender, EventArgs e)
-        {
-            _hideWhenEmpty = !_hideWhenEmpty;
-            
-            if (!_hideWhenEmpty)
-            {
-                var doc = OnPingDocument();
-                if (doc != null)
-                {
-                    var currentGroup = doc.Objects.OfType<GH_Group>()
-                        .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
-
-                    if (currentGroup != null)
-                    {
-                        foreach (var objId in currentGroup.ObjectIDs)
-                        {
-                            var obj = doc.FindObject(objId, false) as GH_Component;
-                            if (obj != null && obj.InstanceGuid != this.InstanceGuid)
-                            {
-                                obj.Hidden = false;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            ForceUpdateGroupState();
-            ExpireSolution(true);
-        }
-
-        private void LockWhenEmpty_Clicked(object sender, EventArgs e)
-        {
-            _lockWhenEmpty = !_lockWhenEmpty;
-            
-            if (!_lockWhenEmpty)
-            {
-                var doc = OnPingDocument();
-                if (doc != null)
-                {
-                    var currentGroup = doc.Objects.OfType<GH_Group>()
-                        .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
-
-                    if (currentGroup != null)
-                    {
-                        foreach (var objId in currentGroup.ObjectIDs)
-                        {
-                            var obj = doc.FindObject(objId, false) as GH_Component;
-                            if (obj != null && obj.InstanceGuid != this.InstanceGuid)
-                            {
-                                obj.Locked = false;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            ForceUpdateGroupState();
-            ExpireSolution(true);
-        }
-
-        private bool isUpdating = false;
-        private bool? lastEmptyState = null;
-
-        private void ForceUpdateGroupState()
-        {
-            lastEmptyState = null;
-            UpdateGroupVisibilityAndLock();
-        }
-
         public void UpdateGroupVisibilityAndLock()
         {
             if (isUpdating) return;
@@ -155,43 +112,29 @@ namespace Motion.Motility
                 var doc = OnPingDocument();
                 if (doc == null) return;
 
-                var currentGroup = doc.Objects.OfType<GH_Group>()
-                    .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
+                // 检查数据是否为空
+                bool isEmpty = this.VolatileData.IsEmpty;
 
-                if (currentGroup == null) return;
+                // 如果状态没有改变，不需要更新
+                if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty)
+                    return;
 
-                bool isEmpty = VolatileData.IsEmpty;
+                lastEmptyState = isEmpty;
 
-                if (lastEmptyState == null || isEmpty != lastEmptyState)
+                // 根据数据状态更新组件状态
+                if (affectedObjects != null && affectedObjects.Any())
                 {
-                    lastEmptyState = isEmpty;
-
-                    foreach (var objId in currentGroup.ObjectIDs)
+                    foreach (var obj in affectedObjects)
                     {
-                        var obj = doc.FindObject(objId, false) as GH_Component;
-                        if (obj != null && obj.InstanceGuid != this.InstanceGuid)
+                        if (obj is IGH_PreviewObject previewObj && _hideWhenEmpty)
                         {
-                            if (_hideWhenEmpty)
-                            {
-                                obj.Hidden = isEmpty;
-                            }
-                            if (_lockWhenEmpty)
-                            {
-                                obj.Locked = isEmpty;
-                                
-                                if (isEmpty && obj is IGH_Component component)
-                                {
-                                    foreach (var param in component.Params.Output)
-                                    {
-                                        param.ClearData();
-                                    }
-                                    
-                                    component.ExpireSolution(true);
-                                }
-                            }
+                            previewObj.Hidden = isEmpty;
+                        }
+                        if (obj is IGH_ActiveObject activeObj && _lockWhenEmpty)
+                        {
+                            activeObj.Locked = isEmpty;
                         }
                     }
-
                     doc.ScheduleSolution(5);
                 }
             }

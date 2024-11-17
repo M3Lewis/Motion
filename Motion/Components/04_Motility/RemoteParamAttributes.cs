@@ -31,8 +31,11 @@ namespace Motion.Motility
         private readonly int ButtonSpacing = 4;
 
         // 添加记忆列表
-        private List<IGH_DocumentObject> hiddenObjects = new List<IGH_DocumentObject>();
-        private List<IGH_DocumentObject> lockedObjects = new List<IGH_DocumentObject>();
+        internal List<IGH_DocumentObject> affectedObjects = new List<IGH_DocumentObject>();
+
+        // 添加 Data 按钮相关字段
+        private RectangleF DataButtonBounds;
+        private bool DataButtonDown;
 
         //handles state tag tooltips
         public override void SetupTooltip(PointF point, GH_TooltipDisplayEventArgs e)
@@ -93,10 +96,9 @@ namespace Motion.Motility
 
             if (Owner is Param_RemoteReceiver)
             {
-                // 减小按钮间距
                 float buttonHeight = 20.0f;
-                float spacing = 0.5f;  // 减小间距
-                
+                float spacing = 1f;
+
                 HideButtonBounds = new RectangleF(
                     Bounds.X,
                     Bounds.Bottom + spacing,
@@ -106,14 +108,23 @@ namespace Motion.Motility
 
                 LockButtonBounds = new RectangleF(
                     Bounds.X,
-                    Bounds.Bottom + buttonHeight + spacing,  // 减小间距
+                    Bounds.Bottom + buttonHeight + spacing,
                     Bounds.Width,
                     buttonHeight);
                 LockButtonBounds.Inflate(-1.0f, -1.0f);
 
-                // 扩展边界以包含按钮
+                // 添加 Data 按钮布局
+                DataButtonBounds = new RectangleF(
+                    Bounds.X,
+                    Bounds.Bottom + (buttonHeight) * 2 + spacing,
+                    Bounds.Width,
+                    buttonHeight);
+                DataButtonBounds.Inflate(-1.0f, -1.0f);
+
+                // 扩展边界以包含所有按钮
                 var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
-                buttonArea.Inflate(2.0f, 2.0f);
+                buttonArea = RectangleF.Union(buttonArea, DataButtonBounds);
+                buttonArea.Inflate(2.0f,2.0f);
                 Bounds = RectangleF.Union(Bounds, buttonArea);
             }
         }
@@ -128,89 +139,110 @@ namespace Motion.Motility
         //This method actually draws the parts
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
-            // 确保基类的渲染被正确调用
             base.Render(canvas, graphics, channel);
 
-            // 如果是连线通道且有源，渲染连线
-            if (channel == GH_CanvasChannel.Wires && Owner.SourceCount > 0)
+            if (channel == GH_CanvasChannel.Objects)
             {
-                base.RenderIncomingWires(canvas.Painter, base.Owner.Sources, base.Owner.WireDisplay);
-                return;
-            }
-
-            // 如果不是对象通道，直接返回
-            if (channel != GH_CanvasChannel.Objects) return;
-
-            // 检查可见性
-            GH_Viewport viewport = canvas.Viewport;
-            RectangleF bounds = this.Bounds;
-            if (!viewport.IsVisible(ref bounds, 10f)) return;
-            this.Bounds = bounds;
-
-            // 首先渲染主要的胶囊和箭头
-            RenderCapsuleAndArrow(canvas, graphics, Bounds);
-            RenderStateTagsIfNeeded(graphics);
-
-            // 如果是 Receiver，渲染状态文本和范围框
-            if (Owner is RemoteParam remoteParam)
-            {
-                RenderStatusText(graphics, Bounds, remoteParam);
-                RenderAffectedComponentBoundsIfSelected(canvas, graphics);
-            }
-
-            // 如果是 Receiver，渲染按钮
-            if (Owner is Param_RemoteReceiver)
-            {
-                // 检查记忆列表中的状态，添加防御性检查
-                bool anyHidden = false;
-                bool anyLocked = false;
-
-                if (hiddenObjects != null && hiddenObjects.Any())
+                var receiver = Owner as Param_RemoteReceiver;
+                
+                // 只在 receiver 被选中时绘制范围框
+                if (Selected && receiver != null && receiver.affectedObjects != null && receiver.affectedObjects.Any())
                 {
-                    anyHidden = hiddenObjects
-                        .Where(obj => obj != null)  // 过滤掉空对象
-                        .Any(obj => obj is IGH_PreviewObject previewObj && previewObj.Hidden);
-                }
+                    // 根据状态决定边框颜色
+                    Color boundaryColor;
+                    if (receiver._hideWhenEmpty && receiver._lockWhenEmpty)
+                    {
+                        boundaryColor = Color.Orange;  // 两个功能都开启时显示橙色
+                    }
+                    else if (receiver._hideWhenEmpty)
+                    {
+                        boundaryColor = Color.DodgerBlue;  // 只开启 Hide 时显示蓝色
+                    }
+                    else if (receiver._lockWhenEmpty)
+                    {
+                        boundaryColor = Color.LimeGreen;  // 只开启 Lock 时显示绿色
+                    }
+                    else
+                    {
+                        boundaryColor = Color.DodgerBlue;  // 默认颜色
+                    }
 
-                if (lockedObjects != null && lockedObjects.Any())
-                {
-                    anyLocked = lockedObjects
-                        .Where(obj => obj != null)  // 过滤掉空对象
-                        .Any(obj => obj is IGH_ActiveObject activeObj && activeObj.Locked);
-                }
-
-                // 绘制 Hide 按钮
-                var hideButtonPalette = anyHidden ? GH_Palette.Blue : (HideButtonDown ? GH_Palette.Grey : GH_Palette.Black);
-                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds, hideButtonPalette))
-                {
-                    capsule.Render(graphics, Selected, Owner.Locked, false);
-                    graphics.DrawString(
-                        "Hide",
-                        GH_FontServer.ConsoleSmall,
-                        Brushes.Azure,
-                        HideButtonBounds,
-                        new StringFormat()
+                    foreach (var obj in receiver.affectedObjects)
+                    {
+                        if (obj?.Attributes != null)
                         {
-                            Alignment = StringAlignment.Center,
-                            LineAlignment = StringAlignment.Center
-                        });
+                            var objBounds = obj.Attributes.Bounds;
+                            objBounds.Inflate(5f, 5f);
+                            DrawBoundary(graphics, objBounds, boundaryColor);
+                        }
+                    }
                 }
 
-                // 绘制 Lock 按钮
-                var lockButtonPalette = anyLocked ? GH_Palette.Blue : (LockButtonDown ? GH_Palette.Grey : GH_Palette.Black);
-                using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds, lockButtonPalette))
+                // 如果不是对象通道，直接返回
+                if (channel != GH_CanvasChannel.Objects) return;
+
+                // 检查可见性
+                GH_Viewport viewport = canvas.Viewport;
+                RectangleF bounds = this.Bounds;
+                if (!viewport.IsVisible(ref bounds, 10f)) return;
+                this.Bounds = bounds;
+
+                // 首先渲染主要的胶囊和箭头
+                RenderCapsuleAndArrow(canvas, graphics, Bounds);
+                RenderStateTagsIfNeeded(graphics);
+
+                // 如果是 Receiver，渲染按钮
+                if (receiver != null)
                 {
-                    capsule.Render(graphics, Selected, Owner.Locked, false);
-                    graphics.DrawString(
-                        "Lock",
-                        GH_FontServer.ConsoleSmall,
-                        Brushes.Azure,
-                        LockButtonBounds,
-                        new StringFormat()
-                        {
-                            Alignment = StringAlignment.Center,
-                            LineAlignment = StringAlignment.Center
-                        });
+                    // Hide 按钮
+                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds, 
+                        receiver._hideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                    {
+                        capsule.Render(graphics, Selected, Owner.Locked, false);
+                        graphics.DrawString(
+                            "Hide",
+                            GH_FontServer.StandardBold,
+                            Brushes.White,
+                            HideButtonBounds,
+                            new StringFormat()
+                            {
+                                Alignment = StringAlignment.Center,
+                                LineAlignment = StringAlignment.Center
+                            });
+                    }
+
+                    // Lock 按钮
+                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds,
+                        receiver._lockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                    {
+                        capsule.Render(graphics, Selected, Owner.Locked, false);
+                        graphics.DrawString(
+                            "Lock",
+                            GH_FontServer.StandardBold,
+                            Brushes.White,
+                            LockButtonBounds,
+                            new StringFormat()
+                            {
+                                Alignment = StringAlignment.Center,
+                                LineAlignment = StringAlignment.Center
+                            });
+                    }
+
+                    // Data 按钮
+                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(DataButtonBounds, GH_Palette.Black))
+                    {
+                        capsule.Render(graphics, Selected, Owner.Locked, false);
+                        graphics.DrawString(
+                            "Data",
+                            GH_FontServer.StandardBold,
+                            Brushes.White,
+                            DataButtonBounds,
+                            new StringFormat()
+                            {
+                                Alignment = StringAlignment.Center,
+                                LineAlignment = StringAlignment.Center
+                            });
+                    }
                 }
             }
         }
@@ -251,189 +283,6 @@ namespace Motion.Motility
             }
         }
 
-        private void RenderStatusText(Graphics graphics, RectangleF bounds, RemoteParam remoteParam)
-        {
-            string statusText = GetStatusText(remoteParam);
-            if (string.IsNullOrEmpty(statusText)) return;
-
-            // 使用粗体字体
-            var font = new Font("Arial", 8, FontStyle.Bold);
-            var textSize = graphics.MeasureString(statusText, font);
-            
-            // 计算文字位置：在 Receiver 的正上方居中
-            var textLocation = new PointF(
-                bounds.Left + (bounds.Width - textSize.Width) / 2,  // 水平居中
-                bounds.Top - textSize.Height - 2  // 在 Receiver 上方
-            );
-
-            // 绘制文字
-            Color textColor = GetBoundaryColor(remoteParam);
-            using (var brush = new SolidBrush(textColor))
-            {
-                graphics.DrawString(statusText, font, brush, textLocation);
-            }
-        }
-
-        /*
-        private void HandleScribbles(GH_Canvas canvas)
-        {
-            var doc = Owner.OnPingDocument();
-            if (doc == null) return;
-
-            // 查找包含当前组件的组
-            var containingGroups = doc.Objects
-                .OfType<GH_Group>()
-                .Where(g => g.ObjectIDs.Contains(Owner.InstanceGuid))
-                .ToList();
-
-            foreach (var group in containingGroups)
-            {
-                UpdateScribble(doc, group);
-            }
-        }
-        */
-        private void RenderAffectedComponentBoundsIfSelected(GH_Canvas canvas, Graphics graphics)
-        {
-            // 只在 Receiver 被选中时显示范围框
-            if (!(Owner is RemoteParam remoteParam) || !this.Selected) return;
-
-            var doc = Owner.OnPingDocument();
-            if (doc == null) return;
-
-            // 创建已处理对象的集合，避免重复绘制
-            HashSet<IGH_DocumentObject> processedObjects = new HashSet<IGH_DocumentObject>();
-
-            // 查找同时被隐藏和锁定的对象
-            if (hiddenObjects != null && lockedObjects != null)
-            {
-                var bothAffectedObjects = hiddenObjects.Intersect(lockedObjects)
-                    .Where(obj => obj != null 
-                        && obj is IGH_PreviewObject previewObj 
-                        && obj is IGH_ActiveObject activeObj
-                        && previewObj.Hidden 
-                        && activeObj.Locked);
-
-                foreach (var obj in bothAffectedObjects)
-                {
-                    if (processedObjects.Add(obj))  // 如果对象还未处理
-                    {
-                        var bounds = obj.Attributes.Bounds;
-                        bounds.Inflate(5, 5);
-                        DrawBoundary(graphics, bounds, Color.DarkOrange);  // 使用橙色表示同时被隐藏和锁定
-                    }
-                }
-            }
-
-            // 绘制仅被隐藏的组件边界
-            if (hiddenObjects != null)
-            {
-                foreach (var obj in hiddenObjects.Where(o => o != null))
-                {
-                    if (processedObjects.Contains(obj)) continue;  // 跳过已处理的对象
-
-                    if (obj is IGH_PreviewObject previewObj && previewObj.Hidden)
-                    {
-                        var bounds = obj.Attributes.Bounds;
-                        bounds.Inflate(5, 5);
-                        DrawBoundary(graphics, bounds, Color.DodgerBlue);
-                        processedObjects.Add(obj);
-                    }
-                }
-            }
-
-            // 绘制仅被锁定的组件边界
-            if (lockedObjects != null)
-            {
-                foreach (var obj in lockedObjects.Where(o => o != null))
-                {
-                    if (processedObjects.Contains(obj)) continue;  // 跳过已处理的对象
-
-                    if (obj is IGH_ActiveObject activeObj && activeObj.Locked)
-                    {
-                        var bounds = obj.Attributes.Bounds;
-                        bounds.Inflate(5, 5);
-                        DrawBoundary(graphics, bounds, Color.ForestGreen);
-                        processedObjects.Add(obj);
-                    }
-                }
-            }
-        }
-
-        /*
-        private IEnumerable<IGH_DocumentObject> GetAffectedObjects(GH_Group group, RemoteParam remoteParam)
-        {
-            var doc = Owner.OnPingDocument();
-            if (doc == null) return Enumerable.Empty<IGH_DocumentObject>();
-
-            try
-            {
-                // 获取所有组件对象，不考虑其 hide/lock 状态
-                var objects = group.ObjectIDs
-                    .Select(id => doc.FindObject(id, false))
-                    .Where(obj => obj != null && obj != Owner && obj is GH_Component)
-                    .Cast<GH_Component>()
-                    .ToList();
-
-                if (!objects.Any()) return Enumerable.Empty<IGH_DocumentObject>();
-
-                // 直接返回所有对象，不检查 hide/lock 状态
-                return objects;
-            }
-            catch
-            {
-                return Enumerable.Empty<IGH_DocumentObject>();
-            }
-        }
-        */
-
-        /*
-        private void UpdateScribble(GH_Document doc, GH_Group group)
-        {
-            // 查找组内所有的 Scribble
-            var existingScribbles = doc.Objects
-                .OfType<GH_Scribble>()
-                .Where(s => group.ObjectIDs.Contains(s.InstanceGuid))
-                .ToList();
-
-            foreach (var scribble in existingScribbles)
-            {
-                // 检查 Scribble 文本是否包含下划线
-                if (scribble.Text.Contains("_"))
-                {
-                    // 分割文本
-                    var parts = scribble.Text.Split('_');
-                    if (parts.Length > 1)
-                    {
-                        // 更新前半部分为当前 Receiver 的 NickName
-                        string newText = $"{Owner.NickName}_{parts[1]}";
-                        if (scribble.Text != newText)
-                        {
-                            scribble.Text = newText;
-                           
-                        }
-                    }
-                }
-            }
-
-            // 如果没有找到包含下划线的 Scribble，创建新的
-            if (!existingScribbles.Any(s => s.Text.Contains("_")))
-            {
-                var scribble = new GH_Scribble();
-                scribble.Text = $"{Owner.NickName}_";
-                scribble.Font = new System.Drawing.Font("微软雅黑", 100, FontStyle.Bold);
-                
-                var groupBounds = group.Attributes.Bounds;
-                
-
-                doc.AddObject(scribble, false);
-                scribble.Attributes.Pivot = new PointF(
-                    groupBounds.Left + 10,
-                    groupBounds.Top + 10
-                );
-                group.AddObject(scribble.InstanceGuid);
-            }
-        }
-        */
         private void DrawBoundary(Graphics graphics, RectangleF bounds, Color color)
         {
             using (var pen = new Pen(color, 2f))
@@ -442,45 +291,6 @@ namespace Motion.Motility
                 pen.DashPattern = new float[] { 5, 5 };  // 设置虚线样式
                 graphics.DrawRectangle(pen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
             }
-        }
-
-        /*
-        private RectangleF CalculateAffectedBounds(IEnumerable<IGH_DocumentObject> objects)
-        {
-            var firstObject = objects.First();
-            var bounds = firstObject.Attributes.Bounds;
-            
-            foreach (var obj in objects.Skip(1))
-            {
-                bounds = RectangleF.Union(bounds, obj.Attributes.Bounds);
-            }
-
-            // 扩大边界使其更容易看见
-            bounds.Inflate(10, 10);
-            return bounds;
-        }
-        */
-
-        private string GetStatusText(RemoteParam remoteParam)
-        {
-            if (remoteParam._hideWhenEmpty && remoteParam._lockWhenEmpty)
-                return "HIDE LOCK";
-            if (remoteParam._hideWhenEmpty)
-                return "HIDE";
-            if (remoteParam._lockWhenEmpty)
-                return "LOCK";
-            return string.Empty;
-        }
-
-        private Color GetBoundaryColor(RemoteParam remoteParam)
-        {
-            if (remoteParam._hideWhenEmpty && remoteParam._lockWhenEmpty)
-                return Color.DarkOrange;
-            if (remoteParam._hideWhenEmpty)
-                return Color.DodgerBlue;
-            if (remoteParam._lockWhenEmpty)
-                return Color.ForestGreen;
-            return Color.DarkGray;
         }
 
         //Draws the arrow as a wingding text. Using text means the icon can be vector and look good zoomed in.
@@ -550,33 +360,6 @@ namespace Motion.Motility
                 // 强制刷新画布
                 Grasshopper.Instances.ActiveCanvas.Refresh();
             }
-            else if (Owner is Param_RemoteReceiver receiver)
-            {
-                // 创建第一个 Data Param
-                var firstDataParam = new Param_RemoteData();
-                ghDoc.AddObject(firstDataParam, true, ghDoc.ObjectCount);
-                
-                // 链接到 Receiver
-                firstDataParam.LinkToReceiver(receiver);
-                
-                // 放置在 Receiver 的下方
-                firstDataParam.Attributes.Pivot = new PointF(Pivot.X, Pivot.Y + 100);
-                firstDataParam.Attributes.ExpireLayout();
-
-                // 创建第二个 Data Param
-                var secondDataParam = new Param_RemoteData();
-                ghDoc.AddObject(secondDataParam, true, ghDoc.ObjectCount);
-                
-                // 链接到 Receiver
-                secondDataParam.LinkToReceiver(receiver);
-                
-                // 放置在第一个 Data Param 的下方
-                secondDataParam.Attributes.Pivot = new PointF(Pivot.X, Pivot.Y + 200);
-                secondDataParam.Attributes.ExpireLayout();
-
-                // 强制刷新画布
-                Grasshopper.Instances.ActiveCanvas.Refresh();
-            }
             
             return GH_ObjectResponse.Handled;
         }
@@ -599,6 +382,12 @@ namespace Motion.Motility
                         sender.Refresh();
                         return GH_ObjectResponse.Capture;
                     }
+                    if (DataButtonBounds.Contains(e.CanvasLocation))
+                    {
+                        DataButtonDown = true;
+                        sender.Refresh();
+                        return GH_ObjectResponse.Capture;
+                    }
                 }
             }
             return base.RespondToMouseDown(sender, e);
@@ -606,8 +395,9 @@ namespace Motion.Motility
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            if (Owner is Param_RemoteReceiver)
+            if (Owner is Param_RemoteReceiver receiver)
             {
+                // 处理 Hide 按钮
                 if (HideButtonDown)
                 {
                     HideButtonDown = false;
@@ -615,31 +405,24 @@ namespace Motion.Motility
 
                     if (HideButtonBounds.Contains(e.CanvasLocation))
                     {
-                        // 如果有选中的对象，更新记忆列表
+                        // 只有当有新选择的组件时，才更新记忆列表
                         var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
                         if (selectedObjects.Any())
                         {
-                            hiddenObjects = selectedObjects
+                            receiver.affectedObjects = selectedObjects
                                 .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
                                 .ToList();
                         }
 
-                        // 操作记忆列表中的对象
-                        if (hiddenObjects != null)
-                        {
-                            foreach (var obj in hiddenObjects.ToList())
-                            {
-                                if (obj != null && obj is IGH_PreviewObject previewObj)
-                                {
-                                    previewObj.Hidden = !previewObj.Hidden;
-                                    obj.Attributes.Selected = false;
-                                }
-                            }
-                        }
-                        sender.Document.ScheduleSolution(5);
+                        // 切换按钮状态
+                        receiver._hideWhenEmpty = !receiver._hideWhenEmpty;
+                        receiver.UpdateGroupVisibilityAndLock();
+                        sender.Refresh();
                         return GH_ObjectResponse.Release;
                     }
                 }
+
+                // 处理 Lock 按钮
                 if (LockButtonDown)
                 {
                     LockButtonDown = false;
@@ -647,28 +430,67 @@ namespace Motion.Motility
 
                     if (LockButtonBounds.Contains(e.CanvasLocation))
                     {
-                        // 如果有选中的对象，更新记忆列表
+                        // 只有当有新选择的组件时，才更新记忆列表
                         var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
                         if (selectedObjects.Any())
                         {
-                            lockedObjects = selectedObjects
+                            receiver.affectedObjects = selectedObjects
                                 .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
                                 .ToList();
                         }
-
-                        // 操作记忆列表中的对象
-                        if (lockedObjects != null)
+                        // 如果没有选中的组件但有记忆的组件，继续使用记忆的组件
+                        else if (!receiver.affectedObjects.Any())
                         {
-                            foreach (var obj in lockedObjects.ToList())
+                            return GH_ObjectResponse.Release;
+                        }
+
+                        receiver._lockWhenEmpty = !receiver._lockWhenEmpty;
+                        receiver.UpdateGroupVisibilityAndLock();
+                        sender.Refresh();
+                        return GH_ObjectResponse.Release;
+                    }
+                }
+
+                // 处理 Data 按钮
+                if (DataButtonDown)
+                {
+                    DataButtonDown = false;
+                    sender.Refresh();
+
+                    if (DataButtonBounds.Contains(e.CanvasLocation))
+                    {
+                        var ghDoc = Owner.OnPingDocument();
+                        if (ghDoc != null)
+                        {
+                            // 创建两个 Data Param
+                            for (int i = 0; i < 2; i++)
                             {
-                                if (obj != null && obj is IGH_ActiveObject activeObject)
+                                var dataParam = new Param_RemoteData();
+                                ghDoc.AddObject(dataParam, true, ghDoc.ObjectCount);
+                                dataParam.LinkToReceiver(receiver);
+                                
+                                // 设置位置
+                                dataParam.Attributes.Pivot = new PointF(
+                                    Pivot.X, 
+                                    Pivot.Y + (i + 1) * 100
+                                );
+                                dataParam.Attributes.ExpireLayout();
+
+                                // 检查 receiver 是否在组内，如果在则将新创建的 Data 加入同组
+                                var group = ghDoc.Objects
+                                    .OfType<GH_Group>()
+                                    .FirstOrDefault(g => g.ObjectIDs.Contains(receiver.InstanceGuid));
+                                
+                                if (group != null)
                                 {
-                                    activeObject.Locked = !activeObject.Locked;
-                                    obj.Attributes.Selected = false;
+                                    group.AddObject(dataParam.InstanceGuid);
                                 }
                             }
+
+                            // 强制刷新画布和解决方案
+                            ghDoc.ScheduleSolution(5);
+                            Grasshopper.Instances.ActiveCanvas.Refresh();
                         }
-                        sender.Document.ScheduleSolution(5);
                         return GH_ObjectResponse.Release;
                     }
                 }
