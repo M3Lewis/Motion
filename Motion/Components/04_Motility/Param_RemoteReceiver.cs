@@ -46,7 +46,7 @@ namespace Motion.Motility
         public override bool Write(GH_IWriter writer)
         {
             if (!base.Write(writer)) return false;
-            
+
             try
             {
                 writer.SetString("NicknameKey", nicknameKey);
@@ -55,14 +55,14 @@ namespace Motion.Motility
             {
                 return false;
             }
-            
+
             return true;
         }
 
         public override bool Read(GH_IReader reader)
         {
             if (!base.Read(reader)) return false;
-            
+
             try
             {
                 if (reader.ItemExists("NicknameKey"))
@@ -72,7 +72,7 @@ namespace Motion.Motility
             {
                 return false;
             }
-            
+
             return true;
         }
 

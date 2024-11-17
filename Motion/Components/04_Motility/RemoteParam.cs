@@ -20,6 +20,9 @@ namespace Motion.Motility
         private bool isUpdating = false;
         private bool? lastEmptyState = null;
 
+        // 添加一个临时存储GUID的列表
+        private List<Guid> _pendingGuids = new List<Guid>();
+
         public bool HideButtonEnabled
         {
             get => _hideWhenEmpty;
@@ -65,7 +68,32 @@ namespace Motion.Motility
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
-            document.ScheduleSolution(5, callback => MotilityUtils.connectMatchingParams(callback, true));
+            
+            // 延迟执行以确保文档完全加载
+            document.ScheduleSolution(15, doc =>
+            {
+                // 恢复组件引用
+                if (_pendingGuids.Any())
+                {
+                    affectedObjects.Clear();
+                    foreach (var guid in _pendingGuids)
+                    {
+                        var obj = doc.FindObject(guid, false);
+                        if (obj != null)
+                        {
+                            affectedObjects.Add(obj);
+                        }
+                    }
+                    _pendingGuids.Clear();
+                }
+
+                // 连接参数并更新状态
+                MotilityUtils.connectMatchingParams(doc, true);
+                if (_hideWhenEmpty || _lockWhenEmpty)
+                {
+                    UpdateGroupVisibilityAndLock();
+                }
+            });
         }
 
         public override void CreateAttributes()
@@ -147,36 +175,61 @@ namespace Motion.Motility
         public override bool Write(GH_IWriter writer)
         {
             if (!base.Write(writer)) return false;
-            
+
             try
             {
                 writer.SetBoolean("HideWhenEmpty", _hideWhenEmpty);
                 writer.SetBoolean("LockWhenEmpty", _lockWhenEmpty);
+
+                // 序列化受影响组件的 GUID 列表
+                var guidList = affectedObjects?.Select(obj => obj.InstanceGuid).ToList() ?? new List<Guid>();
+                writer.SetInt32("AffectedCount", guidList.Count);
+                for (int i = 0; i < guidList.Count; i++)
+                {
+                    writer.SetGuid($"Affected_{i}", guidList[i]);
+                }
             }
             catch
             {
                 return false;
             }
-            
+
             return true;
         }
 
         public override bool Read(GH_IReader reader)
         {
             if (!base.Read(reader)) return false;
-            
+
             try
             {
                 if (reader.ItemExists("HideWhenEmpty"))
                     _hideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
                 if (reader.ItemExists("LockWhenEmpty"))
                     _lockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
+
+                // 先清空待处理的GUID列表
+                _pendingGuids.Clear();
+
+                // 只读取GUID并存储，不立即查找对象
+                if (reader.ItemExists("AffectedCount"))
+                {
+                    int count = reader.GetInt32("AffectedCount");
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (reader.ItemExists($"Affected_{i}"))
+                        {
+                            var guid = reader.GetGuid($"Affected_{i}");
+                            _pendingGuids.Add(guid);
+                        }
+                    }
+                }
             }
             catch
             {
                 return false;
             }
-            
+
             return true;
         }
     }
