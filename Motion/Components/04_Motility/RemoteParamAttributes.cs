@@ -417,6 +417,9 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         {
             if (Owner is Param_RemoteReceiver)
             {
+                // 处理 Scribbles
+                HandleScribbles(sender);
+
                 if (e.Button == MouseButtons.Left)
                 {
                     if (CollapseButtonBounds.Contains(e.CanvasLocation))
@@ -573,5 +576,65 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                 group.AddObject(dataParam.InstanceGuid);
             }
         }
+
+        private void HandleScribbles(GH_Canvas canvas)
+        {
+            var doc = Owner.OnPingDocument();
+            if (doc == null) return;
+            // 查找包含当前组件的组
+            var containingGroups = doc.Objects
+                .OfType<GH_Group>()
+                .Where(g => g.ObjectIDs.Contains(Owner.InstanceGuid))
+                .ToList();
+            foreach (var group in containingGroups)
+            {
+                UpdateScribble(doc, group);
+            }
+        }
+        
+        private void UpdateScribble(GH_Document doc, GH_Group group)
+        {
+            // 查找组内所有的 Scribble
+            var existingScribbles = doc.Objects
+                .OfType<GH_Scribble>()
+                .Where(s => group.ObjectIDs.Contains(s.InstanceGuid))
+                .ToList();
+            foreach (var scribble in existingScribbles)
+            {
+                // 检查 Scribble 文本是否包含下划线
+                if (scribble.Text.Contains("_"))
+                {
+                    // 分割文本
+                    var parts = scribble.Text.Split('_');
+                    if (parts.Length > 1)
+                    {
+                        // 更新前半部分为当前 Receiver 的 NickName
+                        string newText = $"{Owner.NickName}_{parts[1]}";
+                        if (scribble.Text != newText)
+                        {
+                            scribble.Text = newText;
+                           
+                        }
+                    }
+                }
+            }
+            // 如果没有找到包含下划线的 Scribble，创建新的
+            if (!existingScribbles.Any(s => s.Text.Contains("_")))
+            {
+                var scribble = new GH_Scribble();
+                scribble.Text = $"{Owner.NickName}_";
+                scribble.Font = new System.Drawing.Font("微软雅黑", 100, FontStyle.Bold);
+                
+                var groupBounds = group.Attributes.Bounds;
+                
+                doc.AddObject(scribble, false);
+                scribble.Attributes.Pivot = new PointF(
+                    groupBounds.Left + 10,
+                    groupBounds.Top - 150
+                );
+                group.AddObject(scribble.InstanceGuid);
+            }
+        }
+        
     }
 }

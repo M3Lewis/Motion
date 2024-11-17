@@ -45,6 +45,9 @@
     <Compile Remove="tele\RemoteParam.cs" />
     <Compile Remove="tele\RemoteParamAttributes.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
+    <Compile Remove="Scribble\Grasshopper.GUI.GH_ScribblePropertiesDialog.cs" />
+    <Compile Remove="Scribble\Grasshopper.Kernel.Special.GH_Scribble.cs" />
+    <Compile Remove="Scribble\Grasshopper.Kernel.Special.GH_ScribbleAttributes.cs" />
   </ItemGroup>
   
   <ItemGroup>
@@ -69,6 +72,9 @@
     <None Include="tele\RemoteParam.cs" />
     <None Include="tele\RemoteParamAttributes.cs" />
     <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
+    <None Include="Scribble\Grasshopper.GUI.GH_ScribblePropertiesDialog.cs" />
+    <None Include="Scribble\Grasshopper.Kernel.Special.GH_Scribble.cs" />
+    <None Include="Scribble\Grasshopper.Kernel.Special.GH_ScribbleAttributes.cs" />
   </ItemGroup>
   
   <ItemGroup>
