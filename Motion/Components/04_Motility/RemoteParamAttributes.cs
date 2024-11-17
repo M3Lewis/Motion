@@ -18,7 +18,7 @@ namespace Motion.Motility
     public class RemoteParamAttributes : GH_FloatingParamAttributes
     {
 
-        private System.Drawing.Rectangle m_textBounds; //maintain a rectangle of the text bounds
+        private Rectangle m_textBounds; //maintain a rectangle of the text bounds
         private GH_StateTagList m_stateTags; //state tags are like flatten/graft etc.
 
         // 添加锁定按钮相关字段
@@ -30,12 +30,25 @@ namespace Motion.Motility
         private readonly int ButtonHeight = 18;
         private readonly int ButtonSpacing = 4;
 
-        // 添加记忆列表
-        internal List<IGH_DocumentObject> affectedObjects = new List<IGH_DocumentObject>();
+private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiver)
+    {
+        var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
+        if (!selectedObjects.Any())
+            return false;
 
+        receiver.affectedObjects = selectedObjects
+            .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
+            .ToList();
+        return true;
+    }
         // 添加 Data 按钮相关字段
         private RectangleF DataButtonBounds;
         private bool DataButtonDown;
+
+        // 添加折叠按钮相关字段
+        private RectangleF CollapseButtonBounds;
+        private bool CollapseButtonDown;
+        private bool IsCollapsed = false;
 
         //handles state tag tooltips
         public override void SetupTooltip(PointF point, GH_TooltipDisplayEventArgs e)
@@ -121,11 +134,26 @@ namespace Motion.Motility
                     buttonHeight);
                 DataButtonBounds.Inflate(-1.0f, -1.0f);
 
-                // 扩展边界以包含所有按钮
-                var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
-                buttonArea = RectangleF.Union(buttonArea, DataButtonBounds);
-                buttonArea.Inflate(2.0f,2.0f);
-                Bounds = RectangleF.Union(Bounds, buttonArea);
+                // 添加折叠按钮布局（在右上角）
+                CollapseButtonBounds = new RectangleF(
+                    Bounds.Right - 14,
+                    Bounds.Y,
+                    13,
+                    13);
+
+                if (!IsCollapsed)
+                {
+                    // 扩展边界以包含所有按钮
+                    var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
+                    buttonArea = RectangleF.Union(buttonArea, DataButtonBounds);
+                    buttonArea.Inflate(2.0f,2.0f);
+                    Bounds = RectangleF.Union(Bounds, buttonArea);
+                }
+                else
+                {
+                    // 折叠状态下不需要为按钮预留空间
+                    return;
+                }
             }
         }
 
@@ -194,54 +222,70 @@ namespace Motion.Motility
                 // 如果是 Receiver，渲染按钮
                 if (receiver != null)
                 {
-                    // Hide 按钮
-                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds, 
-                        receiver._hideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                    {
-                        capsule.Render(graphics, Selected, Owner.Locked, false);
-                        graphics.DrawString(
-                            "Hide",
-                            GH_FontServer.StandardBold,
-                            Brushes.White,
-                            HideButtonBounds,
-                            new StringFormat()
-                            {
-                                Alignment = StringAlignment.Center,
-                                LineAlignment = StringAlignment.Center
-                            });
-                    }
+                    // 渲染折叠按钮
+                    graphics.DrawString(
+                        IsCollapsed ? "▾" : "▴",
+                        GH_FontServer.Standard,
+                        Brushes.LightSkyBlue,
+                        CollapseButtonBounds,
+                        new StringFormat()
+                        {
+                            Alignment = StringAlignment.Far,
+                            LineAlignment = StringAlignment.Far
+                        });
 
-                    // Lock 按钮
-                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds,
-                        receiver._lockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                    // 只在未折叠时渲染其他按钮
+                    if (!IsCollapsed)
                     {
-                        capsule.Render(graphics, Selected, Owner.Locked, false);
-                        graphics.DrawString(
-                            "Lock",
-                            GH_FontServer.StandardBold,
-                            Brushes.White,
-                            LockButtonBounds,
-                            new StringFormat()
-                            {
-                                Alignment = StringAlignment.Center,
-                                LineAlignment = StringAlignment.Center
-                            });
-                    }
+                        // Hide 按钮
+                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds, 
+                            receiver._hideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                        {
+                            capsule.Render(graphics, Selected, Owner.Locked, false);
+                            graphics.DrawString(
+                                "Hide",
+                                GH_FontServer.StandardBold,
+                                Brushes.White,
+                                HideButtonBounds,
+                                new StringFormat()
+                                {
+                                    Alignment = StringAlignment.Center,
+                                    LineAlignment = StringAlignment.Center
+                                });
+                        }
 
-                    // Data 按钮
-                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(DataButtonBounds, GH_Palette.Black))
-                    {
-                        capsule.Render(graphics, Selected, Owner.Locked, false);
-                        graphics.DrawString(
-                            "Data",
-                            GH_FontServer.StandardBold,
-                            Brushes.White,
-                            DataButtonBounds,
-                            new StringFormat()
-                            {
-                                Alignment = StringAlignment.Center,
-                                LineAlignment = StringAlignment.Center
-                            });
+                        // Lock 按钮
+                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds,
+                            receiver._lockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                        {
+                            capsule.Render(graphics, Selected, Owner.Locked, false);
+                            graphics.DrawString(
+                                "Lock",
+                                GH_FontServer.StandardBold,
+                                Brushes.White,
+                                LockButtonBounds,
+                                new StringFormat()
+                                {
+                                    Alignment = StringAlignment.Center,
+                                    LineAlignment = StringAlignment.Center
+                                });
+                        }
+
+                        // Data 按钮
+                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(DataButtonBounds, GH_Palette.Black))
+                        {
+                            capsule.Render(graphics, Selected, Owner.Locked, false);
+                            graphics.DrawString(
+                                "Data",
+                                GH_FontServer.StandardBold,
+                                Brushes.White,
+                                DataButtonBounds,
+                                new StringFormat()
+                                {
+                                    Alignment = StringAlignment.Center,
+                                    LineAlignment = StringAlignment.Center
+                                });
+                        }
                     }
                 }
             }
@@ -269,7 +313,19 @@ namespace Motion.Motility
         private PointF GetArrowLocation(RectangleF bounds)
         {
             if (Owner is Param_RemoteReceiver)
-                return new PointF(bounds.Left + 10, this.OutputGrip.Y -20);
+            {
+                // 根据折叠状态调整箭头位置
+                if (IsCollapsed)
+                {
+                    // 折叠状态下，箭头位置在组件底部中间
+                    return new PointF(bounds.Left + 9, bounds.Bottom-10);
+                }
+                else
+                {
+                    // 展开状态下，保持原有位置
+                    return new PointF(bounds.Left + 10, this.OutputGrip.Y - 30);
+                }
+            }
             if (Owner is Param_RemoteSender)
                 return new PointF(bounds.Right - 10, this.OutputGrip.Y + 2);
             return PointF.Empty;
@@ -296,14 +352,7 @@ namespace Motion.Motility
         //Draws the arrow as a wingding text. Using text means the icon can be vector and look good zoomed in.
         private static void renderArrow(GH_Canvas canvas, Graphics graphics, PointF loc)
         {
-            //Wingdings 3 has a nice arrow in the "g" char.
-
-            //  Font font = new Font("Wingdings 3", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(2)));
-            //render the text at specified location
-            //Version for everyone:
             GH_GraphicsUtil.RenderCenteredText(graphics, "\u27aa", new Font("Arial", 10F), Color.LightSkyBlue, new PointF(loc.X, loc.Y));
-            //Version for Marc:
-            // GH_GraphicsUtil.RenderCenteredText(graphics, "*", new Font("Arial", 10F), Color.Black, loc);
         }
 
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
@@ -370,6 +419,12 @@ namespace Motion.Motility
             {
                 if (e.Button == MouseButtons.Left)
                 {
+                    if (CollapseButtonBounds.Contains(e.CanvasLocation))
+                    {
+                        CollapseButtonDown = true;
+                        sender.Refresh();
+                        return GH_ObjectResponse.Capture;
+                    }
                     if (HideButtonBounds.Contains(e.CanvasLocation))
                     {
                         HideButtonDown = true;
@@ -395,107 +450,128 @@ namespace Motion.Motility
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            if (Owner is Param_RemoteReceiver receiver)
+            if (!(Owner is Param_RemoteReceiver receiver)) 
+                return base.RespondToMouseUp(sender, e);
+
+            // 处理折叠按钮
+            if (CollapseButtonDown)
             {
-                // 处理 Hide 按钮
-                if (HideButtonDown)
-                {
-                    HideButtonDown = false;
-                    sender.Refresh();
-
-                    if (HideButtonBounds.Contains(e.CanvasLocation))
-                    {
-                        // 只有当有新选择的组件时，才更新记忆列表
-                        var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
-                        if (selectedObjects.Any())
-                        {
-                            receiver.affectedObjects = selectedObjects
-                                .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
-                                .ToList();
-                        }
-
-                        // 切换按钮状态
-                        receiver._hideWhenEmpty = !receiver._hideWhenEmpty;
-                        receiver.UpdateGroupVisibilityAndLock();
-                        sender.Refresh();
-                        return GH_ObjectResponse.Release;
-                    }
-                }
-
-                // 处理 Lock 按钮
-                if (LockButtonDown)
-                {
-                    LockButtonDown = false;
-                    sender.Refresh();
-
-                    if (LockButtonBounds.Contains(e.CanvasLocation))
-                    {
-                        // 只有当有新选择的组件时，才更新记忆列表
-                        var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
-                        if (selectedObjects.Any())
-                        {
-                            receiver.affectedObjects = selectedObjects
-                                .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
-                                .ToList();
-                        }
-                        // 如果没有选中的组件但有记忆的组件，继续使用记忆的组件
-                        else if (!receiver.affectedObjects.Any())
-                        {
-                            return GH_ObjectResponse.Release;
-                        }
-
-                        receiver._lockWhenEmpty = !receiver._lockWhenEmpty;
-                        receiver.UpdateGroupVisibilityAndLock();
-                        sender.Refresh();
-                        return GH_ObjectResponse.Release;
-                    }
-                }
-
-                // 处理 Data 按钮
-                if (DataButtonDown)
-                {
-                    DataButtonDown = false;
-                    sender.Refresh();
-
-                    if (DataButtonBounds.Contains(e.CanvasLocation))
-                    {
-                        var ghDoc = Owner.OnPingDocument();
-                        if (ghDoc != null)
-                        {
-                            // 创建两个 Data Param
-                            for (int i = 0; i < 2; i++)
-                            {
-                                var dataParam = new Param_RemoteData();
-                                ghDoc.AddObject(dataParam, true, ghDoc.ObjectCount);
-                                dataParam.LinkToReceiver(receiver);
-                                
-                                // 设置位置
-                                dataParam.Attributes.Pivot = new PointF(
-                                    Pivot.X, 
-                                    Pivot.Y + (i + 1) * 100
-                                );
-                                dataParam.Attributes.ExpireLayout();
-
-                                // 检查 receiver 是否在组内，如果在则将新创建的 Data 加入同组
-                                var group = ghDoc.Objects
-                                    .OfType<GH_Group>()
-                                    .FirstOrDefault(g => g.ObjectIDs.Contains(receiver.InstanceGuid));
-                                
-                                if (group != null)
-                                {
-                                    group.AddObject(dataParam.InstanceGuid);
-                                }
-                            }
-
-                            // 强制刷新画布和解决方案
-                            ghDoc.ScheduleSolution(5);
-                            Grasshopper.Instances.ActiveCanvas.Refresh();
-                        }
-                        return GH_ObjectResponse.Release;
-                    }
-                }
+                return HandleCollapseButton(sender, e);
             }
+
+            // 处理 Hide 按钮
+            if (HideButtonDown)
+            {
+                return HandleHideButton(sender, e, receiver);
+            }
+
+            // 处理 Lock 按钮
+            if (LockButtonDown)
+            {
+                return HandleLockButton(sender, e, receiver);
+            }
+
+            // 处理 Data 按钮
+            if (DataButtonDown)
+            {
+                return HandleDataButton(sender, e, receiver);
+            }
+
             return base.RespondToMouseUp(sender, e);
+        }
+
+        private GH_ObjectResponse HandleCollapseButton(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            CollapseButtonDown = false;
+            if (!CollapseButtonBounds.Contains(e.CanvasLocation))
+                return GH_ObjectResponse.Release;
+
+            IsCollapsed = !IsCollapsed;
+            ExpireLayout();
+            sender.Refresh();
+            return GH_ObjectResponse.Release;
+        }
+
+        private GH_ObjectResponse HandleHideButton(GH_Canvas sender, GH_CanvasMouseEvent e, Param_RemoteReceiver receiver)
+        {
+            HideButtonDown = false;
+            sender.Refresh();
+
+            if (!HideButtonBounds.Contains(e.CanvasLocation))
+                return GH_ObjectResponse.Release;
+
+            UpdateAffectedObjects(sender, receiver);
+            receiver._hideWhenEmpty = !receiver._hideWhenEmpty;
+            receiver.UpdateGroupVisibilityAndLock();
+            sender.Refresh();
+            return GH_ObjectResponse.Release;
+        }
+
+        private GH_ObjectResponse HandleLockButton(GH_Canvas sender, GH_CanvasMouseEvent e, Param_RemoteReceiver receiver)
+        {
+            LockButtonDown = false;
+            sender.Refresh();
+
+            if (!LockButtonBounds.Contains(e.CanvasLocation))
+                return GH_ObjectResponse.Release;
+
+            if (!UpdateAffectedObjects(sender, receiver) && !receiver.affectedObjects.Any())
+                return GH_ObjectResponse.Release;
+
+            receiver._lockWhenEmpty = !receiver._lockWhenEmpty;
+            receiver.UpdateGroupVisibilityAndLock();
+            sender.Refresh();
+            return GH_ObjectResponse.Release;
+        }
+
+        private GH_ObjectResponse HandleDataButton(GH_Canvas sender, GH_CanvasMouseEvent e, Param_RemoteReceiver receiver)
+        {
+            DataButtonDown = false;
+            sender.Refresh();
+
+            if (!DataButtonBounds.Contains(e.CanvasLocation))
+                return GH_ObjectResponse.Release;
+
+            var ghDoc = Owner.OnPingDocument();
+            if (ghDoc == null)
+                return GH_ObjectResponse.Release;
+
+            CreateDataParams(ghDoc, receiver);
+            return GH_ObjectResponse.Release;
+        }
+
+
+        private void CreateDataParams(GH_Document ghDoc, Param_RemoteReceiver receiver)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                var dataParam = new Param_RemoteData();
+                ghDoc.AddObject(dataParam, true, ghDoc.ObjectCount);
+                dataParam.LinkToReceiver(receiver);
+                
+                dataParam.Attributes.Pivot = new PointF(
+                    Pivot.X, 
+                    Pivot.Y + (i + 1) * 100
+                );
+                dataParam.Attributes.ExpireLayout();
+
+                AddToReceiverGroup(ghDoc, receiver, dataParam);
+            }
+
+            ghDoc.ScheduleSolution(5);
+            Grasshopper.Instances.ActiveCanvas.Refresh();
+        }
+
+        private void AddToReceiverGroup(GH_Document ghDoc, Param_RemoteReceiver receiver, Param_RemoteData dataParam)
+        {
+            var group = ghDoc.Objects
+                .OfType<GH_Group>()
+                .FirstOrDefault(g => g.ObjectIDs.Contains(receiver.InstanceGuid));
+            
+            if (group != null)
+            {
+                group.AddObject(dataParam.InstanceGuid);
+            }
         }
     }
 }
