@@ -18,7 +18,15 @@ namespace Motion.Animation
         protected Dictionary<IGH_DocumentObject, string> _previousNicknames = new Dictionary<IGH_DocumentObject, string>();
         protected bool _isUpdatingParameters = false;
 
+        // 添加一个枚举来标识组件类型
+        protected enum MergeCameraType
+        {
+            Location,
+            Target
+        }
 
+        // 在基类中添加一个抽象属性
+        protected abstract MergeCameraType ComponentType { get; }
 
         protected MergeCameraBase(string name, string nickname, string description)
             : base(name, nickname, description, "Motion", "01_Animation")
@@ -37,20 +45,66 @@ namespace Motion.Animation
             document.ObjectsDeleted += Document_TimelineSliderChanged;
             document.SolutionEnd += Document_SolutionEnd;
 
-            UpdateInputParameters();
-
-            foreach (var slider in GetTimelineSliders())
+            document.ScheduleSolution(5, doc =>
             {
-                if (!_previousValues.ContainsKey(slider))
+                UpdateInputParameters();
+
+                doc.ScheduleSolution(10, innerDoc =>
                 {
-                    var value = GetSliderValues(slider);
-                    if (value.HasValue)
+                    foreach (var slider in GetTimelineSliders())
                     {
-                        _previousValues[slider] = value.Value;
+                        if (!_previousValues.ContainsKey(slider))
+                        {
+                            var value = GetSliderValues(slider);
+                            if (value.HasValue)
+                            {
+                                _previousValues[slider] = value.Value;
+                            }
+                        }
+                    }
+
+                    ConnectMatchingRemoteParams();
+                    SetAllInputWiresDisplay();
+                });
+            });
+
+            this.Hidden = true;
+        }
+
+        private void ConnectMatchingRemoteParams()
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            // 根据组件类型选择对应的远程参数类型
+            var remoteParams = doc.Objects
+                .Where(obj => ComponentType == MergeCameraType.Location ? 
+                    obj is Param_RemoteLocation : 
+                    obj is Param_RemoteTarget)
+                .Cast<IGH_Param>()
+                .ToList();
+
+            foreach (var input in Params.Input)
+            {
+                var matchingParam = remoteParams.FirstOrDefault(p => p.NickName == input.NickName);
+                
+                if (matchingParam != null)
+                {
+                    bool isRemoteParamInUse = Params.Input
+                        .Any(p => p != input && 
+                                 p.SourceCount > 0 && 
+                                 p.Sources[0] == matchingParam);
+
+                    if (!isRemoteParamInUse)
+                    {
+                        input.AddSource(matchingParam);
                     }
                 }
             }
-            this.Hidden = true;
+
+            Params.OnParametersChanged();
+            SetAllInputWiresDisplay();
+            ExpireSolution(true);
         }
 
         public override void RemovedFromDocument(GH_Document document)
@@ -150,7 +204,7 @@ namespace Motion.Animation
             GH_Document doc = OnPingDocument();
             if (doc != null)
             {
-                doc.ScheduleSolution(0, CallBack);
+                doc.ScheduleSolution(15, CallBack);
             }
         }
 
@@ -173,7 +227,16 @@ namespace Motion.Animation
             return OnPingDocument().Objects
                 .Where(o => o.GetType().ToString() == _timelineSliderTypeName
                             && o.NickName != "TimeLine(Union)")
-                .OrderBy(s => s.Attributes.Bounds.Y)
+                .OrderBy(s => 
+                {
+                    // 从 NickName 中提取 "-" 前面的数字
+                    var parts = s.NickName.Split('-');
+                    if (parts.Length > 0 && int.TryParse(parts[0], out int number))
+                    {
+                        return number;
+                    }
+                    return int.MaxValue; // 如果无法解析数字，放到最后
+                })
                 .ToList();
         }
 
@@ -312,6 +375,7 @@ namespace Motion.Animation
                 }
 
                 Params.OnParametersChanged();
+                SetAllInputWiresDisplay();
                 ExpireSolution(true);
             }
             finally
@@ -343,5 +407,16 @@ namespace Motion.Animation
         public bool CanRemoveParameter(GH_ParameterSide side, int index) => false;
         public IGH_Param CreateParameter(GH_ParameterSide side, int index) => new Param_GenericObject();
         public bool DestroyParameter(GH_ParameterSide side, int index) => true;
+
+        private void SetAllInputWiresDisplay()
+        {
+            foreach (var param in Params.Input)
+            {
+                if (param.WireDisplay != GH_ParamWireDisplay.hidden)
+                {
+                    param.WireDisplay = GH_ParamWireDisplay.faint;
+                }
+            }
+        }
     }
 } 

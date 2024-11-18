@@ -4,6 +4,8 @@ namespace Motion.Animation
 {
     public class MergeCameraTarget : MergeCameraBase
     {
+        protected override MergeCameraType ComponentType => MergeCameraType.Target;
+
         public MergeCameraTarget()
             : base("MergeCameraTarget", "MergeCameraTarget", "根据slider数量生成输入端，合并Camera Target数据")
         {

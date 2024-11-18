@@ -12,5 +12,6 @@ namespace Motion.Animation
 
         protected override System.Drawing.Bitmap Icon => Properties.Resources.MergeCameraLocation;
         public override Guid ComponentGuid => new Guid("5d42d439-ef71-4148-81a2-f6b65578f5bf");
+        protected override MergeCameraType ComponentType => MergeCameraType.Location;
     }
 } 

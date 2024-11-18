@@ -440,27 +440,50 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
             {
                 // 创建 Receiver
                 var newReceiver = new Param_RemoteReceiver();
-                
-                // 重要：使用 true 作为第二个参数，表示立即记录到画布历史并刷新
-                ghDoc.AddObject(newReceiver, true, ghDoc.ObjectCount);
-                
-                // 设置 NickName
+                newReceiver.CreateAttributes();
+
+                // 设置位置（在 Sender 右侧）
+                var pivot = Owner.Attributes.Pivot;
+                newReceiver.Attributes.Pivot = new PointF(pivot.X + 150, pivot.Y);
+
+                // 添加到文档并设置连接
+                ghDoc.AddObject(newReceiver, false);
                 newReceiver.NickName = senderParam.NickName;
-                
-                // 设置位置
-                newReceiver.Attributes.Pivot = new PointF(Pivot.X + 100, Pivot.Y);
-                
-                // 确保布局更新
-                newReceiver.Attributes.ExpireLayout();
-                
-                // 建立连接
                 newReceiver.AddSource(Owner);
+
+                // 创建新的 Group
+                var group = new GH_Group();
+                group.CreateAttributes();
+
+                // 设置 Group 的属性
+                group.NickName = "";
+                group.Border = GH_GroupBorder.Box;
                 
+                // 设置 Group 的颜色为文档默认颜色
+                var defaultGroupColor = Color.FromArgb(124, 100, 100, 100);
+                group.Colour = defaultGroupColor;
+                
+                // 计算 Group 的边界
+                var bounds = newReceiver.Attributes.Bounds;
+                bounds.Inflate(20, 20);
+                group.Attributes.Bounds = bounds;
+
+                // 添加 Group 到文档
+                ghDoc.AddObject(group, false);
+                
+                // 将 Receiver 添加到 Group
+                group.AddObject(newReceiver.InstanceGuid);
+
+                // 使用现有的 UpdateScribble 逻辑创建 Scribble
+                CreateInitialScribble(ghDoc, group, senderParam.NickName);
+
                 // 强制刷新画布
-                Grasshopper.Instances.ActiveCanvas.Refresh();
+                sender.Refresh();
+
+                return GH_ObjectResponse.Handled;
             }
             
-            return GH_ObjectResponse.Handled;
+            return base.RespondToMouseDoubleClick(sender, e);
         }
 
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
@@ -622,11 +645,12 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         {
             var doc = Owner.OnPingDocument();
             if (doc == null) return;
-            // 查找包含当前组件的组
+            
             var containingGroups = doc.Objects
                 .OfType<GH_Group>()
                 .Where(g => g.ObjectIDs.Contains(Owner.InstanceGuid))
                 .ToList();
+            
             foreach (var group in containingGroups)
             {
                 UpdateScribble(doc, group);
@@ -635,46 +659,42 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         
         private void UpdateScribble(GH_Document doc, GH_Group group)
         {
-            // 查找组内所有的 Scribble
             var existingScribbles = doc.Objects
                 .OfType<GH_Scribble>()
                 .Where(s => group.ObjectIDs.Contains(s.InstanceGuid))
                 .ToList();
+
             foreach (var scribble in existingScribbles)
             {
-                // 检查 Scribble 文本是否包含下划线
                 if (scribble.Text.Contains("_"))
                 {
-                    // 分割文本
                     var parts = scribble.Text.Split('_');
                     if (parts.Length > 1)
                     {
-                        // 更新前半部分为当前 Receiver 的 NickName
                         string newText = $"{Owner.NickName}_{parts[1]}";
                         if (scribble.Text != newText)
                         {
                             scribble.Text = newText;
-                           
                         }
                     }
                 }
             }
-            // 如果没有找到包含下划线的 Scribble，创建新的
-            if (!existingScribbles.Any(s => s.Text.Contains("_")))
-            {
-                var scribble = new GH_Scribble();
-                scribble.Text = $"{Owner.NickName}_";
-                scribble.Font = new System.Drawing.Font("微软雅黑", 100, FontStyle.Bold);
-                
-                var groupBounds = group.Attributes.Bounds;
-                
-                doc.AddObject(scribble, false);
-                scribble.Attributes.Pivot = new PointF(
-                    groupBounds.Left + 10,
-                    groupBounds.Top - 150
-                );
-                group.AddObject(scribble.InstanceGuid);
-            }
+        }
+        
+        // 新增方法，专门用于创建初始 Scribble
+        private void CreateInitialScribble(GH_Document doc, GH_Group group, string nickName)
+        {
+            var scribble = new GH_Scribble();
+            scribble.Text = $"{nickName}_";
+            scribble.Font = new System.Drawing.Font("微软雅黑", 100, FontStyle.Bold);
+            
+            doc.AddObject(scribble, false);
+            scribble.Attributes.Pivot = new PointF(
+                group.Attributes.Bounds.Left + 10,
+                group.Attributes.Bounds.Top - 150
+            );
+            
+            group.AddObject(scribble.InstanceGuid);
         }
         
         // 添加设置折叠状态的方法

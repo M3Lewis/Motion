@@ -13,6 +13,7 @@ namespace Motion.Animation
 
         public override Guid ComponentGuid => new Guid("9a8572e5-5d62-436e-bcbf-0f31daf09978");
 
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
         protected override System.Drawing.Bitmap Icon => Properties.Resources.SliderControlWPF;
         public SliderControlWPFComponent()
             : base("Slider Control WPF", "SldCtrlWPF",
