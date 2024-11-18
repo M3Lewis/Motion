@@ -143,6 +143,26 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap MergeCameraLocation {
+            get {
+                object obj = ResourceManager.GetObject("MergeCameraLocation", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap MergeCameraTarget {
+            get {
+                object obj = ResourceManager.GetObject("MergeCameraTarget", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap Motion_Logo {
             get {
                 object obj = ResourceManager.GetObject("Motion_Logo", resourceCulture);

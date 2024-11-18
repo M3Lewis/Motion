@@ -180,6 +180,13 @@ namespace Motion.Motility
             {
                 writer.SetBoolean("HideWhenEmpty", _hideWhenEmpty);
                 writer.SetBoolean("LockWhenEmpty", _lockWhenEmpty);
+                
+                // 序列化折叠状态
+                var attributes = this.Attributes as RemoteParamAttributes;
+                if (attributes != null)
+                {
+                    writer.SetBoolean("IsCollapsed", attributes.IsCollapsed);
+                }
 
                 // 序列化受影响组件的 GUID 列表
                 var guidList = affectedObjects?.Select(obj => obj.InstanceGuid).ToList() ?? new List<Guid>();
@@ -207,6 +214,17 @@ namespace Motion.Motility
                     _hideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
                 if (reader.ItemExists("LockWhenEmpty"))
                     _lockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
+                    
+                // 读取折叠状态
+                if (reader.ItemExists("IsCollapsed"))
+                {
+                    var isCollapsed = reader.GetBoolean("IsCollapsed");
+                    var attributes = this.Attributes as RemoteParamAttributes;
+                    if (attributes != null)
+                    {
+                        attributes.SetCollapsedState(isCollapsed);
+                    }
+                }
 
                 // 先清空待处理的GUID列表
                 _pendingGuids.Clear();

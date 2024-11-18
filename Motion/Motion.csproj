@@ -24,8 +24,10 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <Compile Remove="Components\01_Animation\MergeCameraData.cs" />
     <Compile Remove="Components\01_Animation\SliderControlWinform.cs" />
     <Compile Remove="Components\01_Animation\SliderControlWPF.cs" />
+    <Compile Remove="Components\04_Motility\Param_RemoteData.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
@@ -48,6 +50,8 @@
   </ItemGroup>
   
   <ItemGroup>
+    <None Include="Components\01_Animation\MergeCameraData.cs" />
+    <None Include="Components\04_Motility\Param_RemoteData.cs" />
     <None Include="Components\OBSOLETE\SliderControlWPFComponent.cs" />
     <None Include="Components\OBSOLETE\SliderControlWinform.cs" />
     <None Include="Components\OBSOLETE\ExportRhinoViewport.cs" />

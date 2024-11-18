@@ -118,5 +118,48 @@ namespace Motion.Motility
         public override Guid ComponentGuid => new Guid("{3f65d28a-8f48-4b85-9bc4-7ce36260d062}");
 
         protected override Bitmap Icon => Properties.Resources.Receiver;
+
+        internal void CreateRemoteData()
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            try
+            {
+                // 创建 Location 参数
+                var locationParam = new Param_RemoteLocation();
+                locationParam.NickName = this.NickName;
+                locationParam.LinkToReceiver(this);
+                // 先设置位置
+                locationParam.CreateAttributes();
+                locationParam.Attributes.Pivot = new PointF(
+                    this.Attributes.Pivot.X + 600,
+                    this.Attributes.Pivot.Y
+                );
+                // 再添加到文档
+                doc.AddObject(locationParam, false);
+
+                // 创建 Target 参数
+                var targetParam = new Param_RemoteTarget();
+                targetParam.NickName = this.NickName;
+                targetParam.LinkToReceiver(this);
+                // 先设置位置
+                targetParam.CreateAttributes();
+                targetParam.Attributes.Pivot = new PointF(
+                    this.Attributes.Pivot.X + 600,
+                    this.Attributes.Pivot.Y + 100
+                );
+                // 再添加到文档
+                doc.AddObject(targetParam, false);
+
+                // 强制更新文档
+                doc.DestroyAttributeCache();
+                doc.ScheduleSolution(5);
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Failed to create remote data: {ex.Message}");
+            }
+        }
     }
 }

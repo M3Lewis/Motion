@@ -48,7 +48,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         // 添加折叠按钮相关字段
         private RectangleF CollapseButtonBounds;
         private bool CollapseButtonDown;
-        private bool IsCollapsed = false;
+        public bool IsCollapsed { get; private set; } = false;
 
         //handles state tag tooltips
         public override void SetupTooltip(PointF point, GH_TooltipDisplayEventArgs e)
@@ -158,7 +158,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         }
 
         //empty constructor 
-        public RemoteParamAttributes(Param_GenericObject owner)
+        public RemoteParamAttributes(IGH_Param owner)
             : base(owner)
         {
 
@@ -288,6 +288,31 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                         }
                     }
                 }
+
+                // 添加标签
+                string label = "";
+                if (Owner is Param_RemoteLocation)
+                {
+                    label = "L";
+                }
+                else if (Owner is Param_RemoteTarget)
+                {
+                    label = "T";
+                }
+
+                // 绘制标签
+                if (!string.IsNullOrEmpty(label))
+                {
+                    var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 7);
+                    var labelBounds = new RectangleF(
+                        Bounds.Left -12,
+                        Bounds.Top + (Bounds.Height - labelFont.Height) / 2,
+                        15,
+                        labelFont.Height
+                    );
+                    
+                    graphics.DrawString(label, labelFont, Brushes.DarkGray, labelBounds);
+                }
             }
         }
 
@@ -350,9 +375,20 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         }
 
         //Draws the arrow as a wingding text. Using text means the icon can be vector and look good zoomed in.
-        private static void renderArrow(GH_Canvas canvas, Graphics graphics, PointF loc)
+        private void renderArrow(GH_Canvas canvas, Graphics graphics, PointF loc)
         {
-            GH_GraphicsUtil.RenderCenteredText(graphics, "\u27aa", new Font("Arial", 10F), Color.LightSkyBlue, new PointF(loc.X, loc.Y));
+            Color arrowColor = Color.LightSkyBlue;  // 默认颜色
+            
+            if (Owner is Param_RemoteReceiver)
+            {
+                arrowColor = Color.Orange;  // Receiver 的箭头颜色
+            }
+            else if (Owner is Param_RemoteSender)
+            {
+                arrowColor = Color.LightSkyBlue;  // Sender 的箭头颜色
+            }
+
+            GH_GraphicsUtil.RenderCenteredText(graphics, "\u27aa", new Font("Arial", 10F), arrowColor, new PointF(loc.X, loc.Y));
         }
 
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
@@ -360,22 +396,36 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
             var ghDoc = Owner.OnPingDocument();
             if (ghDoc == null) return GH_ObjectResponse.Ignore;
 
-            if (Owner is Param_RemoteData dataParam)
+            // 修改类型检查，支持两种新参数类型
+            if (Owner is Param_RemoteLocation locationParam)
             {
-                // 查找同一位置 Receiver
                 var receivers = ghDoc.Objects
                     .OfType<Param_RemoteReceiver>()
-                    .Where(r => Math.Abs(r.Attributes.Pivot.Y - dataParam.Attributes.Pivot.Y) < 10)
+                    .Where(r => Math.Abs(r.Attributes.Pivot.Y - locationParam.Attributes.Pivot.Y) < 10)
                     .ToList();
 
                 if (receivers.Any())
                 {
                     var originalReceiver = receivers.First();
-                    // 重新建立连接
-                    dataParam.LinkToReceiver(originalReceiver);
-                    // 强制更新
-                    dataParam.ExpireSolution(true);
-                    dataParam.OnDisplayExpired(true);
+                    locationParam.LinkToReceiver(originalReceiver);
+                    locationParam.ExpireSolution(true);
+                    locationParam.OnDisplayExpired(true);
+                    ghDoc.ScheduleSolution(5);
+                }
+            }
+            else if (Owner is Param_RemoteTarget targetParam)
+            {
+                var receivers = ghDoc.Objects
+                    .OfType<Param_RemoteReceiver>()
+                    .Where(r => Math.Abs(r.Attributes.Pivot.Y - targetParam.Attributes.Pivot.Y) < 10)
+                    .ToList();
+
+                if (receivers.Any())
+                {
+                    var originalReceiver = receivers.First();
+                    targetParam.LinkToReceiver(originalReceiver);
+                    targetParam.ExpireSolution(true);
+                    targetParam.OnDisplayExpired(true);
                     ghDoc.ScheduleSolution(5);
                 }
             }
@@ -539,33 +589,24 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
             if (ghDoc == null)
                 return GH_ObjectResponse.Release;
 
-            CreateDataParams(ghDoc, receiver);
+            // 调用 Receiver 的 CreateRemoteData 方法
+            receiver.CreateRemoteData();
+
+            // 查找新创建的参数并添加到组中
+            var newParams = ghDoc.Objects
+                .Where(obj => (obj is Param_RemoteLocation || obj is Param_RemoteTarget)
+                             && obj.NickName == receiver.NickName)
+                .ToList();
+
+            foreach (var param in newParams)
+            {
+                AddToReceiverGroup(ghDoc, receiver, param);
+            }
+
             return GH_ObjectResponse.Release;
         }
 
-
-        private void CreateDataParams(GH_Document ghDoc, Param_RemoteReceiver receiver)
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                var dataParam = new Param_RemoteData();
-                ghDoc.AddObject(dataParam, true, ghDoc.ObjectCount);
-                dataParam.LinkToReceiver(receiver);
-                
-                dataParam.Attributes.Pivot = new PointF(
-                    Pivot.X, 
-                    Pivot.Y + (i + 1) * 100
-                );
-                dataParam.Attributes.ExpireLayout();
-
-                AddToReceiverGroup(ghDoc, receiver, dataParam);
-            }
-
-            ghDoc.ScheduleSolution(5);
-            Grasshopper.Instances.ActiveCanvas.Refresh();
-        }
-
-        private void AddToReceiverGroup(GH_Document ghDoc, Param_RemoteReceiver receiver, Param_RemoteData dataParam)
+        private void AddToReceiverGroup(GH_Document ghDoc, Param_RemoteReceiver receiver, IGH_DocumentObject param)
         {
             var group = ghDoc.Objects
                 .OfType<GH_Group>()
@@ -573,7 +614,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
             
             if (group != null)
             {
-                group.AddObject(dataParam.InstanceGuid);
+                group.AddObject(param.InstanceGuid);
             }
         }
 
@@ -636,5 +677,11 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
             }
         }
         
+        // 添加设置折叠状态的方法
+        public void SetCollapsedState(bool state)
+        {
+            IsCollapsed = state;
+            ExpireLayout();
+        }
     }
 }
