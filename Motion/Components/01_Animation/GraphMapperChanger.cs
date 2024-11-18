@@ -40,11 +40,18 @@ namespace Motion.Animation
             Interval iDomain = new Interval(0, 1);
             double oData = 0d;
 
-            if (!DA.GetData(0, ref iData)) return;
+            // 先获取区间数据
             if (!DA.GetData(1, ref iDomain)) return;
 
             // 获取Graph Mapper
-            var mapperObject = this.Params.Input[0].Sources.FirstOrDefault()?.Attributes.GetTopLevel.DocObject;
+            var sourceParam = this.Params.Input[0].Sources.FirstOrDefault();
+            if (sourceParam == null)
+            {
+                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "输入端口未连接");
+                return;
+            }
+
+            var mapperObject = sourceParam.Attributes.GetTopLevel.DocObject;
             if (mapperObject is GH_GraphMapper graphMapper)
             {
                 // 检查区间是否发生变化
@@ -53,9 +60,22 @@ namespace Motion.Animation
 
                 if (domainChanged || mapperChanged)
                 {
-                    UpdateGraphMapper(graphMapper, iDomain);
-                    _lastDomain = iDomain;
-                    _lastMapper = graphMapper;
+                    // 使用Document级别的延迟更新来处理Y轴区间变化
+                    this.OnPingDocument().ScheduleSolution(10, doc => {
+                        try
+                        {
+                            var container = graphMapper.Container;
+                            container.Y0 = iDomain.T0;
+                            container.Y1 = iDomain.T1;
+                            _lastDomain = iDomain;
+                            _lastMapper = graphMapper;
+                            graphMapper.ExpireSolution(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"更新Graph Mapper失败: {ex.Message}");
+                        }
+                    });
                 }
 
                 // 设置Graph Mapper的显示样式
@@ -75,32 +95,14 @@ namespace Motion.Animation
                     }
                 }
 
-                oData = iData;
+                // 在所有更新之后获取输入数据
+                if (DA.GetData(0, ref iData))
+                {
+                    oData = iData;
+                }
             }
 
             DA.SetData(0, oData);
-        }
-
-        private void UpdateGraphMapper(GH_GraphMapper mapper, Interval domain)
-        {
-            try
-            {
-                var container = mapper.Container;
-                
-                // 只在值真正改变时才更新
-                if (Math.Abs(container.Y0 - domain.T0) > 1e-6 || 
-                    Math.Abs(container.Y1 - domain.T1) > 1e-6)
-                {
-                    container.Y0 = domain.T0;
-                    container.Y1 = domain.T1;
-                    mapper.Description = string.Empty;
-                    mapper.ExpireSolution(false);
-                }
-            }
-            catch (Exception ex)
-            {
-                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"更新Graph Mapper失败: {ex.Message}");
-            }
         }
 
         public override void AddedToDocument(GH_Document document)
