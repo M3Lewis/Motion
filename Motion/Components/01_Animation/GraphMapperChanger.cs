@@ -1,20 +1,23 @@
+using Grasshopper;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Graphs;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using Rhino.Geometry;
 using System;
+using System.Drawing;
 using System.Linq;
 
 namespace Motion.Animation
 {
     public class GraphMapperChanger : GH_Component
     {
+        private readonly Guid _graphMapperGuid = new Guid("bc984576-7aa6-491f-a91d-e444c33675a7");
+        private Interval _lastDomain;
+        private IGH_DocumentObject _lastMapper;
 
         protected override System.Drawing.Bitmap Icon => Properties.Resources.GraphMapperChanger;
         public override Guid ComponentGuid => new Guid("99B193E1-4328-467B-AC81-3D3C40FAC5CC");
-
-        private Interval _lastDomain = new Interval(0, 1);
-        private GH_GraphMapper _lastMapper = null;
 
         public GraphMapperChanger()
           : base("GraphMapper Changer", "Graph Mapper Changer",
@@ -64,7 +67,8 @@ namespace Motion.Animation
                     this.OnPingDocument().ScheduleSolution(10, doc => {
                         try
                         {
-                            var container = graphMapper.Container;
+                            var graph = new GH_BezierGraph();
+                            var container = new GH_GraphContainer(graph);
                             container.Y0 = iDomain.T0;
                             container.Y1 = iDomain.T1;
                             _lastDomain = iDomain;
@@ -108,9 +112,85 @@ namespace Motion.Animation
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
-            // 初始化状态
-            _lastDomain = new Interval(0, 1);
+            
+            // 检查第一个输入端是否已经有连接
+            bool isNewComponent = this.Params.Input[0].SourceCount == 0;
+            
+            // 只有新添加的组件（没有连接）才创建Graph Mapper
+            if (isNewComponent)
+            {
+                document.ScheduleSolution(5, doc =>
+                {
+                    // 创建并添加Graph Mapper
+                    var graphMapper = Instances.ComponentServer.EmitObject(_graphMapperGuid) as GH_GraphMapper;
+                    if (graphMapper == null) return;
+                    
+                    _lastMapper = graphMapper;
+
+                    // 设置Graph Mapper的位置
+                    _lastMapper.CreateAttributes();
+                    _lastMapper.Attributes.Pivot = new PointF(
+                        this.Attributes.Pivot.X - 300f, 
+                        this.Attributes.Pivot.Y -85f
+                    );
+
+                    // 添加到文档
+                    doc.AddObject(_lastMapper, false);
+
+                    // 连接Graph Mapper的输出到当前组件的第一个输入
+                    this.Params.Input[0].AddSource(graphMapper);
+
+                    // 查找附近的RemoteReceiver并连接
+                    var nearbyReceivers = doc.Objects
+                        .OfType<IGH_Param>()
+                        .Where(p => p.GetType().Name == "Param_RemoteReceiver" &&
+                                   Math.Abs(p.Attributes.Pivot.Y - this.Attributes.Pivot.Y) < 50 &&
+                                   Math.Abs(p.Attributes.Pivot.X - this.Attributes.Pivot.X) < 600)
+                        .OrderBy(p => Math.Abs(p.Attributes.Pivot.X - this.Attributes.Pivot.X))
+                        .FirstOrDefault();
+
+                    // 如果找到Receiver，连接到Graph Mapper的输入
+                    if (nearbyReceivers != null && graphMapper != null)
+                    {
+                        graphMapper.AddSource(nearbyReceivers);
+                    }
+
+                    // 设置为BezierGraph
+                    var bezierGraph = Instances.ComponentServer.EmitGraph(new GH_BezierGraph().GraphTypeID);
+                    if (bezierGraph != null && graphMapper != null)
+                    {
+                        bezierGraph.PrepareForUse();
+                        var container = graphMapper.Container;
+                        graphMapper.Container = null;  // 先清空当前Container
+                        
+                        if (container == null)
+                        {
+                            container = new GH_GraphContainer(bezierGraph);
+                        }
+                        else
+                        {
+                            container.Graph = bezierGraph;
+                        }
+                        graphMapper.Container = container;  // 重新设置Container
+                    }
+
+                    // 刷新解决方案
+                    doc.ScheduleSolution(10, d => {
+                        if (graphMapper != null)
+                        {
+                            graphMapper.ExpireSolution(true);
+                        }
+                        this.ExpireSolution(true);
+                    });
+                });
+            }
+        }
+
+        public override void RemovedFromDocument(GH_Document document)
+        {
             _lastMapper = null;
+            _lastDomain = new Interval(0,1);
+            base.RemovedFromDocument(document);
         }
     }
 }

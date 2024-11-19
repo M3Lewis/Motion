@@ -28,6 +28,9 @@ namespace Motion.Animation
         // 在基类中添加一个抽象属性
         protected abstract MergeCameraType ComponentType { get; }
 
+        // 添加一个字段来存储最后的有效值
+        private IGH_Goo _lastValidResult = null;
+
         protected MergeCameraBase(string name, string nickname, string description)
             : base(name, nickname, description, "Motion", "01_Animation")
         {
@@ -295,7 +298,13 @@ namespace Motion.Animation
                         if (DA.GetData(selectedInputIndex, ref item) && item != null)
                         {
                             result = item;
+                            _lastValidResult = item; // 更新最后的有效值
                         }
+                    }
+                    else
+                    {
+                        // 如果没有找到符合条件的输入端，使用最后的有效值
+                        result = _lastValidResult;
                     }
                 }
             }
