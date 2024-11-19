@@ -24,6 +24,21 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <Compile Remove="Resources\**" />
+    <Compile Remove="tele\**" />
+    <Compile Remove="XForm\**" />
+    <EmbeddedResource Remove="Resources\**" />
+    <EmbeddedResource Remove="tele\**" />
+    <EmbeddedResource Remove="XForm\**" />
+    <None Remove="Resources\**" />
+    <None Remove="tele\**" />
+    <None Remove="XForm\**" />
+    <Page Remove="Resources\**" />
+    <Page Remove="tele\**" />
+    <Page Remove="XForm\**" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <Compile Remove="Components\01_Animation\MergeCameraData.cs" />
     <Compile Remove="Components\01_Animation\SliderControlWinform.cs" />
     <Compile Remove="Components\01_Animation\SliderControlWPF.cs" />
@@ -43,11 +58,6 @@
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
-    <Compile Remove="tele\MergeVariable.cs" />
-    <Compile Remove="tele\Param_RemoteReceiver.cs" />
-    <Compile Remove="tele\Param_RemoteSender.cs" />
-    <Compile Remove="tele\RemoteParam.cs" />
-    <Compile Remove="tele\RemoteParamAttributes.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
   </ItemGroup>
   
@@ -71,11 +81,6 @@
     <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
     <None Include="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
     <None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
-    <None Include="tele\MergeVariable.cs" />
-    <None Include="tele\Param_RemoteReceiver.cs" />
-    <None Include="tele\Param_RemoteSender.cs" />
-    <None Include="tele\RemoteParam.cs" />
-    <None Include="tele\RemoteParamAttributes.cs" />
     <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
   </ItemGroup>
   
@@ -93,10 +98,6 @@
     <Reference Include="Telepathy">
       <HintPath>..\..\..\..\AppData\Roaming\Grasshopper\Libraries\telepathy.gha</HintPath>
     </Reference>
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Folder Include="Resources\" />
   </ItemGroup>
   
   <ItemGroup>

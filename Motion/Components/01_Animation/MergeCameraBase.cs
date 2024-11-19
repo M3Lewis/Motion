@@ -246,22 +246,56 @@ namespace Motion.Animation
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Result", "R", "Result of merge", GH_ParamAccess.tree);
+            pManager.AddGenericParameter("Result", "R", "Result of merge", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             this.Message = this.NickName;
-
-            GH_Structure<IGH_Goo> result = new GH_Structure<IGH_Goo>();
+            IGH_Goo result = null;
 
             try
             {
-                for (int i = 0; i < Params.Input.Count; i++)
+                // 获取 TimeLine(Union) slider
+                var doc = OnPingDocument();
+                var unionSlider = doc?.Objects
+                    .FirstOrDefault(o => o.GetType().ToString().Contains("pOd_TimeLineSlider") && 
+                                        o.NickName == "TimeLine(Union)") as GH_NumberSlider;
+
+                if (unionSlider != null)
                 {
-                    if (DA.GetDataTree(i, out GH_Structure<IGH_Goo> tree) && tree != null)
+                    double unionValue = (double)unionSlider.CurrentValue;
+                    double maxStartValue = double.MinValue;
+                    int selectedInputIndex = -1;
+
+                    // 遍历所有有连线的输入端
+                    for (int i = 0; i < Params.Input.Count; i++)
                     {
-                        result.MergeStructure(tree);
+                        var param = Params.Input[i];
+                        if (param.SourceCount > 0)
+                        {
+                            string[] parts = param.NickName.Split('-');
+                            if (parts.Length == 2 && 
+                                double.TryParse(parts[0], out double start) && 
+                                double.TryParse(parts[1], out double end))
+                            {
+                                if (unionValue >= start && unionValue <= end && start > maxStartValue)
+                                {
+                                    maxStartValue = start;
+                                    selectedInputIndex = i;
+                                }
+                            }
+                        }
+                    }
+
+                    // 如果找到符合条件的输入端，获取其数据
+                    if (selectedInputIndex != -1)
+                    {
+                        IGH_Goo item = null;
+                        if (DA.GetData(selectedInputIndex, ref item) && item != null)
+                        {
+                            result = item;
+                        }
                     }
                 }
             }
@@ -270,7 +304,7 @@ namespace Motion.Animation
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, ex.Message);
             }
 
-            DA.SetDataTree(0, result);
+            DA.SetData(0, result);
         }
 
         public void CallBack(GH_Document gdoc)
@@ -333,7 +367,7 @@ namespace Motion.Animation
                 {
                     var param = new Param_GenericObject
                     {
-                        Access = GH_ParamAccess.tree,
+                        Access = GH_ParamAccess.item,
                         Optional = true
                     };
                     Params.RegisterInputParam(param);
@@ -399,13 +433,20 @@ namespace Motion.Animation
                 var param = Params.Input[i];
                 param.Optional = true;
                 param.MutableNickName = false;
-                param.Access = GH_ParamAccess.tree;
+                param.Access = GH_ParamAccess.item;
             }
         }
 
         public bool CanInsertParameter(GH_ParameterSide side, int index) => false;
         public bool CanRemoveParameter(GH_ParameterSide side, int index) => false;
-        public IGH_Param CreateParameter(GH_ParameterSide side, int index) => new Param_GenericObject();
+        public IGH_Param CreateParameter(GH_ParameterSide side, int index)
+        {
+            return new Param_GenericObject
+            {
+                Optional = true,
+                Access = GH_ParamAccess.item
+            };
+        }
         public bool DestroyParameter(GH_ParameterSide side, int index) => true;
 
         private void SetAllInputWiresDisplay()

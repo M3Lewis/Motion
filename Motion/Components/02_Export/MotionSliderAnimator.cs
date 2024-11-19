@@ -24,7 +24,7 @@ namespace Motion.Export
             UseCustomRange = false;
         }
 
-        public int MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses,  out List<string> outputPathList, out bool wasAborted, Action<int, int> progressCallback = null)
+        public int MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses, out List<string> outputPathList, out bool wasAborted, Action<int, int> progressCallback = null)
         {
             outputPathList = new List<string>();
             wasAborted = false;
@@ -113,7 +113,7 @@ namespace Motion.Export
                     Grasshopper.Instances.ActiveCanvas.Refresh();
                     Grasshopper.Instances.RedrawAll();
 
-                    progressCallback?.Invoke(m_frameIndex, (int)maxValue + 1);
+                    progressCallback?.Invoke(m_frameIndex, UseCustomRange ? (int)CustomRange.Length + 1 : (int)maxValue + 1);
 
                     //Stopwatch stopwatch = new Stopwatch();
                     //stopwatch.Start();
@@ -150,8 +150,8 @@ namespace Motion.Export
                 wasAborted = true;
             }
 
-            RhinoApp.WriteLine(wasAborted ? 
-                "Animation aborted by user." : 
+            RhinoApp.WriteLine(wasAborted ?
+                "Animation aborted by user." :
                 $"Animation saved to disk: {m_folder}\\");
             RhinoApp.CommandPrompt = string.Empty;
             return m_frameIndex;
