@@ -161,6 +161,12 @@ namespace Motion.Motility
                         if (obj is IGH_ActiveObject activeObj && _lockWhenEmpty)
                         {
                             activeObj.Locked = isEmpty;
+                            
+                            // 只有当组件被锁定时才清空数据
+                            if (isEmpty)
+                            {
+                                activeObj.ClearData();
+                            }
                         }
                     }
                     doc.ScheduleSolution(5);
