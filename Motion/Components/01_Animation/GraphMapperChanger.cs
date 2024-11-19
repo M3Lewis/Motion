@@ -67,8 +67,7 @@ namespace Motion.Animation
                     this.OnPingDocument().ScheduleSolution(10, doc => {
                         try
                         {
-                            var graph = new GH_BezierGraph();
-                            var container = new GH_GraphContainer(graph);
+                            var container = graphMapper.Container;
                             container.Y0 = iDomain.T0;
                             container.Y1 = iDomain.T1;
                             _lastDomain = iDomain;
@@ -111,8 +110,6 @@ namespace Motion.Animation
 
         public override void AddedToDocument(GH_Document document)
         {
-            base.AddedToDocument(document);
-            
             // 检查第一个输入端是否已经有连接
             bool isNewComponent = this.Params.Input[0].SourceCount == 0;
             
