@@ -3,6 +3,7 @@ using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
 using Rhino;
 using Rhino.Display;
 using Rhino.Geometry;
@@ -23,6 +24,7 @@ namespace Motion.Toolbar
         private List<BoundingBox> boundingBoxes;
         private Mesh previewMesh;
         private DisplayMaterial previewMaterial;
+        private Color previewColor;
         private Timer checkTimer;
 
         public ClickFinderButton()
@@ -78,7 +80,7 @@ namespace Motion.Toolbar
                 CollectPreviewObjects();
                 checkTimer.Start();
                 previewMaterial = new DisplayMaterial(Color.FromArgb(128, 255, 255), 0.3);
-                
+                previewColor = Color.FromArgb(128, 255, 255);
                 // 订阅 Rhino 显示管道事件
                 RhinoDoc.ActiveDoc.Views.Redraw();
                 foreach (var view in RhinoDoc.ActiveDoc.Views)
@@ -119,6 +121,7 @@ namespace Motion.Toolbar
                         checkTimer.Stop();
                         previewMesh = null;
                         previewMaterial = null;
+                        
                         RhinoDoc.ActiveDoc?.Views.Redraw();
                     }
                 }
@@ -126,7 +129,8 @@ namespace Motion.Toolbar
             else
             {
                 int alpha = Convert.ToInt32(255 * DateTime.Now.Millisecond / 1000.0);
-                previewMaterial = new DisplayMaterial(Color.FromArgb(alpha, 255, 255), 0.3);
+                previewMaterial = new DisplayMaterial(Color.FromArgb(alpha, 255, 255), 0.95);
+                previewColor = Color.FromArgb(alpha, 128, 255,255);
                 RhinoDoc.ActiveDoc?.Views.Redraw();
             }
         }
@@ -142,11 +146,82 @@ namespace Motion.Toolbar
                 if (obj is IGH_PreviewObject previewObj && !previewObj.Hidden)
                 {
                     previewObjects.Add(obj);
-                    var box = previewObj.ClippingBox;
+                    
+                    // 获取所有预览顶点
+                    var vertices = new List<Point3d>();
+                    
+                    // 处理组件
+                    if (obj is IGH_Component component)
+                    {
+                        // 遍历所有输出参数
+                        foreach (var param in component.Params.Output)
+                        {
+                            foreach (var data in param.VolatileData.AllData(true))
+                            {
+                                AddGeometryVertices(data, vertices);
+                            }
+                        }
+                    }
+                    // 处理参数
+                    else if (obj is IGH_Param param)
+                    {
+                        foreach (var data in param.VolatileData.AllData(true))
+                        {
+                            AddGeometryVertices(data, vertices);
+                        }
+                    }
+                    
+                    // 从顶点创建边界框
+                    var box = vertices.Count > 0 
+                        ? new BoundingBox(vertices) 
+                        : previewObj.ClippingBox;  // 如果无法获取顶点，回退到ClippingBox
+                        
                     if (box.Volume < 0.1) box.Inflate(1);
                     boundingBoxes.Add(box);
-                    previewMesh.Append(Mesh.CreateFromBox(box, 1, 1, 1));
+                    
+                    // 创建预览用的box mesh
+                    Mesh boxMesh = Mesh.CreateFromBox(box, 1, 1, 1);
+                    if (boxMesh != null && boxMesh.IsValid)
+                    {
+                        boxMesh.Compact();
+                        previewMesh.Append(boxMesh);
+                    }
                 }
+            }
+            
+            if (!previewMesh.IsValid)
+            {
+                previewMesh.Weld(Math.PI);
+                previewMesh.Compact();
+            }
+        }
+
+        private void AddGeometryVertices(IGH_Goo data, List<Point3d> vertices)
+        {
+            if (data is GH_Point pointData)
+            {
+                if (pointData.Value != Point3d.Unset)
+                    vertices.Add(pointData.Value);
+            }
+            else if (data is GH_Curve curveData)
+            {
+                if (curveData.Value != null)
+                    vertices.AddRange(curveData.Value.GetBoundingBox(false).GetCorners());
+            }
+            else if (data is GH_Surface surfaceData)
+            {
+                if (surfaceData.Value != null)
+                    vertices.AddRange(surfaceData.Value.GetBoundingBox(false).GetCorners());
+            }
+            else if (data is GH_Mesh meshData)
+            {
+                if (meshData.Value != null)
+                    vertices.AddRange(meshData.Value.Vertices.ToPoint3dArray());
+            }
+            else if (data is GH_Brep brepData)
+            {
+                if (brepData.Value != null)
+                    vertices.AddRange(brepData.Value.GetBoundingBox(false).GetCorners());
             }
         }
 
@@ -205,14 +280,29 @@ namespace Motion.Toolbar
         #region IGH_PreviewObject Implementation
         public bool Hidden { get; set; } = false;
         public bool IsPreviewCapable => true;
-        public BoundingBox ClippingBox => previewMesh?.GetBoundingBox(true) ?? BoundingBox.Empty;
+        public BoundingBox ClippingBox
+        {
+            get
+            {
+                if (previewMesh == null) return BoundingBox.Empty;
+                
+                // 即使mesh无效，也尝试从顶点创建boundingbox
+                if (previewMesh.Vertices != null && previewMesh.Vertices.Count > 0)
+                {
+                    Point3d[] points = previewMesh.Vertices.ToPoint3dArray();
+                    return new BoundingBox(points);
+                }
+                
+                return BoundingBox.Empty;
+            }
+        }
 
         public void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-            if (isActive && previewMesh != null && previewMaterial != null)
-            {
-                args.Display.DrawMeshShaded(previewMesh, previewMaterial);
-            }
+            //if (isActive && previewMesh != null && previewMaterial != null)
+            //{
+            //    args.Display.DrawMeshShaded(previewMesh, previewMaterial);
+            //}
         }
 
         public void DrawViewportWires(IGH_PreviewArgs args)
@@ -234,7 +324,7 @@ namespace Motion.Toolbar
             if (isActive && previewMesh != null && previewMaterial != null)
             {
                 e.Display.DrawMeshShaded(previewMesh, previewMaterial);
-                e.Display.DrawMeshWires(previewMesh, Color.White);
+                e.Display.DrawMeshWires(previewMesh, previewColor,3);
             }
         }
     }
