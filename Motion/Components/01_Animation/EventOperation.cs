@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
 using Rhino.Geometry;
 
 namespace Motion.Animation
@@ -37,7 +40,6 @@ namespace Motion.Animation
         {
             // 声明输入变量
             List<double> events = new List<double>();
-            double time = 0.0;
 
             // 获取输入数据
             if (!DA.GetDataList(0, events)) return;
@@ -48,26 +50,63 @@ namespace Motion.Animation
             List<double> eventStart = new List<double>();
             List<Interval> eventInterval = new List<Interval>();
 
+            var doc = OnPingDocument();
+            double timelineSliderValue = (double)doc.Objects
+                    .OfType<GH_NumberSlider>()
+                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase)).Slider.Value;
+
             for (int i = 0; i < events.Count; i++)
             {
-                IGH_DocumentObject gdo = Params.Input[0].Sources[i].Attributes.GetTopLevel.DocObject;
-                if (gdo.GetType().ToString() == "Motion.Animation.GraphMapperChanger")
+                IGH_DocumentObject graphMapperDocumentObject = Params.Input[0].Sources[i].Attributes.GetTopLevel.DocObject;
+                if (graphMapperDocumentObject.GetType().ToString() == "Grasshopper.Kernel.Special.GH_GraphMapper")
                 {
-                    IGH_Component gc = (IGH_Component)gdo;
-                    gc.Params.Input[0].WireDisplay = GH_ParamWireDisplay.hidden;
-                    IGH_DocumentObject gdo2 = gc.Params.Input[0].Sources[0];
-                    if (gdo2.GetType().ToString() == "Grasshopper.Kernel.Special.GH_GraphMapper")
+                    var graphMapper = (Grasshopper.Kernel.Special.GH_GraphMapper)graphMapperDocumentObject;
+
+                    graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
+                    IGH_DocumentObject eventComponentDocumentObject = graphMapper.Sources[0].Attributes.GetTopLevel.DocObject;
+                    if (eventComponentDocumentObject.GetType().ToString() == "Motion.Motility.EventComponent")
                     {
-                        var ggm = (Grasshopper.Kernel.Special.GH_GraphMapper)gdo2;
-                        eventValue.Add(events[i]);
-                        eventStart.Add(ggm.Container.X0);
-                        eventInterval.Add(new Interval(ggm.Container.X0, ggm.Container.X1));
+                        IGH_Component eventComponent = (IGH_Component)eventComponentDocumentObject;
+
+                        string eventComponentNickName = eventComponent.NickName;
+                        string[] timeDomainExtremes = eventComponentNickName.Split('-');
+
+                        double timeDomainStart = double.Parse(timeDomainExtremes[0]);
+                        double timeDomainEnd = double.Parse(timeDomainExtremes[1]);
+                        Interval timeDomain = new Interval(timeDomainStart, timeDomainEnd);
+                        eventStart.Add(timeDomainStart);
+                        eventInterval.Add(timeDomain);
+
+                        GH_Interval ghValueDomain = eventComponent.Params.Input[1].VolatileData.get_Branch(0)[0] as GH_Interval;
+                        Interval valueDomain = ghValueDomain.Value;
+
+                        // 计算映射值
+                        double mappedValue;
+                        if (valueDomain.IsSingleton || valueDomain.IsSingleton)
+                        {
+                            // 处理单点区间的情况
+                            mappedValue = valueDomain.Mid;
+                        }
+                        else
+                        {
+                            // 先计算输入值在源区间的比例
+
+                            double t = timelineSliderValue >= timeDomainEnd ? 1 : (timelineSliderValue - timeDomainStart) / timeDomain.Length;
+                            // 然后将这个比例映射到目标区间
+                            mappedValue = valueDomain.T0 + t * valueDomain.Length;
+
+                            // 确保值在目标区间内
+                            mappedValue = Math.Min(Math.Max(mappedValue, valueDomain.Min), valueDomain.Max);
+                        }
+                        eventValue.Add(mappedValue);
                     }
                 }
             }
 
             sort(eventStart, eventValue, eventInterval, out eventStart, out eventValue, out eventInterval);
-            double result = GetCurrentValue(time, eventInterval, eventValue);
+            GH_Document ghDocument = OnPingDocument();
+
+            double result = GetCurrentValue(timelineSliderValue, eventInterval, eventValue);
 
             // 设置输出
             DA.SetData(0, result);

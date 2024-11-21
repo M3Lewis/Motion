@@ -251,11 +251,6 @@ namespace Motion.Motility
             }
         }
 
-        // 添加新的字段来控制模式
-        public bool UseEmptyValueMode { get; private set; } = false;  // 是否使用空值模式
-        public bool _hideWhenEmpty { get; set; } = false;  // 原有的空值隐藏
-        public bool _lockWhenEmpty { get; set; } = false;  // 原有的空值锁定
-
         // 添加右键菜单选项
         public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
         {
@@ -269,8 +264,8 @@ namespace Motion.Motility
             if (UseEmptyValueMode)
             {
                 // 只在空值模式下显示这些选项
-                Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, _hideWhenEmpty);
-                Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, _lockWhenEmpty);
+                Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, HideWhenEmpty);
+                Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, LockWhenEmpty);
             }
         }
 
@@ -284,7 +279,7 @@ namespace Motion.Motility
         {
             if (UseEmptyValueMode)
             {
-                _hideWhenEmpty = !_hideWhenEmpty;
+                HideWhenEmpty = !HideWhenEmpty;
                 UpdateGroupVisibilityAndLock();
                 ExpireSolution(true);
             }
@@ -294,70 +289,12 @@ namespace Motion.Motility
         {
             if (UseEmptyValueMode)
             {
-                _lockWhenEmpty = !_lockWhenEmpty;
+                LockWhenEmpty = !LockWhenEmpty;
                 UpdateGroupVisibilityAndLock();
                 ExpireSolution(true);
             }
         }
 
-        public void UpdateGroupVisibilityAndLock()
-        {
-            if (affectedObjects == null || !affectedObjects.Any()) return;
-
-            var doc = OnPingDocument();
-            if (doc == null) return;
-
-            bool shouldHideOrLock = false;
-
-            if (UseEmptyValueMode)
-            {
-                // 使用空值模式
-                shouldHideOrLock = !this.VolatileData.AllData(true).Any();
-            }
-            else
-            {
-                // 使用Timeline Slider模式
-                var timelineSlider = doc.Objects
-                    .OfType<GH_NumberSlider>()
-                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
-
-                if (timelineSlider != null)
-                {
-                    double currentValue = (double)timelineSlider.Slider.Value;
-                    
-                    // 解析当前receiver的nickname获取区间
-                    string[] parts = this.NickName.Split('-');
-                    if (parts.Length == 2 && 
-                        double.TryParse(parts[0], out double min) && 
-                        double.TryParse(parts[1], out double max))
-                    {
-                        shouldHideOrLock = currentValue < min || currentValue > max;
-                    }
-                }
-            }
-
-            // 应用Hide/Lock状态
-            foreach (var obj in affectedObjects)
-            {
-                if (obj is IGH_PreviewObject previewObj)
-                {
-                    if (_hideWhenEmpty)
-                    {
-                        previewObj.Hidden = shouldHideOrLock;
-                    }
-                }
-                if (obj is IGH_ActiveObject activeObj)
-                {
-                    if (_lockWhenEmpty)
-                    {
-                        activeObj.Locked = shouldHideOrLock;
-                        activeObj.ClearData();
-                    }
-                }
-            }
-
-            // 刷新文档
-            doc.ScheduleSolution(5);
-        }
+        
     }
 }

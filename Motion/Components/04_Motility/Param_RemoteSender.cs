@@ -17,10 +17,13 @@ namespace Motion.Motility
     {
         private bool _autoRename = true;
         
+        public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
+        public event NickNameChangedEventHandler NickNameChanged;
+
         public Param_RemoteSender()
             : base()
         {
-            nicknameKey = "LMAO";
+            nicknameKey = "";
             base.NickName = nicknameKey;
             base.Hidden = true;
         }
@@ -180,7 +183,7 @@ namespace Motion.Motility
                     this.Attributes.Bounds.Bottom + 25
                 );
 
-                // 计算文本大小
+                // 计算文本���小
                 SizeF textSize = GH_FontServer.MeasureString(message, GH_FontServer.Standard);
                 RectangleF textBounds = new RectangleF(location, textSize);
                 textBounds.Inflate(6, 3);  // 添加一些内边距
@@ -201,7 +204,7 @@ namespace Motion.Motility
 
             // 设置定时器移除事件处理器
             Timer timer = new Timer();
-            timer.Interval = 1000;
+            timer.Interval = 1500;
             timer.Tick += (sender, e) =>
             {
                 canvas.CanvasPrePaintObjects -= canvasRepaint;
@@ -212,6 +215,21 @@ namespace Motion.Motility
             timer.Start();
         }
 
+        //public override string NickName
+        //{
+        //    get => nicknameKey;
+        //    set
+        //    {
+        //        if (nicknameKey != value)
+        //        {
+        //            nicknameKey = value;
+        //            base.NickName = nicknameKey;
+        //            NickNameChanged?.Invoke(this, nicknameKey);  // 触发事件
+        //            ExpireSolution(true);
+        //        }
+        //    }
+        //}
+
         public override string NickName
         {
             get
@@ -221,29 +239,35 @@ namespace Motion.Motility
             }
             set
             {
-                nicknameKey = value;
-                base.NickName = nicknameKey;
-
-                GH_Document doc = this.OnPingDocument();
-                if (doc != null) 
+                if (nicknameKey != value)
                 {
-                    var existingSender = doc.Objects
-                        .OfType<Param_RemoteSender>()
-                        .FirstOrDefault(s => s != this && s.NickName == nicknameKey);
+                    nicknameKey = value;
+                    base.NickName = nicknameKey;
 
-                    if (existingSender != null)
+                    GH_Document doc = this.OnPingDocument();
+                    if (doc != null) 
                     {
-                        var canvas = Grasshopper.Instances.ActiveCanvas;
-                        if (canvas != null)
-                        {
-                            ShowTemporaryMessage(canvas, 
-                                $"已存在相同标识({nicknameKey})的 Sender!");
-                        }
-                        doc.RemoveObject(this, false);
-                        return;
-                    }
+                        var existingSender = doc.Objects
+                            .OfType<Param_RemoteSender>()
+                            .FirstOrDefault(s => s != this && s.NickName == nicknameKey);
 
-                    doc.ScheduleSolution(10, MotilityUtils.connectMatchingParams);
+                        if (existingSender != null)
+                        {
+                            var canvas = Grasshopper.Instances.ActiveCanvas;
+                            if (canvas != null)
+                            {
+                                ShowTemporaryMessage(canvas, 
+                                    $"已存在相同标识({nicknameKey})的 Sender!");
+                            }
+                            doc.RemoveObject(this, false);
+                            return;
+                        }
+
+                        // 触发 NickNameChanged 事件
+                        NickNameChanged?.Invoke(this, nicknameKey);
+                        
+                        doc.ScheduleSolution(10, MotilityUtils.connectMatchingParams);
+                    }
                 }
             }
         }

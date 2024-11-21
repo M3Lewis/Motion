@@ -12,42 +12,27 @@ namespace Motion.Motility
 {
     public abstract class RemoteParam : Param_GenericObject, IGH_InitCodeAware
     {
-        internal bool _hideWhenEmpty = false;
-        internal bool _lockWhenEmpty = false;
+        // 添加新的字段来控制模式
+        public bool UseEmptyValueMode { get; set; } = false;  // 是否使用空值模式
+
+        private bool _hideWhenEmpty;
+        public bool HideWhenEmpty
+        {
+            get { return _hideWhenEmpty; }
+            set { _hideWhenEmpty = value; }
+        }
+        private bool _lockWhenEmpty;
+
+        public bool LockWhenEmpty
+        {
+            get { return _lockWhenEmpty; }
+            set { _lockWhenEmpty = value; }
+        }
 
         internal List<IGH_DocumentObject> affectedObjects = new List<IGH_DocumentObject>();
 
-        private bool isUpdating = false;
-        private bool? lastEmptyState = null;
-
         // 添加一个临时存储GUID的列表
         private List<Guid> _pendingGuids = new List<Guid>();
-
-        public bool HideButtonEnabled
-        {
-            get => _hideWhenEmpty;
-            set
-            {
-                if (_hideWhenEmpty != value)
-                {
-                    _hideWhenEmpty = value;
-                    UpdateGroupVisibilityAndLock();
-                }
-            }
-        }
-
-        public bool LockButtonEnabled
-        {
-            get => _lockWhenEmpty;
-            set
-            {
-                if (_lockWhenEmpty != value)
-                {
-                    _lockWhenEmpty = value;
-                    UpdateGroupVisibilityAndLock();
-                }
-            }
-        }
 
         public void SetInitCode(string code)
         {
@@ -130,131 +115,145 @@ namespace Motion.Motility
             this.Attributes.ExpireLayout();
         }
 
+        
+
+        //public override bool Write(GH_IWriter writer)
+        //{
+        //    if (!base.Write(writer)) return false;
+
+        //    try
+        //    {
+        //        writer.SetBoolean("HideWhenEmpty", _hideWhenEmpty);
+        //        writer.SetBoolean("LockWhenEmpty", _lockWhenEmpty);
+                
+        //        // 序列化折叠状态
+        //        var attributes = this.Attributes as RemoteParamAttributes;
+        //        if (attributes != null)
+        //        {
+        //            writer.SetBoolean("IsCollapsed", attributes.IsCollapsed);
+        //        }
+
+        //        // 序列化受影响组件的 GUID 列表
+        //        var guidList = affectedObjects?.Select(obj => obj.InstanceGuid).ToList() ?? new List<Guid>();
+        //        writer.SetInt32("AffectedCount", guidList.Count);
+        //        for (int i = 0; i < guidList.Count; i++)
+        //        {
+        //            writer.SetGuid($"Affected_{i}", guidList[i]);
+        //        }
+        //    }
+        //    catch
+        //    {
+        //        return false;
+        //    }
+
+        //    return true;
+        //}
+
+        //public override bool Read(GH_IReader reader)
+        //{
+        //    if (!base.Read(reader)) return false;
+
+        //    try
+        //    {
+        //        if (reader.ItemExists("HideWhenEmpty"))
+        //            _hideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
+        //        if (reader.ItemExists("LockWhenEmpty"))
+        //            _lockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
+                    
+        //        // 读取折叠状态
+        //        if (reader.ItemExists("IsCollapsed"))
+        //        {
+        //            var isCollapsed = reader.GetBoolean("IsCollapsed");
+        //            var attributes = this.Attributes as RemoteParamAttributes;
+        //            if (attributes != null)
+        //            {
+        //                attributes.SetCollapsedState(isCollapsed);
+        //            }
+        //        }
+
+        //        // 先清空待处理的GUID列表
+        //        _pendingGuids.Clear();
+
+        //        // 只读取GUID并存储，不立即查找对象
+        //        if (reader.ItemExists("AffectedCount"))
+        //        {
+        //            int count = reader.GetInt32("AffectedCount");
+        //            for (int i = 0; i < count; i++)
+        //            {
+        //                if (reader.ItemExists($"Affected_{i}"))
+        //                {
+        //                    var guid = reader.GetGuid($"Affected_{i}");
+        //                    _pendingGuids.Add(guid);
+        //                }
+        //            }
+        //        }
+        //    }
+        //    catch
+        //    {
+        //        return false;
+        //    }
+
+        //    return true;
+        //}
+
         public void UpdateGroupVisibilityAndLock()
         {
-            if (isUpdating) return;
-            isUpdating = true;
+            if (affectedObjects == null || !affectedObjects.Any()) return;
 
-            try
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            bool shouldHideOrLock = false;
+
+            if (UseEmptyValueMode)
             {
-                var doc = OnPingDocument();
-                if (doc == null) return;
+                // 使用空值模式
+                shouldHideOrLock = !this.VolatileData.AllData(true).Any();
+            }
+            else
+            {
+                // 使用Timeline Slider模式
+                var timelineSlider = doc.Objects
+                    .OfType<GH_NumberSlider>()
+                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
 
-                // 检查数据是否为空
-                bool isEmpty = this.VolatileData.IsEmpty;
-
-                // 如果状态没有改变，不需要更新
-                if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty)
-                    return;
-
-                lastEmptyState = isEmpty;
-
-                // 根据数据状态更新组件状态
-                if (affectedObjects != null && affectedObjects.Any())
+                if (timelineSlider != null)
                 {
-                    foreach (var obj in affectedObjects)
+                    double currentValue = (double)timelineSlider.Slider.Value;
+
+                    // 解析当前receiver的nickname获取区间
+                    string[] parts = this.NickName.Split('-');
+                    if (parts.Length == 2 &&
+                        double.TryParse(parts[0], out double min) &&
+                        double.TryParse(parts[1], out double max))
                     {
-                        if (obj is IGH_PreviewObject previewObj && _hideWhenEmpty)
-                        {
-                            previewObj.Hidden = isEmpty;
-                        }
-                        if (obj is IGH_ActiveObject activeObj && _lockWhenEmpty)
-                        {
-                            activeObj.Locked = isEmpty;
-                            
-                            // 只有当组件被锁定时才清空数据
-                            if (isEmpty)
-                            {
-                                activeObj.ClearData();
-                            }
-                        }
-                    }
-                    doc.ScheduleSolution(5);
-                }
-            }
-            finally
-            {
-                isUpdating = false;
-            }
-        }
-
-        public override bool Write(GH_IWriter writer)
-        {
-            if (!base.Write(writer)) return false;
-
-            try
-            {
-                writer.SetBoolean("HideWhenEmpty", _hideWhenEmpty);
-                writer.SetBoolean("LockWhenEmpty", _lockWhenEmpty);
-                
-                // 序列化折叠状态
-                var attributes = this.Attributes as RemoteParamAttributes;
-                if (attributes != null)
-                {
-                    writer.SetBoolean("IsCollapsed", attributes.IsCollapsed);
-                }
-
-                // 序列化受影响组件的 GUID 列表
-                var guidList = affectedObjects?.Select(obj => obj.InstanceGuid).ToList() ?? new List<Guid>();
-                writer.SetInt32("AffectedCount", guidList.Count);
-                for (int i = 0; i < guidList.Count; i++)
-                {
-                    writer.SetGuid($"Affected_{i}", guidList[i]);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        public override bool Read(GH_IReader reader)
-        {
-            if (!base.Read(reader)) return false;
-
-            try
-            {
-                if (reader.ItemExists("HideWhenEmpty"))
-                    _hideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
-                if (reader.ItemExists("LockWhenEmpty"))
-                    _lockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
-                    
-                // 读取折叠状态
-                if (reader.ItemExists("IsCollapsed"))
-                {
-                    var isCollapsed = reader.GetBoolean("IsCollapsed");
-                    var attributes = this.Attributes as RemoteParamAttributes;
-                    if (attributes != null)
-                    {
-                        attributes.SetCollapsedState(isCollapsed);
-                    }
-                }
-
-                // 先清空待处理的GUID列表
-                _pendingGuids.Clear();
-
-                // 只读取GUID并存储，不立即查找对象
-                if (reader.ItemExists("AffectedCount"))
-                {
-                    int count = reader.GetInt32("AffectedCount");
-                    for (int i = 0; i < count; i++)
-                    {
-                        if (reader.ItemExists($"Affected_{i}"))
-                        {
-                            var guid = reader.GetGuid($"Affected_{i}");
-                            _pendingGuids.Add(guid);
-                        }
+                        shouldHideOrLock = currentValue < min || currentValue > max;
                     }
                 }
             }
-            catch
+
+            // 应用Hide/Lock状态
+            foreach (var obj in affectedObjects)
             {
-                return false;
+                if (obj is IGH_PreviewObject previewObj)
+                {
+                    if (HideWhenEmpty)
+                    {
+                        previewObj.Hidden = shouldHideOrLock;
+                    }
+                }
+                if (obj is IGH_ActiveObject activeObj)
+                {
+                    if (LockWhenEmpty)
+                    {
+                        activeObj.Locked = shouldHideOrLock;
+                        activeObj.ClearData();
+                    }
+                }
             }
 
-            return true;
+            // 刷新文档
+            doc.ScheduleSolution(5);
         }
     }
 }
