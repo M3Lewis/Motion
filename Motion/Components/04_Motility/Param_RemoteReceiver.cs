@@ -5,6 +5,7 @@ using GH_IO.Serialization;
 using System.Windows.Forms;
 using Grasshopper.GUI.Canvas;
 using System.Linq;
+using Grasshopper.Kernel.Special;
 
 namespace Motion.Motility
 {
@@ -248,6 +249,115 @@ namespace Motion.Motility
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Failed to create remote data: {ex.Message}");
             }
+        }
+
+        // 添加新的字段来控制模式
+        public bool UseEmptyValueMode { get; private set; } = false;  // 是否使用空值模式
+        public bool _hideWhenEmpty { get; set; } = false;  // 原有的空值隐藏
+        public bool _lockWhenEmpty { get; set; } = false;  // 原有的空值锁定
+
+        // 添加右键菜单选项
+        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+        {
+            base.AppendAdditionalMenuItems(menu);
+            Menu_AppendSeparator(menu);
+
+            // 添加模式切换选项
+            var modeItem = Menu_AppendItem(menu, "Use Empty Value Mode", OnModeToggle, true, UseEmptyValueMode);
+            modeItem.ToolTipText = "切换是否使用空值模式进行Hide/Lock控制";
+
+            if (UseEmptyValueMode)
+            {
+                // 只在空值模式下显示这些选项
+                Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, _hideWhenEmpty);
+                Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, _lockWhenEmpty);
+            }
+        }
+
+        private void OnModeToggle(object sender, EventArgs e)
+        {
+            UseEmptyValueMode = !UseEmptyValueMode;
+            ExpireSolution(true);
+        }
+
+        private void OnHideToggle(object sender, EventArgs e)
+        {
+            if (UseEmptyValueMode)
+            {
+                _hideWhenEmpty = !_hideWhenEmpty;
+                UpdateGroupVisibilityAndLock();
+                ExpireSolution(true);
+            }
+        }
+
+        private void OnLockToggle(object sender, EventArgs e)
+        {
+            if (UseEmptyValueMode)
+            {
+                _lockWhenEmpty = !_lockWhenEmpty;
+                UpdateGroupVisibilityAndLock();
+                ExpireSolution(true);
+            }
+        }
+
+        public void UpdateGroupVisibilityAndLock()
+        {
+            if (affectedObjects == null || !affectedObjects.Any()) return;
+
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            bool shouldHideOrLock = false;
+
+            if (UseEmptyValueMode)
+            {
+                // 使用空值模式
+                shouldHideOrLock = !this.VolatileData.AllData(true).Any();
+            }
+            else
+            {
+                // 使用Timeline Slider模式
+                var timelineSlider = doc.Objects
+                    .OfType<GH_NumberSlider>()
+                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+
+                if (timelineSlider != null)
+                {
+                    double currentValue = (double)timelineSlider.Slider.Value;
+                    
+                    // 解析当前receiver的nickname获取区间
+                    string[] parts = this.NickName.Split('-');
+                    if (parts.Length == 2 && 
+                        double.TryParse(parts[0], out double min) && 
+                        double.TryParse(parts[1], out double max))
+                    {
+                        shouldHideOrLock = currentValue < min || currentValue > max;
+                    }
+                }
+            }
+
+            // 应用Hide/Lock状态
+            foreach (var obj in affectedObjects)
+            {
+                if (obj is IGH_PreviewObject previewObj)
+                {
+                    if (_hideWhenEmpty)
+                    {
+                        previewObj.Hidden = shouldHideOrLock;
+                    }
+                }
+                if (obj is IGH_ActiveObject activeObj)
+                {
+                    if (_lockWhenEmpty)
+                    {
+                        activeObj.Locked = shouldHideOrLock;
+                        activeObj.ClearData();
+                    }
+                }
+            }
+
+            // 刷新文档
+            doc.ScheduleSolution(5);
         }
     }
 }

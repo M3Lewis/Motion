@@ -30,17 +30,17 @@ namespace Motion.Motility
         private readonly int ButtonHeight = 18;
         private readonly int ButtonSpacing = 4;
 
-private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiver)
-    {
-        var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
-        if (!selectedObjects.Any())
-            return false;
+        private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiver)
+        {
+            var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
+            if (!selectedObjects.Any())
+                return false;
 
-        receiver.affectedObjects = selectedObjects
-            .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
-            .ToList();
-        return true;
-    }
+            receiver.affectedObjects = selectedObjects
+                .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
+                .ToList();
+            return true;
+        }
         // 添加 Data 按钮相关字段
         private RectangleF DataButtonBounds;
         private bool DataButtonDown;
@@ -64,12 +64,14 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
             base.SetupTooltip(point, e);
         }
 
+        // 添加鼠标悬停状态字段
+        private bool mouseOver = false;
 
         //This method figures out the size and shape of elements.
         protected override void Layout()
         {
             base.Layout();
-            
+
             //establish the size based on the text content
             float textWidth = (float)System.Math.Max(GH_FontServer.MeasureString(this.Owner.NickName, GH_FontServer.StandardBold).Width + 10, 50);
             System.Drawing.RectangleF bounds = new System.Drawing.RectangleF(this.Pivot.X - 0.5f * textWidth, this.Pivot.Y - 10f, textWidth, 20f);
@@ -146,7 +148,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                     // 扩展边界以包含所有按钮
                     var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
                     buttonArea = RectangleF.Union(buttonArea, DataButtonBounds);
-                    buttonArea.Inflate(2.0f,2.0f);
+                    buttonArea.Inflate(2.0f, 2.0f);
                     Bounds = RectangleF.Union(Bounds, buttonArea);
                 }
                 else
@@ -171,31 +173,43 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
 
             if (channel == GH_CanvasChannel.Objects)
             {
-                var receiver = Owner as Param_RemoteReceiver;
-                
-                // 只在 receiver 被选中时绘制范围框
-                if (Selected && receiver != null && receiver.affectedObjects != null && receiver.affectedObjects.Any())
+                var remoteReceiver = Owner as Param_RemoteReceiver;
+
+                // 只在鼠标悬停时绘制范围框
+                if (mouseOver && remoteReceiver?.affectedObjects != null && remoteReceiver.affectedObjects.Any())
                 {
                     // 根据状态决定边框颜色
                     Color boundaryColor;
-                    if (receiver._hideWhenEmpty && receiver._lockWhenEmpty)
+
+                    // 获取原始颜色
+                    Color orange = Color.Orange;
+                    Color dodgerBlue = Color.DodgerBlue;
+                    Color limeGreen = Color.LimeGreen;
+
+                    // 创建 Alpha 值为一半的新颜色
+                    Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
+                    Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
+                    Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
+
+                    if (remoteReceiver._hideWhenEmpty && remoteReceiver._lockWhenEmpty)
                     {
-                        boundaryColor = Color.Orange;  // 两个功能都开启时显示橙色
+                        boundaryColor = orangeWithLessAlpha;
                     }
-                    else if (receiver._hideWhenEmpty)
+                    else if (remoteReceiver._hideWhenEmpty)
                     {
-                        boundaryColor = Color.DodgerBlue;  // 只开启 Hide 时显示蓝色
+                        boundaryColor = dodgerBlueWithLessAlpha;
                     }
-                    else if (receiver._lockWhenEmpty)
+                    else if (remoteReceiver._lockWhenEmpty)
                     {
-                        boundaryColor = Color.LimeGreen;  // 只开启 Lock 时显示绿色
+                        boundaryColor = limeGreenWithLessAlpha;
                     }
                     else
                     {
-                        boundaryColor = Color.DodgerBlue;  // 默认颜色
+                        boundaryColor = Color.Transparent;
                     }
 
-                    foreach (var obj in receiver.affectedObjects)
+                    // 绘制范围框
+                    foreach (var obj in remoteReceiver.affectedObjects)
                     {
                         if (obj?.Attributes != null)
                         {
@@ -205,9 +219,6 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                         }
                     }
                 }
-
-                // 如果不是对象通道，直接返回
-                if (channel != GH_CanvasChannel.Objects) return;
 
                 // 检查可见性
                 GH_Viewport viewport = canvas.Viewport;
@@ -220,7 +231,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                 RenderStateTagsIfNeeded(graphics);
 
                 // 如果是 Receiver，渲染按钮
-                if (receiver != null)
+                if (remoteReceiver != null)
                 {
                     // 渲染折叠按钮
                     graphics.DrawString(
@@ -238,8 +249,8 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                     if (!IsCollapsed)
                     {
                         // Hide 按钮
-                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds, 
-                            receiver._hideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds,
+                            remoteReceiver._hideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
                         {
                             capsule.Render(graphics, Selected, Owner.Locked, false);
                             graphics.DrawString(
@@ -256,7 +267,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
 
                         // Lock 按钮
                         using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds,
-                            receiver._lockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                            remoteReceiver._lockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
                         {
                             capsule.Render(graphics, Selected, Owner.Locked, false);
                             graphics.DrawString(
@@ -305,12 +316,12 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                 {
                     var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 7);
                     var labelBounds = new RectangleF(
-                        Bounds.Left -12,
+                        Bounds.Left - 12,
                         Bounds.Top + (Bounds.Height - labelFont.Height) / 2,
                         15,
                         labelFont.Height
                     );
-                    
+
                     graphics.DrawString(label, labelFont, Brushes.DarkGray, labelBounds);
                 }
             }
@@ -343,7 +354,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                 if (IsCollapsed)
                 {
                     // 折叠状态下，箭头位置在组件底部中间
-                    return new PointF(bounds.Left + 9, bounds.Bottom-10);
+                    return new PointF(bounds.Left + 9, bounds.Bottom - 10);
                 }
                 else
                 {
@@ -368,9 +379,9 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         {
             using (var pen = new Pen(color, 2f))
             {
-                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
-                pen.DashPattern = new float[] { 5, 5 };  // 设置虚线样式
-                graphics.DrawRectangle(pen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
+                pen.Width = 2;
+                graphics.DrawRectangle(pen, bounds.X - 3, bounds.Y - 3, bounds.Width + 6, bounds.Height + 6);
             }
         }
 
@@ -378,7 +389,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         private void renderArrow(GH_Canvas canvas, Graphics graphics, PointF loc)
         {
             Color arrowColor = Color.LightSkyBlue;  // 默认颜色
-            
+
             if (Owner is Param_RemoteReceiver)
             {
                 arrowColor = Color.Orange;  // Receiver 的箭头颜色
@@ -393,43 +404,27 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
 
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            var ghDoc = Owner.OnPingDocument();
-            if (ghDoc == null) return GH_ObjectResponse.Ignore;
-
-            // 修改类型检查，支持两种新参数类型
-            if (Owner is Param_RemoteLocation locationParam)
+            Point point = GH_Convert.ToPoint(e.CanvasLocation);
+            if (e.Button != 0)
             {
-                var receivers = ghDoc.Objects
-                    .OfType<Param_RemoteReceiver>()
-                    .Where(r => Math.Abs(r.Attributes.Pivot.Y - locationParam.Attributes.Pivot.Y) < 10)
-                    .ToList();
-
-                if (receivers.Any())
-                {
-                    var originalReceiver = receivers.First();
-                    locationParam.LinkToReceiver(originalReceiver);
-                    locationParam.ExpireSolution(true);
-                    locationParam.OnDisplayExpired(true);
-                    ghDoc.ScheduleSolution(5);
-                }
+                return base.RespondToMouseMove(sender, e);
             }
-            else if (Owner is Param_RemoteTarget targetParam)
+            RectangleF unionButtonBounds = RectangleF.Union(HideButtonBounds, LockButtonBounds);
+            if (unionButtonBounds.Contains(point))
             {
-                var receivers = ghDoc.Objects
-                    .OfType<Param_RemoteReceiver>()
-                    .Where(r => Math.Abs(r.Attributes.Pivot.Y - targetParam.Attributes.Pivot.Y) < 10)
-                    .ToList();
-
-                if (receivers.Any())
+                if (!mouseOver)
                 {
-                    var originalReceiver = receivers.First();
-                    targetParam.LinkToReceiver(originalReceiver);
-                    targetParam.ExpireSolution(true);
-                    targetParam.OnDisplayExpired(true);
-                    ghDoc.ScheduleSolution(5);
+                    mouseOver = true;
+                    sender.Invalidate();
                 }
+                return GH_ObjectResponse.Capture;
             }
-            return GH_ObjectResponse.Handled;
+            if (mouseOver)
+            {
+                mouseOver = false;
+                sender.Invalidate();
+            }
+            return GH_ObjectResponse.Release;
         }
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
@@ -458,11 +453,11 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                 // 设置 Group 的属性
                 group.NickName = "";
                 group.Border = GH_GroupBorder.Box;
-                
+
                 // 设置 Group 的颜色为文档默认颜色
                 var defaultGroupColor = Color.FromArgb(124, 100, 100, 100);
                 group.Colour = defaultGroupColor;
-                
+
                 // 计算 Group 的边界
                 var bounds = newReceiver.Attributes.Bounds;
                 bounds.Inflate(20, 20);
@@ -470,7 +465,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
 
                 // 添加 Group 到文档
                 ghDoc.AddObject(group, false);
-                
+
                 // 将 Receiver 添加到 Group
                 group.AddObject(newReceiver.InstanceGuid);
 
@@ -482,7 +477,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
 
                 return GH_ObjectResponse.Handled;
             }
-            
+
             return base.RespondToMouseDoubleClick(sender, e);
         }
 
@@ -526,7 +521,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            if (!(Owner is Param_RemoteReceiver receiver)) 
+            if (!(Owner is Param_RemoteReceiver receiver))
                 return base.RespondToMouseUp(sender, e);
 
             // 处理折叠按钮
@@ -634,7 +629,7 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
             var group = ghDoc.Objects
                 .OfType<GH_Group>()
                 .FirstOrDefault(g => g.ObjectIDs.Contains(receiver.InstanceGuid));
-            
+
             if (group != null)
             {
                 group.AddObject(param.InstanceGuid);
@@ -645,18 +640,18 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
         {
             var doc = Owner.OnPingDocument();
             if (doc == null) return;
-            
+
             var containingGroups = doc.Objects
                 .OfType<GH_Group>()
                 .Where(g => g.ObjectIDs.Contains(Owner.InstanceGuid))
                 .ToList();
-            
+
             foreach (var group in containingGroups)
             {
                 UpdateScribble(doc, group);
             }
         }
-        
+
         private void UpdateScribble(GH_Document doc, GH_Group group)
         {
             var existingScribbles = doc.Objects
@@ -680,23 +675,23 @@ private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiv
                 }
             }
         }
-        
+
         // 新增方法，专门用于创建初始 Scribble
         private void CreateInitialScribble(GH_Document doc, GH_Group group, string nickName)
         {
             var scribble = new GH_Scribble();
             scribble.Text = $"{nickName}_";
             scribble.Font = new System.Drawing.Font("微软雅黑", 100, FontStyle.Bold);
-            
+
             doc.AddObject(scribble, false);
             scribble.Attributes.Pivot = new PointF(
                 group.Attributes.Bounds.Left + 10,
                 group.Attributes.Bounds.Top - 150
             );
-            
+
             group.AddObject(scribble.InstanceGuid);
         }
-        
+
         // 添加设置折叠状态的方法
         public void SetCollapsedState(bool state)
         {

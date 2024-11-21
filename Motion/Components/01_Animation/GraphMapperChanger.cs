@@ -37,11 +37,12 @@ namespace Motion.Animation
             pManager.AddNumberParameter("outValue", "V", "输出值", GH_ParamAccess.item);
         }
 
+        double oData = 0d;
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             double iData = 0d;
             Interval iDomain = new Interval(0, 1);
-            double oData = 0d;
+            
 
             // 先获取区间数据
             if (!DA.GetData(1, ref iDomain)) return;
@@ -102,6 +103,8 @@ namespace Motion.Animation
                 if (DA.GetData(0, ref iData))
                 {
                     oData = iData;
+                    // 更新Message，保留2位小数
+                    this.Message = $"{this.NickName} | {oData:F2}";
                 }
             }
 
@@ -188,6 +191,17 @@ namespace Motion.Animation
             _lastMapper = null;
             _lastDomain = new Interval(0,1);
             base.RemovedFromDocument(document);
+        }
+
+        public override string NickName
+        {
+            get => base.NickName;
+            set
+            {
+                base.NickName = value;
+                this.Message = $"{value} | {oData:F2}";
+                this.ExpireSolution(true);
+            }
         }
     }
 }

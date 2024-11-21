@@ -2,6 +2,7 @@
 using Grasshopper.Kernel;
 using System;
 using System.Drawing;
+using System.IO;
 
 namespace Motion
 {
@@ -18,6 +19,7 @@ namespace Motion
     #endregion
     public class MotionInfo : GH_AssemblyInfo
     {
+        public static string WorkingFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Motion");
         public override string Name => "Motion";
 
         //Return a 24x24 pixel bitmap to represent this GHA library.

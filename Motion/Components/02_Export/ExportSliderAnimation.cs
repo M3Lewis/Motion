@@ -191,8 +191,6 @@ namespace Motion.Export
 
             await Task.Run(() =>
             {
-                int currentFrame = 0;
-                int total = 0;
                 bool wasAborted = false;
 
                 Action<int, int> updateProgress = (frame, total) =>
@@ -227,7 +225,7 @@ namespace Motion.Export
                     if (!sliderAnimator.SetupAnimationProperties())
                         return;
 
-                    currentFrame = sliderAnimator.MotionStartAnimation(
+                    sliderAnimator.MotionStartAnimation(
                         parameters.IsTransparent,
                         parameters.ViewName,
                         parameters.IsCycles,

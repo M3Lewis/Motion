@@ -24,7 +24,7 @@ namespace Motion.Export
             UseCustomRange = false;
         }
 
-        public int MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses, out List<string> outputPathList, out bool wasAborted, Action<int, int> progressCallback = null)
+        public void MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses, out List<string> outputPathList, out bool wasAborted, Action<int, int> progressCallback = null)
         {
             outputPathList = new List<string>();
             wasAborted = false;
@@ -61,7 +61,7 @@ namespace Motion.Export
             // ȡĵ
             GH_Document gH_Document = m_owner.OnPingDocument();
             if (gH_Document == null)
-                return 0;
+                return;
 
             // ʼʱ
             long ticks = DateTime.Now.Ticks;
@@ -154,7 +154,6 @@ namespace Motion.Export
                 "Animation aborted by user." :
                 $"Animation saved to disk: {m_folder}\\");
             RhinoApp.CommandPrompt = string.Empty;
-            return m_frameIndex;
         }
 
         public Bitmap MotionCreateFrame(bool isTransparent, RhinoView myView, bool isCycles, int realtimeRenderPasses, RealtimeDisplayMode cycles, int oldPasses)
