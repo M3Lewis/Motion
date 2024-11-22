@@ -11,6 +11,8 @@ namespace Motion.Animation
 {
     public class EventOperation : GH_Component
     {
+        private double _currentEventValue = 0;
+        private double _currentMappedEventValue = 0;
         public EventOperation() : base(
             "Event Operation",
             "Event Operation",
@@ -39,23 +41,25 @@ namespace Motion.Animation
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             // 声明输入变量
-            List<double> events = new List<double>();
+            List<double> eventValues = new List<double>();
 
             // 获取输入数据
-            if (!DA.GetDataList(0, events)) return;
+            if (!DA.GetDataList(0, eventValues)) return;
 
 
             // 处理逻辑
-            List<double> eventValue = new List<double>();
+            List<double> mappedEventValues = new List<double>();
             List<double> eventStart = new List<double>();
             List<Interval> eventInterval = new List<Interval>();
+            Interval currentInterval = new Interval(0, 1);
+            double currentEventValue = 0;
 
             var doc = OnPingDocument();
             double timelineSliderValue = (double)doc.Objects
                     .OfType<GH_NumberSlider>()
                     .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase)).Slider.Value;
 
-            for (int i = 0; i < events.Count; i++)
+            for (int i = 0; i < eventValues.Count; i++)
             {
                 IGH_DocumentObject graphMapperDocumentObject = Params.Input[0].Sources[i].Attributes.GetTopLevel.DocObject;
                 if (graphMapperDocumentObject.GetType().ToString() == "Grasshopper.Kernel.Special.GH_GraphMapper")
@@ -89,47 +93,52 @@ namespace Motion.Animation
                         }
                         else
                         {
-                            // 先计算输入值在源区间的比例
-
-                            double t = timelineSliderValue >= timeDomainEnd ? 1 : (timelineSliderValue - timeDomainStart) / timeDomain.Length;
-                            // 然后将这个比例映射到目标区间
-                            mappedValue = valueDomain.T0 + t * valueDomain.Length;
+                            //注意，这里eventValues[i]就是Graph Mapper的Y值。之前Event求的是Graph Mapper的X值。
+                            mappedValue = valueDomain.T0 + eventValues[i] * valueDomain.Length;
 
                             // 确保值在目标区间内
                             mappedValue = Math.Min(Math.Max(mappedValue, valueDomain.Min), valueDomain.Max);
                         }
-                        eventValue.Add(mappedValue);
+                        mappedEventValues.Add(mappedValue);
                     }
                 }
             }
 
-            sort(eventStart, eventValue, eventInterval, out eventStart, out eventValue, out eventInterval);
+            sort(eventStart, mappedEventValues, eventInterval, eventValues, out eventStart, out mappedEventValues, out eventInterval, out eventValues);
             GH_Document ghDocument = OnPingDocument();
 
-            double result = GetCurrentValue(timelineSliderValue, eventInterval, eventValue);
-
+            double result = GetCurrentValue(timelineSliderValue, eventInterval, mappedEventValues, eventValues, out currentInterval, out currentEventValue);
+            _currentEventValue = currentEventValue;
+            _currentMappedEventValue = result;
+            this.Message = $"【{currentInterval.T0}-{currentInterval.T1}】";
+            
             // 设置输出
             DA.SetData(0, result);
-        }
 
-        private void sort(List<double> listA, List<double> listB, List<Interval> listC,
-            out List<double> LA_, out List<double> LB_, out List<Interval> LC_)
+            // 强制重绘组件
+            this.OnDisplayExpired(true);
+        }
+        private void sort(List<double> listA, List<double> listB, List<Interval> listC, List<double> listD,
+            out List<double> LA_, out List<double> LB_, out List<Interval> LC_, out List<double> LD_)
         {
             List<double> LA = new List<double>();
             List<double> LB = new List<double>();
             List<Interval> LC = new List<Interval>();
+            List<double> LD = new List<double>();
 
             if (listA.Count < 2)
             {
                 LA = listA;
                 LB = listB;
                 LC = listC;
+                LD = listD;
             }
             else
             {
                 LA.Add(listA[0]);
                 LB.Add(listB[0]);
                 LC.Add(listC[0]);
+                LD.Add(listD[0]);
                 for (int i = 1; i < listA.Count; i++)
                 {
                     bool sign = true;
@@ -140,6 +149,7 @@ namespace Motion.Animation
                             LA.Insert(j, listA[i]);
                             LB.Insert(j, listB[i]);
                             LC.Insert(j, listC[i]);
+                            LD.Insert(j, listD[i]);
                             sign = false;
                             break;
                         }
@@ -149,6 +159,7 @@ namespace Motion.Animation
                         LA.Add(listA[i]);
                         LB.Add(listB[i]);
                         LC.Add(listC[i]);
+                        LD.Add(listD[i]);
                     }
                 }
             }
@@ -156,20 +167,26 @@ namespace Motion.Animation
             LA_ = LA;
             LB_ = LB;
             LC_ = LC;
+            LD_ = LD;
         }
 
-        private double GetCurrentValue(double time, List<Interval> eventInterval, List<double> eventValue)
+        private double GetCurrentValue(double time, List<Interval> eventInterval, List<double> mappedEventValues, List<double> eventValues, out Interval currentInterval, out double currentEventValue)
         {
             bool sign = true;
-            double currentValue = eventValue[0];
+            double currentValue = mappedEventValues[0];
+            currentInterval = new Interval(0, 1);
+            currentEventValue = eventValues[0];
 
             for (int i = 0; i < eventInterval.Count - 1; i++)
             {
                 Interval dom = new Interval(eventInterval[i].T0, eventInterval[i + 1].T0);
                 if (dom.IncludesParameter(time, false))
                 {
-                    currentValue = eventValue[i];
+                    currentValue = mappedEventValues[i];
+                    currentInterval = dom;
+                    currentEventValue = eventValues[i];
                     sign = false;
+                    break;
                 }
             }
 
@@ -177,10 +194,24 @@ namespace Motion.Animation
             {
                 if (time >= eventInterval[eventInterval.Count - 1].T0)
                 {
-                    currentValue = eventValue[eventInterval.Count - 1];
+                    currentValue = mappedEventValues[eventInterval.Count - 1];
+                    currentInterval = eventInterval[eventInterval.Count - 1];
+                    currentEventValue = eventValues[eventValues.Count - 1];
                 }
             }
+
             return currentValue;
         }
+
+        // 添加一个公共属性来访问 _currentEventValue
+        public double CurrentEventValue => _currentEventValue;
+        public double CurrentMappedEventValue => _currentMappedEventValue;
+        // 重写 CreateAttributes 方法
+        public override void CreateAttributes()
+        {
+            m_attributes = new EventOperationAttributes(this);
+        }
+
+        
     }
 }

@@ -12,7 +12,7 @@ namespace Motion.Motility
 {
     public abstract class RemoteParam : Param_GenericObject, IGH_InitCodeAware
     {
-        // 添加新的字段来控制模式
+        // 添加新的字段来控制模式F
         public bool UseEmptyValueMode { get; set; } = false;  // 是否使用空值模式
 
         private bool _hideWhenEmpty;
