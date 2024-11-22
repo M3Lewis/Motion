@@ -288,12 +288,41 @@ namespace Motion.Export
         {
             try
             {
-                // ʹ Process.Start  Directory Opus ·
-                Process.Start("dopus.exe", $"/cmd \"{path}\"");
+                // 检查系统环境变量 Path 中是否包含 dopus.exe
+                bool hasDOpus = Environment.GetEnvironmentVariable("PATH")
+                    ?.Split(';')
+                    .Any(p => !string.IsNullOrEmpty(p) && 
+                             File.Exists(Path.Combine(p.Trim(), "dopus.exe"))) ?? false;
+
+                if (hasDOpus)
+                {
+                    // 使用 Directory Opus 打开目录
+                    Process.Start("dopus.exe", $"/cmd \"{path}\"");
+                }
+                else
+                {
+                    // 使用系统默认的资源管理器打开目录
+                    Process.Start("explorer.exe", path);
+                }
             }
             catch (Exception ex)
             {
                 RhinoApp.WriteLine($"无法打开目录: {ex.Message}");
+                
+                // 如果上述方法都失败，尝试使用最基本的方式打开目录
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = path,
+                        UseShellExecute = true,
+                        Verb = "open"
+                    });
+                }
+                catch (Exception innerEx)
+                {
+                    RhinoApp.WriteLine($"备用方法也无法打开目录: {innerEx.Message}");
+                }
             }
         }
     }

@@ -67,16 +67,18 @@ namespace Motion.Export
             long ticks = DateTime.Now.Ticks;
 
             // ÷Χ
-            double currentValue, maxValue;
+            double currentValue, maxValue,minValue;
             if (UseCustomRange)
             {
                 currentValue = CustomRange.Min;
                 maxValue = CustomRange.Max;
+                minValue = Convert.ToDouble(m_owner.Slider.Minimum);
             }
             else
             {
                 currentValue = Convert.ToDouble(m_owner.Slider.Minimum);
                 maxValue = Convert.ToDouble(m_owner.Slider.Maximum);
+                minValue= Convert.ToDouble(m_owner.Slider.Minimum); 
             }
 
             m_currentValue = currentValue;
@@ -113,7 +115,7 @@ namespace Motion.Export
                     Grasshopper.Instances.ActiveCanvas.Refresh();
                     Grasshopper.Instances.RedrawAll();
 
-                    progressCallback?.Invoke(m_frameIndex, UseCustomRange ? (int)CustomRange.Length + 1 : (int)maxValue + 1);
+                    progressCallback?.Invoke(m_frameIndex, UseCustomRange ? (int)CustomRange.Length + 1 : (int)maxValue -(int)minValue+1);
 
                     //Stopwatch stopwatch = new Stopwatch();
                     //stopwatch.Start();
