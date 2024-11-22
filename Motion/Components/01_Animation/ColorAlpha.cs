@@ -2,19 +2,19 @@ using Grasshopper.Kernel;
 using System;
 using System.Drawing;
 
-namespace Motion.Utils
+namespace Motion.Animation
 {
     public class ColorAlpha : GH_Component
     {
         public ColorAlpha()
             : base("Color Alpha", "Alpha", 
                 "Modify the alpha (transparency) value of a color",
-                "Motion", "03_Utils")
+                "Motion", "01_Animation")
         {
         }
 
         public override Guid ComponentGuid => new Guid("47a71f9a-30c5-42ad-bd2e-1de680ca6b2f");
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.ColorAlpha;
         public override GH_Exposure Exposure => GH_Exposure.primary;
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)

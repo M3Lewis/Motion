@@ -87,41 +87,41 @@ namespace Motion.Motility
             var rangeStr = range.ToString();
             var splitStr = rangeStr.Split(',');
             var newNickname = string.Join("-", splitStr);
-            
+
             this.NickName = newNickname;
             slider.NickName = newNickname;
-            
-            var doc = OnPingDocument();
-            if (doc != null)
-            {
-                foreach (var recipient in this.Recipients)
-                {
-                    if (recipient is Param_RemoteReceiver receiver)
-                    {
-                        receiver.NickName = newNickname;
-                        
-                        var locations = doc.Objects
-                            .OfType<Param_RemoteLocation>()
-                            .Where(loc => loc._linkedReceiverGuid == receiver.InstanceGuid);
-                            
-                        var targets = doc.Objects
-                            .OfType<Param_RemoteTarget>()
-                            .Where(tar => tar._linkedReceiverGuid == receiver.InstanceGuid);
 
-                        foreach (var location in locations)
-                        {
-                            location.NickName = newNickname;
-                            location.ReconnectToMergeComponents();
-                        }
+            //var doc = OnPingDocument();
+            //if (doc != null)
+            //{
+            //    foreach (var recipient in this.Recipients)
+            //    {
+            //        if (recipient is Param_RemoteReceiver receiver)
+            //        {
+            //            receiver.NickName = newNickname;
 
-                        foreach (var target in targets)
-                        {
-                            target.NickName = newNickname;
-                            target.ReconnectToMergeComponents();
-                        }
-                    }
-                }
-            }
+            //            var locations = doc.Objects
+            //                .OfType<Param_RemoteLocation>()
+            //                .Where(loc => loc._linkedReceiverGuid == receiver.InstanceGuid);
+
+            //            var targets = doc.Objects
+            //                .OfType<Param_RemoteTarget>()
+            //                .Where(tar => tar._linkedReceiverGuid == receiver.InstanceGuid);
+
+            //            foreach (var location in locations)
+            //            {
+            //                location.NickName = newNickname;
+            //                location.ReconnectToMergeComponents();
+            //            }
+
+            //            foreach (var target in targets)
+            //            {
+            //                target.NickName = newNickname;
+            //                target.ReconnectToMergeComponents();
+            //            }
+            //        }
+            //    }
+            //}
         }
 
         protected override void OnVolatileDataCollected()
@@ -332,98 +332,98 @@ namespace Motion.Motility
             return true;
         }
 
-        public override void RemovedFromDocument(GH_Document document)
-        {
-            try
-            {
-                if (document != null)
-                {
-                    // 创建一个单独的撤销记录，用于处理 Remote 组件的删除
-                    var remoteUndoRecord = new GH_UndoRecord("Remove Remote Components");
+        //public override void RemovedFromDocument(GH_Document document)
+        //{
+        //    try
+        //    {
+        //        if (document != null)
+        //        {
+        //            // 创建一个单独的撤销记录，用于处理 Remote 组件的删除
+        //            var remoteUndoRecord = new GH_UndoRecord("Remove Remote Components");
 
-                    // 获取所有要删除的组件
-                    var componentsToDelete = new List<IGH_DocumentObject>();
+        //            // 获取所有要删除的组件
+        //            var componentsToDelete = new List<IGH_DocumentObject>();
 
-                    // 获取所有匹配的 Location 和 Target
-                    var matchingLocations = document.Objects
-                        .OfType<Param_RemoteLocation>()
-                        .Where(rd => rd.NickName == this.NickName)
-                        .ToList();
+        //            // 获取所有匹配的 Location 和 Target
+        //            var matchingLocations = document.Objects
+        //                .OfType<Param_RemoteLocation>()
+        //                .Where(rd => rd.NickName == this.NickName)
+        //                .ToList();
 
-                    var matchingTargets = document.Objects
-                        .OfType<Param_RemoteTarget>()
-                        .Where(rd => rd.NickName == this.NickName)
-                        .ToList();
+        //            var matchingTargets = document.Objects
+        //                .OfType<Param_RemoteTarget>()
+        //                .Where(rd => rd.NickName == this.NickName)
+        //                .ToList();
 
-                    // 先确保所有连接都已建立
-                    foreach (var location in matchingLocations)
-                    {
-                        var mergeLocations = document.Objects
-                            .Where(obj => obj.Name.Contains("MergeCameraLocation") && obj is IGH_Component)
-                            .Cast<IGH_Component>()
-                            .ToList();
+        //            // 先确保所有连接都已建立
+        //            foreach (var location in matchingLocations)
+        //            {
+        //                var mergeLocations = document.Objects
+        //                    .Where(obj => obj.Name.Contains("MergeCameraLocation") && obj is IGH_Component)
+        //                    .Cast<IGH_Component>()
+        //                    .ToList();
 
-                        foreach (var merge in mergeLocations)
-                        {
-                            foreach (var param in merge.Params.Input)
-                            {
-                                if (param.NickName == location.NickName && !param.Sources.Contains(location))
-                                {
-                                    param.AddSource(location);
-                                }
-                            }
-                        }
-                    }
+        //                foreach (var merge in mergeLocations)
+        //                {
+        //                    foreach (var param in merge.Params.Input)
+        //                    {
+        //                        if (param.NickName == location.NickName && !param.Sources.Contains(location))
+        //                        {
+        //                            param.AddSource(location);
+        //                        }
+        //                    }
+        //                }
+        //            }
 
-                    foreach (var target in matchingTargets)
-                    {
-                        var mergeTargets = document.Objects
-                            .Where(obj => obj.Name.Contains("MergeCameraTarget") && obj is IGH_Component)
-                            .Cast<IGH_Component>()
-                            .ToList();
+        //            foreach (var target in matchingTargets)
+        //            {
+        //                var mergeTargets = document.Objects
+        //                    .Where(obj => obj.Name.Contains("MergeCameraTarget") && obj is IGH_Component)
+        //                    .Cast<IGH_Component>()
+        //                    .ToList();
 
-                        foreach (var merge in mergeTargets)
-                        {
-                            foreach (var param in merge.Params.Input)
-                            {
-                                if (param.NickName == target.NickName && !param.Sources.Contains(target))
-                                {
-                                    param.AddSource(target);
-                                }
-                            }
-                        }
-                    }
+        //                foreach (var merge in mergeTargets)
+        //                {
+        //                    foreach (var param in merge.Params.Input)
+        //                    {
+        //                        if (param.NickName == target.NickName && !param.Sources.Contains(target))
+        //                        {
+        //                            param.AddSource(target);
+        //                        }
+        //                    }
+        //                }
+        //            }
 
-                    // 等待一帧以确保连接已经建立
-                    document.ScheduleSolution(5, (doc) =>
-                    {
-                        // 添加到要删除的组件列表
-                        componentsToDelete.AddRange(matchingLocations);
-                        componentsToDelete.AddRange(matchingTargets);
+        //            // 等待一帧以确保连接已经建立
+        //            document.ScheduleSolution(5, (doc) =>
+        //            {
+        //                // 添加到要删除的组件列表
+        //                //componentsToDelete.AddRange(matchingLocations);
+        //                //componentsToDelete.AddRange(matchingTargets);
 
-                        if (componentsToDelete.Any())
-                        {
-                            // 添加撤销动作
-                            remoteUndoRecord.AddAction(new RemoteComponentsUndoAction(componentsToDelete, document));
-                            document.UndoServer.PushUndoRecord(remoteUndoRecord);
+        //                if (componentsToDelete.Any())
+        //                {
+        //                    // 添加撤销动作
+        //                    remoteUndoRecord.AddAction(new RemoteComponentsUndoAction(componentsToDelete, document));
+        //                    document.UndoServer.PushUndoRecord(remoteUndoRecord);
 
-                            // 执行删除操作
-                            foreach (var comp in componentsToDelete)
-                            {
-                                document.RemoveObject(comp, false);
-                            }
-                        }
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                Rhino.RhinoApp.WriteLine($"Error removing matching Remote params: {ex.Message}");
-            }
-            finally
-            {
-                base.RemovedFromDocument(document);
-            }
-        }
+        //                    // 执行删除操作
+        //                    foreach (var comp in componentsToDelete)
+        //                    {
+        //                        document.RemoveObject(comp, false);
+        //                    }
+        //                }
+        //            });
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Rhino.RhinoApp.WriteLine($"Error removing matching Remote params: {ex.Message}");
+        //    }
+        //    finally
+        //    {
+        //        base.RemovedFromDocument(document);
+        //    }
+        //}
     }
 }

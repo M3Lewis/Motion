@@ -169,86 +169,86 @@ namespace Motion.Motility
             timer.Start();
         }
 
-        private bool HasDuplicateReceiversAndData()
-        {
-            var doc = OnPingDocument();
-            if (doc == null) return false;
+        //private bool HasDuplicateReceiversAndData()
+        //{
+        //    var doc = OnPingDocument();
+        //    if (doc == null) return false;
 
-            // 检查是否存在重复的Receiver
-            var receivers = doc.Objects
-                .OfType<Param_RemoteReceiver>()
-                .Where(r => r.NickName == this.NickName && r != this)  // 排除自身
-                .ToList();
+        //    // 检查是否存在重复的Receiver
+        //    var receivers = doc.Objects
+        //        .OfType<Param_RemoteReceiver>()
+        //        .Where(r => r.NickName == this.NickName && r != this)  // 排除自身
+        //        .ToList();
 
-            if (receivers.Count == 0) return false;  // 如果没有重复的Receiver，直接返回false
+        //    if (receivers.Count == 0) return false;  // 如果没有重复的Receiver，直接返回false
 
-            // 检查是否存在相同nickname的RemoteTarget或RemoteLocation
-            var existingTargets = doc.Objects
-                .OfType<Param_RemoteTarget>()
-                .Any(t => t.NickName == this.NickName);
+        //    // 检查是否存在相同nickname的RemoteTarget或RemoteLocation
+        //    var existingTargets = doc.Objects
+        //        .OfType<Param_RemoteTarget>()
+        //        .Any(t => t.NickName == this.NickName);
 
-            var existingLocations = doc.Objects
-                .OfType<Param_RemoteLocation>()
-                .Any(l => l.NickName == this.NickName);
+        //    var existingLocations = doc.Objects
+        //        .OfType<Param_RemoteLocation>()
+        //        .Any(l => l.NickName == this.NickName);
 
-            // 只有当同时存在重复的Receiver和相关的数据时才返回true
-            return existingTargets || existingLocations;
-        }
+        //    // 只有当同时存在重复的Receiver和相关的数据时才返回true
+        //    return existingTargets || existingLocations;
+        //}
 
-        internal void CreateRemoteData()
-        {
-            var doc = OnPingDocument();
-            if (doc == null) return;
+        //internal void CreateRemoteData()
+        //{
+        //    var doc = OnPingDocument();
+        //    if (doc == null) return;
 
-            // 检查是否同时存在重复的Receiver和相关数据
-            if (HasDuplicateReceiversAndData())
-            {
-                var canvas = Grasshopper.Instances.ActiveCanvas;
-                if (canvas != null)
-                {
-                    ShowTemporaryMessage(canvas, 
-                        $"存在多个相同标识({this.NickName})的 Receiver 且已创建Camera数据，无法重复创建!");
-                }
-                return;
-            }
+        //    // 检查是否同时存在重复的Receiver和相关数据
+        //    if (HasDuplicateReceiversAndData())
+        //    {
+        //        var canvas = Grasshopper.Instances.ActiveCanvas;
+        //        if (canvas != null)
+        //        {
+        //            ShowTemporaryMessage(canvas, 
+        //                $"存在多个相同标识({this.NickName})的 Receiver 且已创建Camera数据，无法重复创建!");
+        //        }
+        //        return;
+        //    }
 
-            try
-            {
-                // 创建 Location 参数
-                var locationParam = new Param_RemoteLocation();
-                locationParam.NickName = this.NickName;
-                locationParam.LinkToReceiver(this);
-                // 先设置位置
-                locationParam.CreateAttributes();
-                locationParam.Attributes.Pivot = new PointF(
-                    this.Attributes.Pivot.X + 600,
-                    this.Attributes.Pivot.Y
-                );
-                // 再添加到文档
-                doc.AddObject(locationParam, false);
+        //    try
+        //    {
+        //        // 创建 Location 参数
+        //        var locationParam = new Param_RemoteLocation();
+        //        locationParam.NickName = this.NickName;
+        //        locationParam.LinkToReceiver(this);
+        //        // 先设置位置
+        //        locationParam.CreateAttributes();
+        //        locationParam.Attributes.Pivot = new PointF(
+        //            this.Attributes.Pivot.X + 600,
+        //            this.Attributes.Pivot.Y
+        //        );
+        //        // 再添加到文档
+        //        doc.AddObject(locationParam, false);
 
-                // 创建 Target 参数
-                var targetParam = new Param_RemoteTarget();
-                targetParam.NickName = this.NickName;
-                targetParam.LinkToReceiver(this);
-                // 先设置位置
-                targetParam.CreateAttributes();
-                targetParam.Attributes.Pivot = new PointF(
-                    this.Attributes.Pivot.X + 600,
-                    this.Attributes.Pivot.Y + 100
-                );
-                // 再添加到文档
-                doc.AddObject(targetParam, false);
+        //        // 创建 Target 参数
+        //        var targetParam = new Param_RemoteTarget();
+        //        targetParam.NickName = this.NickName;
+        //        targetParam.LinkToReceiver(this);
+        //        // 先设置位置
+        //        targetParam.CreateAttributes();
+        //        targetParam.Attributes.Pivot = new PointF(
+        //            this.Attributes.Pivot.X + 600,
+        //            this.Attributes.Pivot.Y + 100
+        //        );
+        //        // 再添加到文档
+        //        doc.AddObject(targetParam, false);
 
-                // 强制更新文档
-                doc.DestroyAttributeCache();
-                doc.ScheduleSolution(5);
-            }
-            catch (Exception ex)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Failed to create remote data: {ex.Message}");
-            }
-        }
+        //        // 强制更新文档
+        //        doc.DestroyAttributeCache();
+        //        doc.ScheduleSolution(5);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Failed to create remote data: {ex.Message}");
+        //    }
+        //}
 
         // 添加右键菜单选项
         public override void AppendAdditionalMenuItems(ToolStripDropDown menu)

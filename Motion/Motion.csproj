@@ -51,8 +51,12 @@
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
+    <Compile Remove="Components\OBSOLETE\GraphMapperChanger.cs" />
     <Compile Remove="Components\OBSOLETE\MergeByCount.cs" />
     <Compile Remove="Components\OBSOLETE\MergeBySliderCount.cs" />
+    <Compile Remove="Components\OBSOLETE\MergeCameraBase.cs" />
+    <Compile Remove="Components\OBSOLETE\MergeCameraLocation.cs" />
+    <Compile Remove="Components\OBSOLETE\MergeCameraTarget.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUi.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiLatest.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
@@ -62,6 +66,10 @@
   </ItemGroup>
   
   <ItemGroup>
+    <None Include="Components\OBSOLETE\GraphMapperChanger.cs" />
+    <None Include="Components\OBSOLETE\MergeCameraBase.cs" />
+    <None Include="Components\OBSOLETE\MergeCameraLocation.cs" />
+    <None Include="Components\OBSOLETE\MergeCameraTarget.cs" />
     <None Include="Components\OBSOLETE\SliderInterval.cs" />
     <None Include="Components\OBSOLETE\SliderLocker.cs" />
     <None Include="Components\OBSOLETE\MergeCameraData.cs" />

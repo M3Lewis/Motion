@@ -2,15 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using Grasshopper.GUI.Canvas;
+using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
 using Rhino.Geometry;
 
-namespace Motion.Animation
+namespace Motion.Motility
 {
     public class EventOperation : GH_Component
     {
+        public List<EventComponent> ChildEvent = new List<EventComponent>();
         private double _currentEventValue = 0;
         private double _currentMappedEventValue = 0;
         public EventOperation() : base(
@@ -18,10 +21,10 @@ namespace Motion.Animation
             "Event Operation",
             "处理事件序列的操作",
             "Motion", // 替换为您想要的类别
-            "01_Animation") // 替换为您想要的子类别
+            "04_Motility") // 替换为您想要的子类别
         {
         }
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.secondary;
 
         public override Guid ComponentGuid => new Guid("4293226C-974C-4D88-A5BB-0231347BDD5D");
 
@@ -211,7 +214,5 @@ namespace Motion.Animation
         {
             m_attributes = new EventOperationAttributes(this);
         }
-
-        
     }
 }

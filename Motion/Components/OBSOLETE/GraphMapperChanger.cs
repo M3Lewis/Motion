@@ -8,7 +8,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 
-namespace Motion.Animation
+namespace Motion.Components.OBSOLETE
 {
     public class GraphMapperChanger : GH_Component
     {
@@ -16,7 +16,9 @@ namespace Motion.Animation
         private Interval _lastDomain;
         private IGH_DocumentObject _lastMapper;
 
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.GraphMapperChanger;
+        protected override Bitmap Icon => Properties.Resources.GraphMapperChanger;
+
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
         public override Guid ComponentGuid => new Guid("99B193E1-4328-467B-AC81-3D3C40FAC5CC");
 
         public GraphMapperChanger()
@@ -26,13 +28,13 @@ namespace Motion.Animation
         {
         }
 
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddNumberParameter("GraphMapper Data", "G", "GraphMapper数据", GH_ParamAccess.item);
             pManager.AddIntervalParameter("Y Domain", "D", "Y轴目标区间", GH_ParamAccess.item, new Interval(0, 1));
         }
 
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddNumberParameter("outValue", "V", "输出值", GH_ParamAccess.item);
         }
@@ -42,16 +44,16 @@ namespace Motion.Animation
         {
             double iData = 0d;
             Interval iDomain = new Interval(0, 1);
-            
+
 
             // 先获取区间数据
             if (!DA.GetData(1, ref iDomain)) return;
 
             // 获取Graph Mapper
-            var sourceParam = this.Params.Input[0].Sources.FirstOrDefault();
+            var sourceParam = Params.Input[0].Sources.FirstOrDefault();
             if (sourceParam == null)
             {
-                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "输入端口未连接");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "输入端口未连接");
                 return;
             }
 
@@ -65,7 +67,8 @@ namespace Motion.Animation
                 if (domainChanged || mapperChanged)
                 {
                     // 使用Document级别的延迟更新来处理Y轴区间变化
-                    this.OnPingDocument().ScheduleSolution(10, doc => {
+                    OnPingDocument().ScheduleSolution(10, doc =>
+                    {
                         try
                         {
                             var container = graphMapper.Container;
@@ -77,7 +80,7 @@ namespace Motion.Animation
                         }
                         catch (Exception ex)
                         {
-                            this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"更新Graph Mapper失败: {ex.Message}");
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"更新Graph Mapper失败: {ex.Message}");
                         }
                     });
                 }
@@ -104,7 +107,7 @@ namespace Motion.Animation
                 {
                     oData = iData;
                     // 更新Message，保留2位小数
-                    this.Message = $"{this.NickName} | {oData:F2}";
+                    Message = $"{NickName} | {oData:F2}";
                 }
             }
 
@@ -114,8 +117,8 @@ namespace Motion.Animation
         public override void AddedToDocument(GH_Document document)
         {
             // 检查第一个输入端是否已经有连接
-            bool isNewComponent = this.Params.Input[0].SourceCount == 0;
-            
+            bool isNewComponent = Params.Input[0].SourceCount == 0;
+
             // 只有新添加的组件（没有连接）才创建Graph Mapper
             if (isNewComponent)
             {
@@ -124,29 +127,29 @@ namespace Motion.Animation
                     // 创建并添加Graph Mapper
                     var graphMapper = Instances.ComponentServer.EmitObject(_graphMapperGuid) as GH_GraphMapper;
                     if (graphMapper == null) return;
-                    
+
                     _lastMapper = graphMapper;
 
                     // 设置Graph Mapper的位置
                     _lastMapper.CreateAttributes();
                     _lastMapper.Attributes.Pivot = new PointF(
-                        this.Attributes.Pivot.X - 300f, 
-                        this.Attributes.Pivot.Y -85f
+                        Attributes.Pivot.X - 300f,
+                        Attributes.Pivot.Y - 85f
                     );
 
                     // 添加到文档
                     doc.AddObject(_lastMapper, false);
 
                     // 连接Graph Mapper的输出到当前组件的第一个输入
-                    this.Params.Input[0].AddSource(graphMapper);
+                    Params.Input[0].AddSource(graphMapper);
 
                     // 查找附近的RemoteReceiver并连接
                     var nearbyReceivers = doc.Objects
                         .OfType<IGH_Param>()
                         .Where(p => p.GetType().Name == "Param_RemoteReceiver" &&
-                                   Math.Abs(p.Attributes.Pivot.Y - this.Attributes.Pivot.Y) < 50 &&
-                                   Math.Abs(p.Attributes.Pivot.X - this.Attributes.Pivot.X) < 600)
-                        .OrderBy(p => Math.Abs(p.Attributes.Pivot.X - this.Attributes.Pivot.X))
+                                   Math.Abs(p.Attributes.Pivot.Y - Attributes.Pivot.Y) < 50 &&
+                                   Math.Abs(p.Attributes.Pivot.X - Attributes.Pivot.X) < 600)
+                        .OrderBy(p => Math.Abs(p.Attributes.Pivot.X - Attributes.Pivot.X))
                         .FirstOrDefault();
 
                     // 如果找到Receiver，连接到Graph Mapper的输入
@@ -162,7 +165,7 @@ namespace Motion.Animation
                         bezierGraph.PrepareForUse();
                         var container = graphMapper.Container;
                         graphMapper.Container = null;  // 先清空当前Container
-                        
+
                         if (container == null)
                         {
                             container = new GH_GraphContainer(bezierGraph);
@@ -175,12 +178,13 @@ namespace Motion.Animation
                     }
 
                     // 刷新解决方案
-                    doc.ScheduleSolution(10, d => {
+                    doc.ScheduleSolution(10, d =>
+                    {
                         if (graphMapper != null)
                         {
                             graphMapper.ExpireSolution(true);
                         }
-                        this.ExpireSolution(true);
+                        ExpireSolution(true);
                     });
                 });
             }
@@ -189,7 +193,7 @@ namespace Motion.Animation
         public override void RemovedFromDocument(GH_Document document)
         {
             _lastMapper = null;
-            _lastDomain = new Interval(0,1);
+            _lastDomain = new Interval(0, 1);
             base.RemovedFromDocument(document);
         }
 
@@ -199,8 +203,8 @@ namespace Motion.Animation
             set
             {
                 base.NickName = value;
-                this.Message = $"{value} | {oData:F2}";
-                this.ExpireSolution(true);
+                Message = $"{value} | {oData:F2}";
+                ExpireSolution(true);
             }
         }
     }

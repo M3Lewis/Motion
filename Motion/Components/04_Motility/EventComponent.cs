@@ -8,11 +8,15 @@ using Grasshopper.Kernel.Special;
 using System.Windows.Forms;
 using Rhino;
 using Grasshopper.GUI.Base;
+using Grasshopper.GUI.Canvas;
+using Grasshopper;
+using System.Drawing;
 
 namespace Motion.Motility
 {
     public class EventComponent : GH_Component
     {
+        
         private Param_RemoteSender _linkedSender;
         // 添加一个临时存储GUID的列表
         private List<Guid> _pendingGuids = new List<Guid>();
@@ -131,6 +135,8 @@ namespace Motion.Motility
         {
             UpdateMessage();
         }
+
+        public override GH_Exposure Exposure => GH_Exposure.secondary;
         public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
         {
             base.AppendAdditionalMenuItems(menu);
@@ -145,6 +151,62 @@ namespace Motion.Motility
                 // 只在空值模式下显示这些选项
                 Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, HideWhenEmpty);
                 Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, LockWhenEmpty);
+            }
+
+            // 添加分隔线和跳转选项
+            Menu_AppendSeparator(menu);
+
+            // 检查是否有连接的 EventOperation
+            var hasEventOperation = false;
+            IGH_DocumentObject targetOperation = null;
+
+            if (Params.Output[0].Recipients.Count > 0)
+            {
+                foreach (var recipient in Params.Output[0].Recipients)
+                {
+                    var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
+                    if (graphMapper?.Recipients.Count > 0)
+                    {
+                        targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                        if (targetOperation != null)
+                        {
+                            hasEventOperation = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 添加跳转菜单项
+            var jumpItem = Menu_AppendItem(menu, "跳转到 EventOperation", OnJumpToOperation);
+            jumpItem.Enabled = hasEventOperation;
+            if (hasEventOperation)
+            {
+                jumpItem.ToolTipText = "跳转到关联的 EventOperation 组件";
+            }
+            else
+            {
+                jumpItem.ToolTipText = "没有找到关联的 EventOperation 组件";
+            }
+        }
+
+        private void OnJumpToOperation(object sender, EventArgs e)
+        {
+            if (Params.Output[0].Recipients.Count == 0) return;
+
+            foreach (var recipient in Params.Output[0].Recipients)
+            {
+                var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
+                if (graphMapper?.Recipients.Count > 0)
+                {
+                    var eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                    if (eventOperation != null)
+                    {
+                        // 跳转到 EventOperation
+                        GoComponent(eventOperation);
+                        break;
+                    }
+                }
             }
         }
         private void UpdateMessage()
@@ -579,7 +641,7 @@ namespace Motion.Motility
             }
         }
 
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.Event;
         public override Guid ComponentGuid => new Guid("A7B3C4D5-E6F7-48A9-B0C1-D2E3F4A5B6C7");
 
         public override void CreateAttributes()
@@ -757,6 +819,18 @@ namespace Motion.Motility
                     RhinoApp.WriteLine("Timeline Slider ValueChanged event resubscribed");
                 }
             }
+        }
+
+        public void GoComponent(IGH_DocumentObject com)
+        {
+            PointF view_point = new PointF(com.Attributes.Pivot.X, com.Attributes.Pivot.Y);
+            GH_NamedView gH_NamedView = new GH_NamedView("", view_point, 1.5f, GH_NamedViewType.center);
+            foreach (IGH_DocumentObject item in com.OnPingDocument().SelectedObjects())
+            {
+                item.Attributes.Selected = false;
+            }
+            com.Attributes.Selected = true;
+            gH_NamedView.SetToViewport(Instances.ActiveCanvas, 300);
         }
     }
 }

@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace Motion.Animation
+namespace Motion.Components.OBSOLETE
 {
     public abstract class MergeCameraBase : GH_Component, IGH_VariableParameterComponent
     {
@@ -37,7 +37,7 @@ namespace Motion.Animation
             _previousNicknames = new Dictionary<IGH_DocumentObject, string>();
             _previousValues = new Dictionary<IGH_DocumentObject, (decimal min, decimal max)>();
             _currentSliders = new List<IGH_DocumentObject>();
-            
+
             Params.ParameterSourcesChanged += ParamSourcesChanged;
         }
 
@@ -71,7 +71,7 @@ namespace Motion.Animation
                 });
             });
 
-            this.Hidden = true;
+            Hidden = true;
         }
 
         private void ConnectMatchingRemoteParams()
@@ -81,8 +81,8 @@ namespace Motion.Animation
 
             // 根据组件类型选择对应的远程参数类型
             var remoteParams = doc.Objects
-                .Where(obj => ComponentType == MergeCameraType.Location ? 
-                    obj is Param_RemoteLocation : 
+                .Where(obj => ComponentType == MergeCameraType.Location ?
+                    obj is Param_RemoteLocation :
                     obj is Param_RemoteTarget)
                 .Cast<IGH_Param>()
                 .ToList();
@@ -90,12 +90,12 @@ namespace Motion.Animation
             foreach (var input in Params.Input)
             {
                 var matchingParam = remoteParams.FirstOrDefault(p => p.NickName == input.NickName);
-                
+
                 if (matchingParam != null)
                 {
                     bool isRemoteParamInUse = Params.Input
-                        .Any(p => p != input && 
-                                 p.SourceCount > 0 && 
+                        .Any(p => p != input &&
+                                 p.SourceCount > 0 &&
                                  p.Sources[0] == matchingParam);
 
                     if (!isRemoteParamInUse)
@@ -230,7 +230,7 @@ namespace Motion.Animation
             return OnPingDocument().Objects
                 .Where(o => o.GetType().ToString() == _timelineSliderTypeName
                             && o.NickName != "TimeLine(Union)")
-                .OrderBy(s => 
+                .OrderBy(s =>
                 {
                     // 从 NickName 中提取 "-" 前面的数字
                     var parts = s.NickName.Split('-');
@@ -254,7 +254,7 @@ namespace Motion.Animation
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            this.Message = this.NickName;
+            Message = NickName;
             IGH_Goo result = null;
 
             try
@@ -262,7 +262,7 @@ namespace Motion.Animation
                 // 获取 TimeLine(Union) slider
                 var doc = OnPingDocument();
                 var unionSlider = doc?.Objects
-                    .FirstOrDefault(o => o.GetType().ToString().Contains("pOd_TimeLineSlider") && 
+                    .FirstOrDefault(o => o.GetType().ToString().Contains("pOd_TimeLineSlider") &&
                                         o.NickName == "TimeLine(Union)") as GH_NumberSlider;
 
                 if (unionSlider != null)
@@ -278,8 +278,8 @@ namespace Motion.Animation
                         if (param.SourceCount > 0)
                         {
                             string[] parts = param.NickName.Split('-');
-                            if (parts.Length == 2 && 
-                                double.TryParse(parts[0], out double start) && 
+                            if (parts.Length == 2 &&
+                                double.TryParse(parts[0], out double start) &&
                                 double.TryParse(parts[1], out double end))
                             {
                                 if (unionValue >= start && unionValue <= end && start > maxStartValue)
@@ -318,13 +318,13 @@ namespace Motion.Animation
 
         public void CallBack(GH_Document gdoc)
         {
-            try 
+            try
             {
                 var currentSliders = GetTimelineSliders();
                 _currentSliders = new List<IGH_DocumentObject>(currentSliders);
 
                 var existingConnections = new List<(string nickname, IGH_Param remoteParam, float sliderY)>();
-                
+
                 var sliderPositions = new Dictionary<(string nickname, float y), IGH_DocumentObject>();
                 foreach (var slider in currentSliders)
                 {
@@ -345,7 +345,7 @@ namespace Motion.Animation
                                 .OrderBy(kvp => Math.Abs(kvp.Key.y - param.Attributes.Bounds.Y))
                                 .FirstOrDefault();
 
-                            if (param.NickName == remoteParam.NickName && 
+                            if (param.NickName == remoteParam.NickName &&
                                 !matchingSlider.Equals(default(KeyValuePair<(string, float), IGH_DocumentObject>)))
                             {
                                 existingConnections.Add((
@@ -388,7 +388,7 @@ namespace Motion.Animation
                     {
                         var slider = currentSliders[i];
                         var param = Params.Input[i];
-                        
+
                         param.Name = slider.Name;
                         param.NickName = slider.NickName;
                     }
@@ -396,7 +396,7 @@ namespace Motion.Animation
 
                 foreach (var connection in existingConnections)
                 {
-                    var slider = currentSliders.FirstOrDefault(s => 
+                    var slider = currentSliders.FirstOrDefault(s =>
                         Math.Abs(s.Attributes.Bounds.Y - connection.sliderY) < 0.1);
 
                     if (slider != null)
@@ -405,8 +405,8 @@ namespace Motion.Animation
                         if (param != null && param.NickName == connection.nickname)
                         {
                             bool isRemoteParamInUse = Params.Input
-                                .Any(p => p != param && 
-                                        p.SourceCount > 0 && 
+                                .Any(p => p != param &&
+                                        p.SourceCount > 0 &&
                                         p.Sources[0] == connection.remoteParam);
 
                             if (!isRemoteParamInUse)
@@ -469,4 +469,4 @@ namespace Motion.Animation
             }
         }
     }
-} 
+}

@@ -50,47 +50,47 @@ namespace Motion.Motility
                         _inputConnections[comp.InstanceGuid] = inputGuids;
                     }
 
-                    // 保存与 Merge 组件的连接
-                    var mergeGuids = new List<Guid>();
-                    if (comp is Param_RemoteTarget)
-                    {
-                        var mergeTargets = document.Objects
-                            .Where(obj => obj.Name.Contains("MergeCameraTarget") && obj is IGH_Component)
-                            .Cast<IGH_Component>();
+                    //// 保存与 Merge 组件的连接
+                    //var mergeGuids = new List<Guid>();
+                    //if (comp is Param_RemoteTarget)
+                    //{
+                    //    var mergeTargets = document.Objects
+                    //        .Where(obj => obj.Name.Contains("MergeCameraTarget") && obj is IGH_Component)
+                    //        .Cast<IGH_Component>();
 
-                        foreach (var merge in mergeTargets)
-                        {
-                            foreach (var mergeParam in merge.Params.Input)
-                            {
-                                if (mergeParam.NickName == param.NickName)
-                                {
-                                    mergeGuids.Add(merge.InstanceGuid);
-                                }
-                            }
-                        }
-                    }
-                    else if (comp is Param_RemoteLocation)
-                    {
-                        var mergeLocations = document.Objects
-                            .Where(obj => obj.Name.Contains("MergeCameraLocation") && obj is IGH_Component)
-                            .Cast<IGH_Component>();
+                    //    foreach (var merge in mergeTargets)
+                    //    {
+                    //        foreach (var mergeParam in merge.Params.Input)
+                    //        {
+                    //            if (mergeParam.NickName == param.NickName)
+                    //            {
+                    //                mergeGuids.Add(merge.InstanceGuid);
+                    //            }
+                    //        }
+                    //    }
+                    //}
+                    //else if (comp is Param_RemoteLocation)
+                    //{
+                    //    var mergeLocations = document.Objects
+                    //        .Where(obj => obj.Name.Contains("MergeCameraLocation") && obj is IGH_Component)
+                    //        .Cast<IGH_Component>();
 
-                        foreach (var merge in mergeLocations)
-                        {
-                            foreach (var mergeParam in merge.Params.Input)
-                            {
-                                if (mergeParam.NickName == param.NickName)
-                                {
-                                    mergeGuids.Add(merge.InstanceGuid);
-                                }
-                            }
-                        }
-                    }
+                    //    foreach (var merge in mergeLocations)
+                    //    {
+                    //        foreach (var mergeParam in merge.Params.Input)
+                    //        {
+                    //            if (mergeParam.NickName == param.NickName)
+                    //            {
+                    //                mergeGuids.Add(merge.InstanceGuid);
+                    //            }
+                    //        }
+                    //    }
+                    //}
 
-                    if (mergeGuids.Any())
-                    {
-                        _mergeConnections[comp.InstanceGuid] = mergeGuids;
-                    }
+                    //if (mergeGuids.Any())
+                    //{
+                    //    _mergeConnections[comp.InstanceGuid] = mergeGuids;
+                    //}
                 }
             }
         }

@@ -18,7 +18,7 @@ namespace Motion.Toolbar
 
         public NamedViewSwitch()
         {
-            
+
         }
         private void AddNamedViewSwitchButton()
         {
@@ -53,7 +53,7 @@ namespace Motion.Toolbar
             button.Name = "View Switch";
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            button.Image = Image.FromFile("C:\\Users\\M3\\Nutstore\\1\\我的坚果云\\VisualStudioGHLibrary\\Motion\\Motion\\Icons\\NamedViewSwitch.png");
+            button.Image = Properties.Resources.NamedViewSwitch2;
             button.ToolTipText = "Switch between named views using +/- keys";
             button.Click += ClickedButton;
         }
@@ -93,6 +93,18 @@ namespace Motion.Toolbar
         {
             LoadNamedViews();
             if (!isActive) return;
+            if (namedViews.Count <= 0)
+            {
+                var doc = Grasshopper.Instances.ActiveCanvas.Document;
+                var canvas = Grasshopper.Instances.ActiveCanvas;
+                bool isPressed = e.KeyCode == Keys.Oemplus || e.KeyCode == Keys.Oemplus;
+                if (canvas != null&& isPressed)
+                {
+                    ShowTemporaryMessage(canvas,
+                        $"请创建一个Named View!");
+                }
+                return;
+            }
 
             if (e.KeyCode == Keys.Oemplus)
             {
@@ -129,6 +141,61 @@ namespace Motion.Toolbar
             {
                 Rhino.RhinoApp.WriteLine($"Error switching view: {ex.Message}");
             }
+        }
+
+        private void ShowTemporaryMessage(GH_Canvas canvas, string message)
+        {
+            GH_Canvas.CanvasPrePaintObjectsEventHandler canvasRepaint = null;
+            canvasRepaint = (sender) =>
+            {
+                Graphics g = canvas.Graphics;
+                if (g == null) return;
+
+                // 保存当前的变换矩阵
+                var originalTransform = g.Transform;
+                
+                // 重置变换，确保文字大小不受画布缩放影响
+                g.ResetTransform();
+
+                // 计算文本大小
+                SizeF textSize = new SizeF(30, 30) ;
+                
+                // 设置消息位置在画布顶部居中
+                float padding = 20; // 顶部边距
+                float x = textSize.Width+300;
+                float y = padding+30;
+
+                RectangleF textBounds = new RectangleF(x, y, textSize.Width+300, textSize.Height+30);
+                textBounds.Inflate(6, 3);  // 添加一些内边距
+
+                // 绘制消息
+                GH_Capsule capsule = GH_Capsule.CreateTextCapsule(
+                    textBounds,
+                    textBounds,
+                    GH_Palette.Pink,
+                    message);
+
+                capsule.Render(g, Color.LightSkyBlue);
+                capsule.Dispose();
+
+                // 恢复原始变换
+                g.Transform = originalTransform;
+            };
+
+            // 添加临时事件处理器
+            canvas.CanvasPrePaintObjects += canvasRepaint;
+
+            // 设置定时器移除事件处理器
+            Timer timer = new Timer();
+            timer.Interval = 1500;
+            timer.Tick += (sender, e) =>
+            {
+                canvas.CanvasPrePaintObjects -= canvasRepaint;
+                canvas.Refresh();
+                timer.Stop();
+                timer.Dispose();
+            };
+            timer.Start();
         }
     }
 }

@@ -2,6 +2,7 @@ using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
+using Grasshopper.Kernel.Special;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -13,8 +14,8 @@ namespace Motion.Motility
     {
         private bool mouseOver = false;
         private bool _isCollapsed = false;
-        public bool IsCollapsed 
-        { 
+        public bool IsCollapsed
+        {
             get => _isCollapsed;
             private set => _isCollapsed = value;
         }
@@ -63,10 +64,10 @@ namespace Motion.Motility
 
             // 添加折叠按钮布局（在右上角）
             collapseButtonBounds = new RectangleF(
-                Bounds.Right - 20,
-                Bounds.Y,
-                20,
-                20);
+                Bounds.Right - 34,
+                Bounds.Y + 2,
+                9,
+                9);
 
             if (!IsCollapsed)
             {
@@ -130,20 +131,22 @@ namespace Motion.Motility
                     }
                 }
 
-                // 如果是 Receiver，渲染按钮
+
                 if (owner != null)
                 {
                     // 渲染折叠按钮
+
+
                     graphics.DrawString(
-                        IsCollapsed ? "▾" : "▴",
-                        GH_FontServer.Standard,
-                        Brushes.LightSkyBlue,
-                        collapseButtonBounds,
-                        new StringFormat()
-                        {
-                            Alignment = StringAlignment.Far,
-                            LineAlignment = StringAlignment.Far
-                        });
+                    IsCollapsed ? "▾" : "▴",
+                    GH_FontServer.Large,
+                    Brushes.LightBlue,
+                    collapseButtonBounds,
+                    new StringFormat()
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center
+                    });
 
                     // 只在未折叠时渲染其他按钮
                     if (!IsCollapsed)
@@ -334,4 +337,4 @@ namespace Motion.Motility
             ExpireLayout();
         }
     }
-} 
+}

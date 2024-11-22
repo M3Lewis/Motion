@@ -1,9 +1,8 @@
 using Grasshopper.Kernel;
-using Motion.Animation;
 using System;
 using System.Linq;
 
-namespace Motion.Motility
+namespace Motion.Components.OBSOLETE
 {
     public class Param_RemoteTarget : Param_RemoteCameraPointBase
     {
@@ -23,26 +22,26 @@ namespace Motion.Motility
         }
         protected override void ConnectToMergeComponent()
         {
-            var doc = OnPingDocument();
-            if (doc == null) return;
+            //var doc = OnPingDocument();
+            //if (doc == null) return;
 
-            var mergeComps = doc.Objects
-                .OfType<MergeCameraTarget>()
-                .Where(m => m.NickName == "MotionTarget");
+            //var mergeComps = doc.Objects
+            //    .OfType<MergeCameraTarget>()
+            //    .Where(m => m.NickName == "MotionTarget");
 
-            foreach (var mergeComp in mergeComps)
-            {
-                foreach (var param in mergeComp.Params.Input)
-                {
-                    if (param.NickName == this.NickName && !param.Sources.Contains(this))
-                    {
-                        param.AddSource(this);
-                        break;
-                    }
-                }
-            }
+            //foreach (var mergeComp in mergeComps)
+            //{
+            //    foreach (var param in mergeComp.Params.Input)
+            //    {
+            //        if (param.NickName == this.NickName && !param.Sources.Contains(this))
+            //        {
+            //            param.AddSource(this);
+            //            break;
+            //        }
+            //    }
+            //}
 
-            ExpireSolution(true);
+            //ExpireSolution(true);
         }
 
         protected override Param_RemoteCameraPointBase CreateInstance()

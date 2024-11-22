@@ -3,14 +3,11 @@ using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Graphs;
-using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Windows.Forms;
-using System.Windows.Media.TextFormatting;
 
 namespace Motion.Motility
 {
@@ -268,28 +265,28 @@ namespace Motion.Motility
                     }
                 }
 
-                string label = "";
-                if (Owner is Param_RemoteLocation)
-                {
-                    label = "L";
-                }
-                else if (Owner is Param_RemoteTarget)
-                {
-                    label = "T";
-                }
+                //string label = "";
+                //if (Owner is Param_RemoteLocation)
+                //{
+                //    label = "L";
+                //}
+                //else if (Owner is Param_RemoteTarget)
+                //{
+                //    label = "T";
+                //}
 
-                if (!string.IsNullOrEmpty(label))
-                {
-                    var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 7);
-                    var labelBounds = new RectangleF(
-                        Bounds.Left - 12,
-                        Bounds.Top + (Bounds.Height - labelFont.Height) / 2,
-                        15,
-                        labelFont.Height
-                    );
+                //if (!string.IsNullOrEmpty(label))
+                //{
+                //    var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 7);
+                //    var labelBounds = new RectangleF(
+                //        Bounds.Left - 12,
+                //        Bounds.Top + (Bounds.Height - labelFont.Height) / 2,
+                //        15,
+                //        labelFont.Height
+                //    );
 
-                    graphics.DrawString(label, labelFont, Brushes.DarkGray, labelBounds);
-                }
+                //    graphics.DrawString(label, labelFont, Brushes.DarkGray, labelBounds);
+                //}
             }
         }
         private void RenderCapsuleAndArrow(GH_Canvas canvas, Graphics graphics, RectangleF bounds)

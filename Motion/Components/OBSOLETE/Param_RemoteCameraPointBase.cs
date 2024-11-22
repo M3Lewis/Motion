@@ -3,12 +3,13 @@ using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
+using Motion.Motility;
 using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace Motion.Motility
+namespace Motion.Components.OBSOLETE
 {
     public abstract class Param_RemoteCameraPointBase : Param_GenericObject
     {
@@ -19,7 +20,7 @@ namespace Motion.Motility
         {
             Category = "Motion";
             SubCategory = "04_Motility";
-            this.Hidden = true;
+            Hidden = true;
         }
 
         protected override Bitmap Icon => null;
@@ -50,7 +51,7 @@ namespace Motion.Motility
             Point screenPoint = canvas.PointToScreen(new Point((int)canvasLocation.X, (int)canvasLocation.Y));
             Size menuSize = menu.PreferredSize;
             Rectangle screenBounds = Screen.FromPoint(screenPoint).WorkingArea;
-            
+
             int x = screenPoint.X;
             int y = screenPoint.Y;
 
@@ -71,13 +72,13 @@ namespace Motion.Motility
 
         private void DisconnectOutputs()
         {
-            var recipientsToDisconnect = this.Recipients.ToList();
+            var recipientsToDisconnect = Recipients.ToList();
             foreach (var recipient in recipientsToDisconnect)
             {
                 recipient.RemoveSource(this);
             }
-            this.ExpireSolution(true);
-            this.OnDisplayExpired(true);
+            ExpireSolution(true);
+            OnDisplayExpired(true);
         }
 
         public void LinkToReceiver(Param_RemoteReceiver receiver)
@@ -89,26 +90,26 @@ namespace Motion.Motility
 
             _linkedReceiver = receiver;
             _linkedReceiverGuid = receiver.InstanceGuid;
-            this.NickName = receiver.NickName;
+            NickName = receiver.NickName;
             receiver.NickNameChanged += OnReceiverNickNameChanged;
-            this.ExpireSolution(true);
-            this.OnDisplayExpired(true);
+            ExpireSolution(true);
+            OnDisplayExpired(true);
         }
 
         private void OnReceiverNickNameChanged(IGH_DocumentObject sender, string newNickName)
         {
             Grasshopper.Instances.ActiveCanvas.BeginInvoke((Action)(() =>
             {
-                if (this.NickName != newNickName)
+                if (NickName != newNickName)
                 {
                     // 更新 NickName
-                    this.NickName = newNickName;
-                    
+                    NickName = newNickName;
+
                     // 调用子类特定的重连方法
                     ReconnectToMergeComponents();
-                    
-                    this.ExpireSolution(true);
-                    this.OnDisplayExpired(true);
+
+                    ExpireSolution(true);
+                    OnDisplayExpired(true);
                 }
             }));
         }
@@ -204,4 +205,4 @@ namespace Motion.Motility
             return base.RespondToMouseDoubleClick(sender, e);
         }
     }
-} 
+}

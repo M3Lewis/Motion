@@ -130,6 +130,12 @@
   <data name="ClickFinder" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\ClickFinder.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="ColorAlpha" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\ColorAlpha.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Event" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\Event.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="EventOperation" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\EventOperation.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -159,6 +165,9 @@
   </data>
   <data name="NamedViewSwitch" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\NamedViewSwitch.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="NamedViewSwitch2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\NamedViewSwitch2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="RangeSelector" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\RangeSelector.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

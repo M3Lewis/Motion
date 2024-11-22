@@ -103,6 +103,26 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap ColorAlpha {
+            get {
+                object obj = ResourceManager.GetObject("ColorAlpha", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap Event {
+            get {
+                object obj = ResourceManager.GetObject("Event", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap EventOperation {
             get {
                 object obj = ResourceManager.GetObject("EventOperation", resourceCulture);
@@ -196,6 +216,16 @@ namespace Motion.Properties {
         public static System.Drawing.Bitmap NamedViewSwitch {
             get {
                 object obj = ResourceManager.GetObject("NamedViewSwitch", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap NamedViewSwitch2 {
+            get {
+                object obj = ResourceManager.GetObject("NamedViewSwitch2", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
