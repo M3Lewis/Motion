@@ -1,11 +1,10 @@
+using GH_IO.Serialization;
+using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using System;
 using System.Drawing;
-using GH_IO.Serialization;
-using System.Windows.Forms;
-using Grasshopper.GUI.Canvas;
 using System.Linq;
-using Grasshopper.Kernel.Special;
+using System.Windows.Forms;
 
 namespace Motion.Motility
 {

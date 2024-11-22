@@ -6,6 +6,8 @@ using System.Linq;
 using System.Collections.Generic;
 using Grasshopper.Kernel.Special;
 using System.Windows.Forms;
+using Rhino;
+using Grasshopper.GUI.Base;
 
 namespace Motion.Motility
 {
@@ -19,18 +21,28 @@ namespace Motion.Motility
         internal List<IGH_DocumentObject> affectedObjects = new List<IGH_DocumentObject>();
         public bool UseEmptyValueMode { get; private set; } = false;  // 是否使用空值模式
 
-        private bool _hideWhenEmpty;
+        private bool _hideWhenEmpty = false;
         public bool HideWhenEmpty
         {
             get { return _hideWhenEmpty; }
-            set { _hideWhenEmpty = value; }
+            set 
+            { 
+                _hideWhenEmpty = value;
+                // 当值改变时更新状态
+                UpdateGroupVisibilityAndLock();
+            }
         }
-        private bool _lockWhenEmpty;
+        private bool _lockWhenEmpty = false;
 
         public bool LockWhenEmpty
         {
             get { return _lockWhenEmpty; }
-            set { _lockWhenEmpty = value; }
+            set 
+            { 
+                _lockWhenEmpty = value;
+                // 当值改变时更新状态
+                UpdateGroupVisibilityAndLock();
+            }
         }
 
         // 添加 nicknameKey 字段和 NickName 属性
@@ -64,6 +76,53 @@ namespace Motion.Motility
         // 添加状态追踪变量
         private bool _lastHasData = true;
         private bool _lastInInterval = true;
+        private bool _lastHideOrLockState = false;
+
+        private GH_NumberSlider _timelineSlider;
+        private bool _isInitialized = false;
+
+        // 添加文档加载完成后的初始化方法
+        private void InitializeAfterLoad()
+        {
+            if (_isInitialized) return;
+            
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            RhinoApp.WriteLine("InitializeAfterLoad: Starting initialization");
+            
+            // 查找并订阅 Timeline Slider
+            _timelineSlider = doc.Objects
+                .OfType<GH_NumberSlider>()
+                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+
+            if (_timelineSlider != null)
+            {
+                RhinoApp.WriteLine($"Found Timeline Slider: {_timelineSlider.InstanceGuid}");
+                
+                var numberSlider = _timelineSlider as GH_NumberSlider;
+                if (numberSlider?.Slider != null)
+                {
+                    numberSlider.Slider.ValueChanged -= new GH_SliderBase.ValueChangedEventHandler(OnSliderValueChanged);
+                    numberSlider.Slider.ValueChanged += new GH_SliderBase.ValueChangedEventHandler(OnSliderValueChanged);
+                    RhinoApp.WriteLine("Timeline Slider ValueChanged event subscribed");
+                }
+            }
+            else
+            {
+                RhinoApp.WriteLine("WARNING: Timeline Slider not found!");
+            }
+
+            _isInitialized = true;
+            UpdateGroupVisibilityAndLock();
+        }
+
+        // 修正事件处理器的参数类型
+        private void OnSliderValueChanged(object sender, GH_SliderEventArgs e)
+        {
+            RhinoApp.WriteLine($"Slider value changed to: {e.Value}");
+            UpdateGroupVisibilityAndLock();
+        }
 
         public EventComponent()
             : base("Event", "Event",
@@ -117,6 +176,15 @@ namespace Motion.Motility
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            if (!_isInitialized || _timelineSlider == null)
+            {
+                RhinoApp.WriteLine("SolveInstance: Reinitializing");
+                InitializeAfterLoad();
+            }
+
+            // 在每次求解时更新状态
+            UpdateGroupVisibilityAndLock();
+
             double time = 0;
             Interval domain = new Interval(0, 1);
 
@@ -308,32 +376,38 @@ namespace Motion.Motility
 
             try
             {
-                // 序列化模式和状态
+                // 序列化基本状态
+                writer.SetBoolean("HideWhenEmpty", _hideWhenEmpty);
+                writer.SetBoolean("LockWhenEmpty", _lockWhenEmpty);
                 writer.SetBoolean("UseEmptyValueMode", UseEmptyValueMode);
-                writer.SetBoolean("HideWhenEmpty", HideWhenEmpty);
-                writer.SetBoolean("LockWhenEmpty", LockWhenEmpty);
+                writer.SetString("NickNameKey", nicknameKey);
+
+                // 序列化受影响对象的GUID
+                if (affectedObjects != null)
+                {
+                    writer.SetInt32("AffectedCount", affectedObjects.Count);
+                    for (int i = 0; i < affectedObjects.Count; i++)
+                    {
+                        if (affectedObjects[i] != null)
+                        {
+                            writer.SetGuid($"Affected_{i}", affectedObjects[i].InstanceGuid);
+                        }
+                    }
+                }
 
                 // 序列化折叠状态
-                var attributes = this.Attributes as EventComponentAttributes;
-                if (attributes != null)
+                var attrs = m_attributes as EventComponentAttributes;
+                if (attrs != null)
                 {
-                    writer.SetBoolean("IsCollapsed", attributes.IsCollapsed);
+                    writer.SetBoolean("IsCollapsed", attrs.IsCollapsed);
                 }
 
-                // 序列化影响组件的 GUID 列表
-                var guidList = affectedObjects?.Select(obj => obj.InstanceGuid).ToList() ?? new List<Guid>();
-                writer.SetInt32("AffectedCount", guidList.Count);
-                for (int i = 0; i < guidList.Count; i++)
-                {
-                    writer.SetGuid($"Affected_{i}", guidList[i]);
-                }
+                return true;
             }
             catch
             {
                 return false;
             }
-
-            return true;
         }
 
         public override bool Read(GH_IReader reader)
@@ -342,29 +416,36 @@ namespace Motion.Motility
 
             try
             {
-                // 读取模式和状态
+                RhinoApp.WriteLine("Reading component state");
+
+                // ��取基本状态
+                if (reader.ItemExists("HideWhenEmpty"))
+                    _hideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
+                
+                if (reader.ItemExists("LockWhenEmpty"))
+                    _lockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
+                
                 if (reader.ItemExists("UseEmptyValueMode"))
                     UseEmptyValueMode = reader.GetBoolean("UseEmptyValueMode");
-                if (reader.ItemExists("HideWhenEmpty"))
-                    HideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
-                if (reader.ItemExists("LockWhenEmpty"))
-                    LockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
+
+                if (reader.ItemExists("NickNameKey"))
+                    nicknameKey = reader.GetString("NickNameKey");
 
                 // 读取折叠状态
                 if (reader.ItemExists("IsCollapsed"))
                 {
                     var isCollapsed = reader.GetBoolean("IsCollapsed");
-                    var attributes = this.Attributes as EventComponentAttributes;
+                    var attributes = this.m_attributes as EventComponentAttributes;
                     if (attributes != null)
                     {
                         attributes.SetCollapsedState(isCollapsed);
                     }
                 }
 
-                // 先清空待处理的GUID列表
+                // 清空并准备恢复受影响对象
                 _pendingGuids.Clear();
+                affectedObjects.Clear();
 
-                // 只读取GUID并存储，不立即查找对象
                 if (reader.ItemExists("AffectedCount"))
                 {
                     int count = reader.GetInt32("AffectedCount");
@@ -372,32 +453,115 @@ namespace Motion.Motility
                     {
                         if (reader.ItemExists($"Affected_{i}"))
                         {
-                            var guid = reader.GetGuid($"Affected_{i}");
-                            _pendingGuids.Add(guid);
+                            _pendingGuids.Add(reader.GetGuid($"Affected_{i}"));
                         }
                     }
                 }
 
-                // 重置状态追踪变量
-                _lastHasData = false;  // 设置为false以触发第一次更新
-                _lastInInterval = false;  // 设置为false以触发第一次更新
+                RhinoApp.WriteLine($"Read {_pendingGuids.Count} pending GUIDs");
 
-                // 在下一个解决方案中强制更新状态
-                GH_Document doc = OnPingDocument();
-                if (doc != null)
-                {
-                    doc.ScheduleSolution(5, d =>
-                    {
-                        UpdateGroupVisibilityAndLock();
-                    });
-                }
+                // 延迟初始化到组件被添加到文档后
+                Grasshopper.Instances.DocumentServer.DocumentAdded += OnDocumentAdded;
+
+                return true;
             }
-            catch
+            catch (Exception ex)
             {
+                RhinoApp.WriteLine($"Error reading component state: {ex.Message}");
                 return false;
             }
+        }
 
-            return true;
+        private void OnDocumentAdded(GH_DocumentServer sender, GH_Document doc)
+        {
+            if (doc == null) return;
+
+            // 确保只处理一次
+            Grasshopper.Instances.DocumentServer.DocumentAdded -= OnDocumentAdded;
+
+            RhinoApp.WriteLine("Document added, initializing component");
+            
+            // 使用 SolutionStart 事件来确保文档完全加载
+            doc.SolutionStart += Doc_SolutionStart;
+            
+            // 强制一次解决方案运行
+            doc.ScheduleSolution(5);
+        }
+
+        private void Doc_SolutionStart(object sender, GH_SolutionEventArgs e)
+        {
+            var doc = sender as GH_Document;
+            if (doc == null) return;
+
+            doc.SolutionStart -= Doc_SolutionStart;
+            RhinoApp.WriteLine("Doc_SolutionStart: Restoring state");
+
+            try
+            {
+                // 清空当前列表
+                affectedObjects.Clear();
+                
+                // 恢复受影响对象
+                foreach (var guid in _pendingGuids)
+                {
+                    var obj = doc.FindObject(guid, true);
+                    if (obj != null && !(obj is EventComponent))
+                    {
+                        affectedObjects.Add(obj);
+                        RhinoApp.WriteLine($"Restored affected object: {obj.GetType().Name}|{obj.Name}|{obj.InstanceGuid}");
+                    }
+                }
+                _pendingGuids.Clear();
+
+                // 重置初始化标志
+                _isInitialized = false;
+                
+                // 初始化组件
+                InitializeAfterLoad();
+                
+                // 立即强制更新一次状态
+                if (affectedObjects.Any())
+                {
+                    // 确保状态立即生效
+                    var currentValue = (double)_timelineSlider?.CurrentValue;
+                    string[] parts = this.NickName.Split('-');
+                    if (parts.Length == 2 &&
+                        double.TryParse(parts[0], out double min) &&
+                        double.TryParse(parts[1], out double max))
+                    {
+                        bool shouldHideOrLock = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+                        
+                        RhinoApp.WriteLine($"Reapplying initial state - Timeline: {currentValue}, Interval: [{min}-{max}]");
+                        
+                        foreach (var obj in affectedObjects)
+                        {
+                            if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
+                            {
+                                previewObj.Hidden = shouldHideOrLock;
+                                RhinoApp.WriteLine($"Initial HIDE={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                            }
+                            if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
+                            {
+                                activeObj.Locked = shouldHideOrLock;
+                                if (shouldHideOrLock)
+                                {
+                                    activeObj.ClearData();
+                                }
+                                RhinoApp.WriteLine($"Initial LOCK={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                            }
+                        }
+                        
+                        _lastHideOrLockState = shouldHideOrLock;
+                    }
+                    
+                    // 强制更新文档
+                    doc.ScheduleSolution(5);
+                }
+            }
+            catch (Exception ex)
+            {
+                RhinoApp.WriteLine($"Error in Doc_SolutionStart: {ex.Message}");
+            }
         }
 
         protected override System.Drawing.Bitmap Icon => null;
@@ -444,57 +608,94 @@ namespace Motion.Motility
             var doc = OnPingDocument();
             if (doc == null) return;
 
-            bool shouldHideOrLock = false;
-
-            if (UseEmptyValueMode)
+            if (!UseEmptyValueMode && _timelineSlider != null)
             {
-                // 使用空值模式
-                shouldHideOrLock = !this.Params.Input[0].VolatileData.AllData(true).Any();
-            }
-            else
-            {
-                // 使用Timeline Slider模式
-                var timelineSlider = doc.Objects
-                    .OfType<GH_NumberSlider>()
-                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
-
-                if (timelineSlider != null)
+                double currentValue = (double)_timelineSlider.CurrentValue;
+                string[] parts = this.NickName.Split('-');
+                if (parts.Length == 2 &&
+                    double.TryParse(parts[0], out double min) &&
+                    double.TryParse(parts[1], out double max))
                 {
-                    double currentValue = (double)timelineSlider.Slider.Value;
-
-                    // 解析当前receiver的nickname获取区间
-                    string[] parts = this.NickName.Split('-');
-                    if (parts.Length == 2 &&
-                        double.TryParse(parts[0], out double min) &&
-                        double.TryParse(parts[1], out double max))
+                    bool shouldHideOrLock = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+                    
+                    // 只在状态改变时输出信息和应用更改
+                    if (_lastHideOrLockState != shouldHideOrLock)
                     {
-                        shouldHideOrLock = currentValue < min || currentValue > max;
+                        RhinoApp.WriteLine($"Timeline Value: {currentValue}, Interval: [{min}-{max}]");
+                        
+                        // 实际应用状态变化
+                        foreach (var obj in affectedObjects)
+                        {
+                            if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
+                            {
+                                previewObj.Hidden = shouldHideOrLock;
+                                RhinoApp.WriteLine($"HIDE={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                            }
+                            if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
+                            {
+                                activeObj.Locked = shouldHideOrLock;
+                                if (shouldHideOrLock)
+                                {
+                                    activeObj.ClearData();
+                                }
+                                RhinoApp.WriteLine($"LOCK={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                            }
+                        }
+                        
+                        _lastHideOrLockState = shouldHideOrLock;
+                        
+                        // 强制更新文档
+                        doc.ScheduleSolution(5);
                     }
                 }
             }
+        }
 
-            // 应用Hide/Lock状态
-            foreach (var obj in affectedObjects)
+        // 修改为正确的重写方法
+        protected override void BeforeSolveInstance()
+        {
+            if (!_isInitialized)
             {
-                if (obj is IGH_PreviewObject previewObj)
+                RhinoApp.WriteLine("BeforeSolveInstance: Initializing component");
+                InitializeAfterLoad();
+            }
+            base.BeforeSolveInstance();
+        }
+
+        // 修改为正确的清理方法
+        public override void DocumentContextChanged(GH_Document document, GH_DocumentContext context)
+        {
+            base.DocumentContextChanged(document, context);
+            
+            if (context == GH_DocumentContext.Close)
+            {
+                if (_timelineSlider != null)
                 {
-                    if (HideWhenEmpty)
+                    var numberSlider = _timelineSlider as GH_NumberSlider;
+                    if (numberSlider?.Slider != null)
                     {
-                        previewObj.Hidden = shouldHideOrLock;
+                        numberSlider.Slider.ValueChanged -= OnSliderValueChanged;
                     }
+                    _timelineSlider = null;
                 }
-                if (obj is IGH_ActiveObject activeObj)
+                _isInitialized = false;
+            }
+        }
+
+        // 添加一个方法来重新订阅事件
+        private void ResubscribeToEvents()
+        {
+            RhinoApp.WriteLine("Resubscribing to events");
+            if (_timelineSlider != null)
+            {
+                var numberSlider = _timelineSlider as GH_NumberSlider;
+                if (numberSlider?.Slider != null)
                 {
-                    if (LockWhenEmpty)
-                    {
-                        activeObj.Locked = shouldHideOrLock;
-                        activeObj.ClearData();
-                    }
+                    numberSlider.Slider.ValueChanged -= OnSliderValueChanged;
+                    numberSlider.Slider.ValueChanged += OnSliderValueChanged;
+                    RhinoApp.WriteLine("Timeline Slider ValueChanged event resubscribed");
                 }
             }
-
-            // 刷新文档
-            doc.ScheduleSolution(5);
         }
     }
 }
