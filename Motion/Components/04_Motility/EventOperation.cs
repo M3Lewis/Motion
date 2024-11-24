@@ -21,7 +21,8 @@ namespace Motion.Motility
         public EventOperation() : base(
             "Event Operation",
             "Event Operation",
-            "处理事件序列的操作",
+            "处理事件序列的操作\n" +
+            "放大组件 可以添加额外的[当前事件序号]/[当前事件区间]输出端",
             "Motion", // 替换为您想要的类别
             "04_Motility") // 替换为您想要的子类别
         {

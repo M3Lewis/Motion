@@ -26,7 +26,7 @@ namespace Motion.Export
 
         public void MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses, out List<string> outputPathList, out bool wasAborted, Action<int, int> progressCallback = null)
         {
-            outputPathList = new List<string>();
+            outputPathList = null;
             wasAborted = false;
             StoreSettingsAsDefault();
 
@@ -129,7 +129,6 @@ namespace Motion.Export
                         string arg = string.Format(m_fileTemplate, m_frameIndex + (int)CustomRange.Min);
                         string text = string.Format("{0}{2}{1}", m_folder, arg, Path.DirectorySeparatorChar);
                         bitmap.Save(text, ImageFormat.Png);
-                        outputPathList.Add(text);
                         RhinoApp.WriteLine($"Frame {m_frameIndex} saved to disk: {text}");
                         m_frameIndex++;
                         bitmap.Dispose();

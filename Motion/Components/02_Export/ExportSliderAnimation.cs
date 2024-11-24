@@ -86,9 +86,9 @@ namespace Motion.Export
             pManager.AddParameter(pathParam, "Full Path", "P", "输出路径", GH_ParamAccess.item);
 
             pManager.AddBooleanParameter("IsTransparent", "T", "图片是否透明", GH_ParamAccess.item, true);
-            pManager.AddBooleanParameter("IsCycles", "C", "是否使用Cycles渲染", GH_ParamAccess.item, false);
+            pManager.AddBooleanParameter("IsCycles", "Cy", "是否使用Cycles渲染", GH_ParamAccess.item, false);
             pManager.AddIntegerParameter("Passes", "Pa", "Cycles渲染次数", GH_ParamAccess.item, 500);
-            pManager.AddIntervalParameter("Range", "Ra", "导出范围（可选）", GH_ParamAccess.item);
+            pManager.AddIntervalParameter("Range Domain", "D", "导出范围（可选）", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "R", "运行", GH_ParamAccess.item);
             pManager.AddNumberParameter("Frame", "F", "当前帧", GH_ParamAccess.item);
 
@@ -98,8 +98,7 @@ namespace Motion.Export
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("Output Path", "Op", "·", GH_ParamAccess.list);
-            pManager[0].DataMapping = GH_DataMapping.Flatten;
+            // pManager.AddTextParameter("Output Path", "Op", "·", GH_ParamAccess.list);
         }
 
         protected override async void SolveInstance(IGH_DataAccess DA)
@@ -192,74 +191,74 @@ namespace Motion.Export
             string modeName = displayMode.EnglishName;
             bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
 
-            // 检查渲染模式
-            
-
             views.RedrawEnabled = true;
+            // List<string> outputPaths = new List<string>();  // 注释掉
 
-            await Task.Run(() =>
+            try 
             {
-                bool wasAborted = false;
-
-                Action<int, int> updateProgress = (frame, total) =>
+                await Task.Run(() =>
                 {
-                    this.Message = $"Rendering Frame.. {frame + 1}/{total}";
-                    this.OnDisplayExpired(true);
-                };
+                    bool wasAborted = false;
 
-                List<string> outputPaths = new List<string>();
-
-                RhinoApp.InvokeOnUiThread(new Action(() =>
-                {
-                    var sliderAnimator = new MotionSliderAnimator(unionSlider)
+                    Action<int, int> updateProgress = (frame, total) =>
                     {
-                        Width = parameters.Width,
-                        Height = parameters.Height,
-                        Folder = parameters.FullPath
+                        this.Message = $"Rendering Frame.. {frame + 1}/{total}";
+                        this.OnDisplayExpired(true);
                     };
 
-                    if (parameters.IsCustomRange)
-                    {
-                        sliderAnimator.CustomRange = parameters.Range;
-                        sliderAnimator.FrameCount = (int)(parameters.Range.Max - parameters.Range.Min + 1);
-                        sliderAnimator.UseCustomRange = true;
-                    }
-                    else
-                    {
-                        sliderAnimator.FrameCount = (int)unionSlider.Slider.Maximum;
-                        sliderAnimator.UseCustomRange = false;
-                    }
-
-                    if (!sliderAnimator.SetupAnimationProperties())
-                        return;
-
-                    sliderAnimator.MotionStartAnimation(
-                        parameters.IsTransparent,
-                        parameters.ViewName,
-                        parameters.IsCycles,
-                        parameters.RealtimeRenderPasses,
-                        out outputPaths,
-                        out wasAborted,
-                        updateProgress
-                    );
-
-                    if (parameters.IsCycles && !isRaytracedMode)
-                    {
-                        this.Message = "请打开光线跟踪模式!";
-                        return;
-                    }
-                    this.Message = wasAborted ? "Render Cancelled!" : "Render Finished!";
-                }));
-
-                // 在主线程中更新输出
-                if (DA != null)
-                {
                     RhinoApp.InvokeOnUiThread(new Action(() =>
                     {
-                        DA.SetDataList(0, outputPaths);
+                        var sliderAnimator = new MotionSliderAnimator(unionSlider)
+                        {
+                            Width = parameters.Width,
+                            Height = parameters.Height,
+                            Folder = parameters.FullPath
+                        };
+
+                        if (parameters.IsCustomRange)
+                        {
+                            sliderAnimator.CustomRange = parameters.Range;
+                            sliderAnimator.FrameCount = (int)(parameters.Range.Max - parameters.Range.Min + 1);
+                            sliderAnimator.UseCustomRange = true;
+                        }
+                        else
+                        {
+                            sliderAnimator.FrameCount = (int)unionSlider.Slider.Maximum;
+                            sliderAnimator.UseCustomRange = false;
+                        }
+
+                        if (!sliderAnimator.SetupAnimationProperties())
+                            return;
+
+                        if (parameters.IsCycles && !isRaytracedMode)
+                        {
+                            this.Message = "请打开光线跟踪模式!";
+                            return;
+                        }
+
+                        sliderAnimator.MotionStartAnimation(
+                            parameters.IsTransparent,
+                            parameters.ViewName,
+                            parameters.IsCycles,
+                            parameters.RealtimeRenderPasses,
+                            out _, // 使用弃元运算符替代 outputPaths
+                            out wasAborted,
+                            updateProgress
+                        );
+
+                        this.Message = wasAborted ? "Render Cancelled!" : "Render Finished!";
+                        // 注释掉输出更新
+                        // if (DA != null && outputPaths != null && outputPaths.Count > 0)
+                        // {
+                        //     DA.SetDataList(0, outputPaths);
+                        // }
                     }));
-                }
-            });
+                });
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"渲染过程出错: {ex.Message}");
+            }
         }
 
         private bool GetInputParams(IGH_DataAccess DA, out RenderParameters parameters)
