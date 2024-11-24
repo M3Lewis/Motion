@@ -85,7 +85,7 @@ namespace Motion.Animation
             }
         }
 
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.secondary;
 
         protected override Bitmap Icon => Properties.Resources.IntervalLock;
 
