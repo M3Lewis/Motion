@@ -83,6 +83,10 @@ namespace Motion.Export
 
             m_currentValue = currentValue;
             var doc = RhinoDoc.ActiveDoc;
+            var activeView = doc.Views.ActiveView;
+            var displayMode = activeView.ActiveViewport.DisplayMode;  // 返回 DisplayMode 对象
+            string modeName = displayMode.EnglishName;  // 获取显示模式名称，如 "Shaded"、"Wireframe" 等
+            bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
 
             try
             {
@@ -97,7 +101,6 @@ namespace Motion.Export
                         break;
                     }
 
-                    // ½ʾ
                     if (UseCustomRange)
                     {
                         RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex + (int)CustomRange.Min} of {(int)CustomRange.Min}-{(int)CustomRange.Max}. Total:{(int)CustomRange.Max - (int)CustomRange.Min + 1} Time left: {EstimateTimeLeft(ticks)}s";
@@ -119,8 +122,8 @@ namespace Motion.Export
 
                     //Stopwatch stopwatch = new Stopwatch();
                     //stopwatch.Start();
-                    // 񲢱ͼƬ
-                    Bitmap bitmap = MotionCreateFrame(isTransparent, myView, isCycles, realtimeRenderPasses, cycles, oldPasses);
+
+                    Bitmap bitmap = MotionCreateFrame(isTransparent, myView, isCycles,isRaytracedMode, realtimeRenderPasses, cycles, oldPasses);
                     if (bitmap != null)
                     {
                         string arg = string.Format(m_fileTemplate, m_frameIndex + (int)CustomRange.Min);
@@ -133,6 +136,12 @@ namespace Motion.Export
                         cycles.MaxPasses = oldPasses;
                         cycles.Paused = false;
                     }
+                    else if (isCycles&&!isRaytracedMode)
+                    {
+                        RhinoApp.WriteLine($"请打开光线跟踪模式！");
+                        wasAborted = true;
+                        break;
+                    }
                     else
                     {
                         RhinoApp.WriteLine($"Frame {m_frameIndex + (int)CustomRange.Min} failed to render");
@@ -142,7 +151,6 @@ namespace Motion.Export
                     m_currentValue += 1.0;
                 }
 
-                // õʼ֡
                 m_owner.Slider.Value = UseCustomRange ? (int)CustomRange.Min : 0;
                 doc.Views.Redraw();
             }
@@ -153,12 +161,13 @@ namespace Motion.Export
             }
 
             RhinoApp.WriteLine(wasAborted ?
-                "Animation aborted by user." :
+                "Animation cancelled by user." :
                 $"Animation saved to disk: {m_folder}\\");
             RhinoApp.CommandPrompt = string.Empty;
         }
 
-        public Bitmap MotionCreateFrame(bool isTransparent, RhinoView myView, bool isCycles, int realtimeRenderPasses, RealtimeDisplayMode cycles, int oldPasses)
+        public Bitmap MotionCreateFrame(bool isTransparent, RhinoView myView, bool isCycles,
+            bool isRaytracedMode, int realtimeRenderPasses, RealtimeDisplayMode cycles, int oldPasses)
         {
             cycles = myView.RealtimeDisplayMode;
             oldPasses = 1;
@@ -166,7 +175,7 @@ namespace Motion.Export
                 return null;
 
             ViewCapture viewCapture;
-            if (isCycles)
+            if (isCycles&& isRaytracedMode)
             {
                 oldPasses = cycles.MaxPasses;
                 cycles.PostEffectsOn = true;
@@ -183,6 +192,14 @@ namespace Motion.Export
                     TransparentBackground = isTransparent,
                     RealtimeRenderPasses = realtimeRenderPasses,
                 };
+            }
+            else if (!isCycles && isRaytracedMode )
+            {
+                return null;
+            }
+            else if (isCycles && !isRaytracedMode)
+            {
+                return null;
             }
             else
             {

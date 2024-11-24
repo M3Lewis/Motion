@@ -187,6 +187,14 @@ namespace Motion.Export
                 return;
 
             var views = RhinoDoc.ActiveDoc.Views;
+            var activeView = views.ActiveView;
+            var displayMode = activeView.ActiveViewport.DisplayMode;
+            string modeName = displayMode.EnglishName;
+            bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
+
+            // 检查渲染模式
+            
+
             views.RedrawEnabled = true;
 
             await Task.Run(() =>
@@ -235,7 +243,12 @@ namespace Motion.Export
                         updateProgress
                     );
 
-                    this.Message = wasAborted ? "Render Aborted!" : "Render Finished!";
+                    if (parameters.IsCycles && !isRaytracedMode)
+                    {
+                        this.Message = "请打开光线跟踪模式!";
+                        return;
+                    }
+                    this.Message = wasAborted ? "Render Cancelled!" : "Render Finished!";
                 }));
 
                 // 在主线程中更新输出
@@ -323,6 +336,37 @@ namespace Motion.Export
                 {
                     RhinoApp.WriteLine($"备用方法也无法打开目录: {innerEx.Message}");
                 }
+            }
+        }
+
+        public override void AddedToDocument(GH_Document document)
+        {
+            base.AddedToDocument(document);
+
+            // 检查 Frame 输入端是否已有连接
+            if (this.Params.Input[9].Sources.Count > 0) return;
+
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            // 查找 TimeLine(Union) Slider
+            var timelineSlider = doc.Objects
+                .OfType<GH_NumberSlider>()
+                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+
+            if (timelineSlider != null)
+            {
+                // 获取 Frame 输入参数
+                var frameParam = Params.Input[9];
+                
+                // 添加数据连接
+                frameParam.AddSource(timelineSlider);
+                
+                // 设置连线显示类型为隐藏
+                frameParam.WireDisplay = GH_ParamWireDisplay.faint;
+                
+                // 强制更新组件
+                ExpireSolution(true);
             }
         }
     }

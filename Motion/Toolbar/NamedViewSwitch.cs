@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 namespace Motion.Toolbar
 {
-    public class NamedViewSwitch : GH_AssemblyPriority
+    public class NamedViewSwitch : MotionToolbarButton
     {
         private ToolStripButton button;
         private List<string> namedViews = new List<string>();
@@ -22,12 +22,11 @@ namespace Motion.Toolbar
         }
         private void AddNamedViewSwitchButton()
         {
-            ToolStrip toolbar = (ToolStrip)Grasshopper.Instances.DocumentEditor.Controls[0].Controls[1];
-
+            InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
             LoadNamedViews();
-            toolbar.Items.Add(button);
+            AddButtonToGroup(button); // 使用基类方法添加按钮
         }
 
         public override GH_LoadingInstruction PriorityLoad()

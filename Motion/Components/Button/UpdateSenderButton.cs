@@ -5,6 +5,7 @@ using System;
 using System.Drawing;
 using Motion.Motility;
 using System.Linq;
+using Rhino.Geometry;
 
 namespace Motion.Button
 {
@@ -41,6 +42,22 @@ namespace Motion.Button
                         {
                             isUnionSlider = true;
                         }
+
+                        // 检查是否已经存在使用相同范围作为昵称的 Sender
+                        var range = new Interval((double)timelineSlider.Slider.Minimum, (double)timelineSlider.Slider.Maximum);
+                        var rangeStr = range.ToString();
+                        var splitStr = rangeStr.Split(',');
+                        var potentialNickname = string.Join("-", splitStr);
+
+                        var existingSender = doc.Objects
+                            .OfType<Param_RemoteSender>()
+                            .FirstOrDefault(s => s.NickName == potentialNickname);
+
+                        if (existingSender != null)
+                        {
+                            continue;  // 跳过已经存在相同昵称的情况
+                        }
+
                         foreach (var recipient in timelineSlider.Recipients)
                         {
                             if (recipient is Param_RemoteSender)
@@ -50,8 +67,8 @@ namespace Motion.Button
                             }
                         }
 
-                        // 如果已经连接到 sender，跳过这个 slider
-                        if (isConnectedToSender||isUnionSlider) continue;
+                        // 如果已经连接到 sender 或是 union slider，跳过这个 slider
+                        if (isConnectedToSender || isUnionSlider) continue;
 
                         // 创建新的 Param_RemoteSender
                         Param_RemoteSender remoteSender = new Param_RemoteSender();

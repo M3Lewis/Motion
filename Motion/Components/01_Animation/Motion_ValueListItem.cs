@@ -5,7 +5,7 @@ using Grasshopper.Kernel.Expressions;
 using Grasshopper.Kernel.Types;
 using Microsoft.VisualBasic.CompilerServices;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public class Motion_ValueListItem
     {

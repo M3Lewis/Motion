@@ -13,6 +13,7 @@ public class SliderControlWinformComponent : GH_Component
 
     public override Guid ComponentGuid => new Guid("1e5547b0-8195-49ef-b0a4-00eb2f9beb60");
 
+    public override GH_Exposure Exposure => GH_Exposure.hidden;
     public SliderControlWinformComponent()
         : base("Slider Control", "SldCtrl",
             "Control a slider through a floating window",

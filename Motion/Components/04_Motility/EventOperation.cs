@@ -8,14 +8,16 @@ using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
 using Rhino.Geometry;
+using Grasshopper.Kernel.Parameters;
 
 namespace Motion.Motility
 {
-    public class EventOperation : GH_Component
+    public class EventOperation : GH_Component, IGH_VariableParameterComponent
     {
         public List<EventComponent> ChildEvent = new List<EventComponent>();
         private double _currentEventValue = 0;
         private double _currentMappedEventValue = 0;
+        private int _currentEventIndex = 0;
         public EventOperation() : base(
             "Event Operation",
             "Event Operation",
@@ -38,46 +40,135 @@ namespace Motion.Motility
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddNumberParameter("Value", "V", "当前事件值", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Remapped Value", "R", "当前事件值(映射)", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Value", "V", "当前事件值(0-1)", GH_ParamAccess.item);
+        }
+
+        public bool CanInsertParameter(GH_ParameterSide side, int index)
+        {
+            if (side != GH_ParameterSide.Output) return false;
+
+            // 获取当前输出端的状态
+            bool hasIndex = Params.Output.Any(p => p.Name == "Index");
+            bool hasDomain = Params.Output.Any(p => p.Name == "Domain");
+
+            // 只允许在最后一个参数后添加新参数
+            if (index != Params.Output.Count) return false;
+
+            // 如果两个可选参数都不存在
+            if (!hasIndex && !hasDomain) return true;
+
+            // 如果只有一个可选参数存在，且要在它后面添加
+            if ((hasIndex || hasDomain) && Params.Output.Count == 3) return true;
+
+            return false;
+        }
+
+        public bool CanRemoveParameter(GH_ParameterSide side, int index)
+        {
+            // 允许移除 Index 和 Domain 输出端
+            return side == GH_ParameterSide.Output && (index == 2 || index == 3);
+        }
+
+        public IGH_Param CreateParameter(GH_ParameterSide side, int index)
+        {
+            if (side == GH_ParameterSide.Output)
+            {
+                // 检查当前已存在的参数
+                bool hasIndex = Params.Output.Any(p => p.Name == "Index");
+                bool hasDomain = Params.Output.Any(p => p.Name == "Domain");
+
+                // 如果 Index 不存在且要创建的是第一个可选参数，或者明确要创建 Index
+                if ((!hasIndex && !hasDomain) || (!hasIndex && index == 2))
+                {
+                    return new Param_Integer
+                    {
+                        Name = "Index",
+                        NickName = "I",
+                        Description = "当前事件在序列中的序号",
+                        Access = GH_ParamAccess.item,
+                        Optional = true
+                    };
+                }
+                // 否则创建 Domain 参数
+                else
+                {
+                    return new Param_Interval
+                    {
+                        Name = "Domain",
+                        NickName = "D",
+                        Description = "当前事件的值域区间",
+                        Access = GH_ParamAccess.item,
+                        Optional = true
+                    };
+                }
+            }
+            return null;
+        }
+
+        public bool DestroyParameter(GH_ParameterSide side, int index)
+        {
+            return true; // 允许销毁参数
+        }
+
+        public void VariableParameterMaintenance()
+        {
+            // 维护可选输出参数的属性
+            foreach (var param in Params.Output)
+            {
+                switch (param.Name)
+                {
+                    case "Index":
+                        param.Name = "Index";
+                        param.NickName = "I";
+                        param.Description = "当前事件在序列中的序号";
+                        param.Access = GH_ParamAccess.item;
+                        param.Optional = true;
+                        break;
+                    case "Domain":
+                        param.Name = "Domain";
+                        param.NickName = "D";
+                        param.Description = "当前事件的值域区间";
+                        param.Access = GH_ParamAccess.item;
+                        param.Optional = true;
+                        break;
+                }
+            }
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            // 声明输入变量
             List<double> eventValues = new List<double>();
-
-            // 获取输入数据
             if (!DA.GetDataList(0, eventValues)) return;
 
-
-            // 处理逻辑
             List<double> mappedEventValues = new List<double>();
             List<double> eventStart = new List<double>();
             List<Interval> eventInterval = new List<Interval>();
-            Interval currentInterval = new Interval(0, 1);
-            double currentEventValue = 0;
+            List<bool> isReversedIntervals = new List<bool>();
+            List<Interval> valueDomains = new List<Interval>();
+
+            // 声明用于存储当前状态的变量
+            Interval currentInterval;
+            double currentEventValue;
+            Interval currentDomain;
+
+            Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
 
             var doc = OnPingDocument();
             double timelineSliderValue = (double)doc.Objects
                     .OfType<GH_NumberSlider>()
                     .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase)).Slider.Value;
 
+
             for (int i = 0; i < eventValues.Count; i++)
             {
                 IGH_DocumentObject graphMapperDocumentObject = Params.Input[0].Sources[i].Attributes.GetTopLevel.DocObject;
-                if (graphMapperDocumentObject.GetType().ToString() == "Grasshopper.Kernel.Special.GH_GraphMapper")
+                if (graphMapperDocumentObject is GH_GraphMapper graphMapper)
                 {
-                    var graphMapper = (Grasshopper.Kernel.Special.GH_GraphMapper)graphMapperDocumentObject;
-
                     graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
-                    IGH_DocumentObject eventComponentDocumentObject = graphMapper.Sources[0].Attributes.GetTopLevel.DocObject;
-                    if (eventComponentDocumentObject.GetType().ToString() == "Motion.Motility.EventComponent")
+                    if (graphMapper.Sources[0].Attributes.GetTopLevel.DocObject is EventComponent eventComponent)
                     {
-                        IGH_Component eventComponent = (IGH_Component)eventComponentDocumentObject;
-
-                        string eventComponentNickName = eventComponent.NickName;
-                        string[] timeDomainExtremes = eventComponentNickName.Split('-');
-
+                        string[] timeDomainExtremes = eventComponent.NickName.Split('-');
                         double timeDomainStart = double.Parse(timeDomainExtremes[0]);
                         double timeDomainEnd = double.Parse(timeDomainExtremes[1]);
                         Interval timeDomain = new Interval(timeDomainStart, timeDomainEnd);
@@ -86,20 +177,18 @@ namespace Motion.Motility
 
                         GH_Interval ghValueDomain = eventComponent.Params.Input[1].VolatileData.get_Branch(0)[0] as GH_Interval;
                         Interval valueDomain = ghValueDomain.Value;
+                        valueDomains.Add(valueDomain);
 
-                        // 计算映射值
+                        isReversedIntervals.Add(valueDomain.T0 > valueDomain.T1);
+
                         double mappedValue;
-                        if (valueDomain.IsSingleton || valueDomain.IsSingleton)
+                        if (valueDomain.IsSingleton)
                         {
-                            // 处理单点区间的情况
                             mappedValue = valueDomain.Mid;
                         }
                         else
                         {
-                            //注意，这里eventValues[i]就是Graph Mapper的Y值。之前Event求的是Graph Mapper的X值。
                             mappedValue = valueDomain.T0 + eventValues[i] * valueDomain.Length;
-
-                            // 确保值在目标区间内
                             mappedValue = Math.Min(Math.Max(mappedValue, valueDomain.Min), valueDomain.Max);
                         }
                         mappedEventValues.Add(mappedValue);
@@ -107,112 +196,210 @@ namespace Motion.Motility
                 }
             }
 
-            sort(eventStart, mappedEventValues, eventInterval, eventValues, out eventStart, out mappedEventValues, out eventInterval, out eventValues);
-            GH_Document ghDocument = OnPingDocument();
+            sort(eventStart, mappedEventValues, eventInterval, eventValues, isReversedIntervals, valueDomains,
+                out eventStart, out mappedEventValues, out eventInterval, out eventValues, out isReversedIntervals, out valueDomains);
 
-            double result = GetCurrentValue(timelineSliderValue, eventInterval, mappedEventValues, eventValues, out currentInterval, out currentEventValue);
+            double result = GetCurrentValue(timelineSliderValue, eventInterval, mappedEventValues, eventValues,
+                isReversedIntervals, valueDomains, out currentInterval, out currentEventValue, out int currentIndex, out currentDomain);
+
             _currentEventValue = currentEventValue;
             _currentMappedEventValue = result;
-            this.Message = $"【{currentInterval.T0}-{currentInterval.T1}】";
-            
-            // 设置输出
-            DA.SetData(0, result);
+            _currentEventIndex = currentIndex;
+            bool isDefaultInterval = currentInterval.T0 == 0 && currentInterval.T1 == 1;
+            bool isInEventInterval = false;
+            foreach (var interval in eventInterval)
+            {
+                isInEventInterval = interval.IncludesParameter(timelineSliderValue);
+            }
+            this.Message = isDefaultInterval||!isInEventInterval ? "OUTSIDE" : $"【{currentInterval.T0}-{currentInterval.T1}】";
 
-            // 强制重绘组件
+            DA.SetData(0, result);
+            DA.SetData(1, currentEventValue);
+
+            // 只在对应输出端存在时输出数据
+            if (Params.Output.Any(p => p.Name == "Index"))
+            {
+                DA.SetData("Index", currentIndex);
+            }
+            if (Params.Output.Any(p => p.Name == "Domain"))
+            {
+                DA.SetData("Domain", currentDomain);
+            }
+
             this.OnDisplayExpired(true);
         }
-        private void sort(List<double> listA, List<double> listB, List<Interval> listC, List<double> listD,
-            out List<double> LA_, out List<double> LB_, out List<Interval> LC_, out List<double> LD_)
-        {
-            List<double> LA = new List<double>();
-            List<double> LB = new List<double>();
-            List<Interval> LC = new List<Interval>();
-            List<double> LD = new List<double>();
 
-            if (listA.Count < 2)
-            {
-                LA = listA;
-                LB = listB;
-                LC = listC;
-                LD = listD;
-            }
-            else
-            {
-                LA.Add(listA[0]);
-                LB.Add(listB[0]);
-                LC.Add(listC[0]);
-                LD.Add(listD[0]);
-                for (int i = 1; i < listA.Count; i++)
-                {
-                    bool sign = true;
-                    for (int j = 0; j < LA.Count; j++)
-                    {
-                        if (listA[i] < LA[j])
-                        {
-                            LA.Insert(j, listA[i]);
-                            LB.Insert(j, listB[i]);
-                            LC.Insert(j, listC[i]);
-                            LD.Insert(j, listD[i]);
-                            sign = false;
-                            break;
-                        }
-                    }
-                    if (sign)
-                    {
-                        LA.Add(listA[i]);
-                        LB.Add(listB[i]);
-                        LC.Add(listC[i]);
-                        LD.Add(listD[i]);
-                    }
-                }
-            }
-
-            LA_ = LA;
-            LB_ = LB;
-            LC_ = LC;
-            LD_ = LD;
-        }
-
-        private double GetCurrentValue(double time, List<Interval> eventInterval, List<double> mappedEventValues, List<double> eventValues, out Interval currentInterval, out double currentEventValue)
+        private double GetCurrentValue(
+            double time,
+            List<Interval> eventInterval,
+            List<double> mappedEventValues,
+            List<double> eventValues,
+            List<bool> isReversedIntervals,
+            List<Interval> valueDomains,  // 新增：值域列表参数
+            out Interval currentInterval,
+            out double currentEventValue,
+            out int currentIndex,
+            out Interval currentDomain)
         {
             bool sign = true;
             double currentValue = mappedEventValues[0];
             currentInterval = new Interval(0, 1);
-            currentEventValue = eventValues[0];
+            currentEventValue = isReversedIntervals[0] ? 1 - eventValues[0] : eventValues[0];
+            currentIndex = 0;
+            currentDomain = valueDomains[0];  // 使用传入的值域
 
             for (int i = 0; i < eventInterval.Count - 1; i++)
             {
-                Interval dom = new Interval(eventInterval[i].T0, eventInterval[i + 1].T0);
+                Interval dom = new Interval(eventInterval[i].T0, eventInterval[i].T1);
                 if (dom.IncludesParameter(time, false))
                 {
                     currentValue = mappedEventValues[i];
                     currentInterval = dom;
-                    currentEventValue = eventValues[i];
+                    currentEventValue = isReversedIntervals[i] ? 1 - eventValues[i] : eventValues[i];
+                    currentIndex = i;
+                    currentDomain = valueDomains[i];  // 使用传入的值域
                     sign = false;
                     break;
                 }
             }
 
-            if (sign)
+            if (sign && time >= eventInterval[eventInterval.Count - 1].T0)
             {
-                if (time >= eventInterval[eventInterval.Count - 1].T0)
-                {
-                    currentValue = mappedEventValues[eventInterval.Count - 1];
-                    currentInterval = eventInterval[eventInterval.Count - 1];
-                    currentEventValue = eventValues[eventValues.Count - 1];
-                }
+                int lastIndex = eventInterval.Count - 1;
+                currentValue = mappedEventValues[lastIndex];
+                currentInterval = eventInterval[lastIndex];
+                currentEventValue = isReversedIntervals[lastIndex] ? 1 - eventValues[lastIndex] : eventValues[lastIndex];
+                currentIndex = lastIndex;
+                currentDomain = valueDomains[lastIndex];  // 使用传入的值域
             }
 
             return currentValue;
         }
 
-        // 添加一个公共属性来访问 _currentEventValue
+        private void sort(
+            List<double> eventStartTimes,
+            List<double> mappedValues,
+            List<Interval> timeIntervals,
+            List<double> originalValues,
+            List<bool> isReversedIntervals,
+            List<Interval> valueDomains,  // 新增：值域列表
+            out List<double> sortedStartTimes,
+            out List<double> sortedMappedValues,
+            out List<Interval> sortedTimeIntervals,
+            out List<double> sortedOriginalValues,
+            out List<bool> sortedIsReversed,
+            out List<Interval> sortedValueDomains)  // 新增：排序后的值域列表
+        {
+            // 创建新的排序后列表
+            List<double> newStartTimes = new List<double>();
+            List<double> newMappedValues = new List<double>();
+            List<Interval> newTimeIntervals = new List<Interval>();
+            List<double> newOriginalValues = new List<double>();
+            List<bool> newIsReversed = new List<bool>();
+            List<Interval> newValueDomains = new List<Interval>();  // 新增：新的值域列表
+
+            if (eventStartTimes.Count < 2)
+            {
+                // 如果列表长度小于2，无需排序
+                sortedStartTimes = eventStartTimes;
+                sortedMappedValues = mappedValues;
+                sortedTimeIntervals = timeIntervals;
+                sortedOriginalValues = originalValues;
+                sortedIsReversed = isReversedIntervals;
+                sortedValueDomains = valueDomains;
+            }
+            else
+            {
+                // 添加第一个元素
+                newStartTimes.Add(eventStartTimes[0]);
+                newMappedValues.Add(mappedValues[0]);
+                newTimeIntervals.Add(timeIntervals[0]);
+                newOriginalValues.Add(originalValues[0]);
+                newIsReversed.Add(isReversedIntervals[0]);
+                newValueDomains.Add(valueDomains[0]);
+
+                // 插入排序
+                for (int i = 1; i < eventStartTimes.Count; i++)
+                {
+                    bool inserted = false;
+                    for (int j = 0; j < newStartTimes.Count; j++)
+                    {
+                        if (eventStartTimes[i] < newStartTimes[j])
+                        {
+                            newStartTimes.Insert(j, eventStartTimes[i]);
+                            newMappedValues.Insert(j, mappedValues[i]);
+                            newTimeIntervals.Insert(j, timeIntervals[i]);
+                            newOriginalValues.Insert(j, originalValues[i]);
+                            newIsReversed.Insert(j, isReversedIntervals[i]);
+                            newValueDomains.Insert(j, valueDomains[i]);
+                            inserted = true;
+                            break;
+                        }
+                    }
+
+                    if (!inserted)
+                    {
+                        newStartTimes.Add(eventStartTimes[i]);
+                        newMappedValues.Add(mappedValues[i]);
+                        newTimeIntervals.Add(timeIntervals[i]);
+                        newOriginalValues.Add(originalValues[i]);
+                        newIsReversed.Add(isReversedIntervals[i]);
+                        newValueDomains.Add(valueDomains[i]);
+                    }
+                }
+
+                sortedStartTimes = newStartTimes;
+                sortedMappedValues = newMappedValues;
+                sortedTimeIntervals = newTimeIntervals;
+                sortedOriginalValues = newOriginalValues;
+                sortedIsReversed = newIsReversed;
+                sortedValueDomains = newValueDomains;
+            }
+        }
+
         public double CurrentEventValue => _currentEventValue;
         public double CurrentMappedEventValue => _currentMappedEventValue;
-        // 重写 CreateAttributes 方法
+        public int CurrentEventIndex => _currentEventIndex;
         public override void CreateAttributes()
         {
             m_attributes = new EventOperationAttributes(this);
+
+        }
+
+        public override void AddedToDocument(GH_Document document)
+        {
+            base.AddedToDocument(document);
+            ConnectToTimelineSlider();
+        }
+
+        private void ConnectToTimelineSlider()
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            // 查找 TimeLine(Union) Slider
+            var timelineSlider = doc.Objects
+                .OfType<GH_NumberSlider>()
+                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+
+            if (timelineSlider != null)
+            {
+                // 获取时间输入参数
+                var timeParam = Params.Input[1];  // "Time" 输入端
+
+                // 检查是否已经连接
+                if (!timeParam.Sources.Any())
+                {
+                    // 添加数据连接
+                    timeParam.AddSource(timelineSlider);
+
+                    // 设置连线显示类型为隐藏
+                    timeParam.WireDisplay = GH_ParamWireDisplay.hidden;
+
+                    // 强制更新组件
+                    ExpireSolution(true);
+                }
+            }
         }
     }
 }

@@ -11,10 +11,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Windows.Forms;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
-    public class Motion_ValueList : GH_Param<IGH_Goo>, IGH_PreviewObject, IGH_BakeAwareObject, IGH_StateAwareObject
+    public class RangeSelector : GH_Param<IGH_Goo>, IGH_PreviewObject, IGH_BakeAwareObject, IGH_StateAwareObject
     {
         protected GH_Structure<IGH_Goo> collectedData;
 
@@ -23,11 +24,15 @@ namespace Motion.Motility
         private readonly List<Motion_ValueListItem> m_userItems;
 
         private bool m_hidden;
-        public Motion_ValueList()
-            : base((IGH_InstanceDescription)new GH_InstanceDescription("Range Selector", "Range", "Allows you to select an item or items from an input list", "Motion", "01_Animation"))
+
+        private List<GH_NumberSlider> _trackedSliders = new List<GH_NumberSlider>();
+        private const string EXCLUDED_NICKNAME = "TimeLine(Union)";
+
+        public RangeSelector()
+            : base((IGH_InstanceDescription)new GH_InstanceDescription("Range Selector", "Range", "Allows you to select multiple ranges from TimeLine sliders", "Motion", "01_Animation"))
         {
             collectedData = new GH_Structure<IGH_Goo>();
-            m_listMode = GH_ValueListMode.DropDown;
+            m_listMode = GH_ValueListMode.CheckList;
             m_userItems = new List<Motion_ValueListItem>();
             m_hidden = false;
 
@@ -143,33 +148,158 @@ namespace Motion.Motility
 
 
 
-        public override void AddedToDocument(GH_Document doc)
+        public override void AddedToDocument(GH_Document document)
         {
-            GH_Component timelineRangeComponent = doc.Objects
-                    .Where(o => o.GetType().ToString() == "Motion.Components.TimelineRangeComponent")
-                    .Cast<GH_Component>()
-                    .ToList()[0];
-            var closestComponent = FindClosestTimelineRangeComponent(timelineRangeComponent);
-            if (closestComponent != null)
+            base.AddedToDocument(document);
+            document.ObjectsAdded += Document_ObjectsAdded;
+            document.ObjectsDeleted += Document_ObjectsDeleted;
+            
+            // 初始扫描画布上的所有滑块
+            ScanForTimeLineSliders();
+        }
+
+        public override void RemovedFromDocument(GH_Document document)
+        {
+            // 清理事件订阅
+            foreach (var slider in _trackedSliders)
             {
-                this.AddSource(closestComponent.Params.Output[0]);
+                UnsubscribeFromSlider(slider);
+            }
+            document.ObjectsAdded -= Document_ObjectsAdded;
+            document.ObjectsDeleted -= Document_ObjectsDeleted;
+            _trackedSliders.Clear();
+            base.RemovedFromDocument(document);
+        }
+
+        private bool ShouldTrackSlider(GH_NumberSlider slider)
+        {
+            return slider.NickName != EXCLUDED_NICKNAME 
+                   && slider.GetType().Name == "pOd_TimeLineSlider";
+        }
+
+        private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
+        {
+            foreach (var obj in e.Objects)
+            {
+                if (obj is GH_NumberSlider slider && ShouldTrackSlider(slider))
+                {
+                    if (!_trackedSliders.Contains(slider))
+                    {
+                        _trackedSliders.Add(slider);
+                        SubscribeToSlider(slider);
+                        UpdateRangeItems();
+                    }
+                }
             }
         }
 
-        private GH_Component FindClosestTimelineRangeComponent(GH_Component component)
+        private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
         {
-            var myPivot = this.Attributes.Pivot;
-            var closestDist = double.MaxValue;
-            GH_Component closestComponent = null;
-
-            var sliderPivot = component.Attributes.Pivot;
-            var dist = Math.Abs(myPivot.Y - sliderPivot.Y);
-            if (dist < closestDist && dist < 100)
+            bool needUpdate = false;
+            foreach (var obj in e.Objects)
             {
-                closestDist = dist;
-                closestComponent = component;
+                if (obj is GH_NumberSlider slider && _trackedSliders.Contains(slider))
+                {
+                    _trackedSliders.Remove(slider);
+                    UnsubscribeFromSlider(slider);
+                    needUpdate = true;
+                }
             }
-            return closestComponent;
+            if (needUpdate)
+            {
+                UpdateRangeItems();
+            }
+        }
+
+        private void SubscribeToSlider(GH_NumberSlider slider)
+        {
+            slider.ObjectChanged += Slider_Changed;
+            slider.AttributesChanged += Slider_Changed;
+            slider.Slider.ValueChanged += Slider_ValueChanged;
+        }
+
+        private void UnsubscribeFromSlider(GH_NumberSlider slider)
+        {
+            slider.ObjectChanged -= Slider_Changed;
+            slider.AttributesChanged -= Slider_Changed;
+            slider.Slider.ValueChanged -= Slider_ValueChanged;
+        }
+
+        private void Slider_Changed(object sender, EventArgs e)
+        {
+            UpdateRangeItems();
+        }
+
+        private void Slider_ValueChanged(object sender, EventArgs e)
+        {
+            UpdateRangeItems();
+        }
+
+        private void ScanForTimeLineSliders()
+        {
+            // 清除现有滑块
+            foreach (var slider in _trackedSliders)
+            {
+                UnsubscribeFromSlider(slider);
+            }
+            _trackedSliders.Clear();
+
+            if (OnPingDocument() == null) return;
+
+            // 扫描新滑块
+            foreach (var obj in OnPingDocument().Objects)
+            {
+                if (obj is GH_NumberSlider slider && ShouldTrackSlider(slider))
+                {
+                    _trackedSliders.Add(slider);
+                    SubscribeToSlider(slider);
+                }
+            }
+
+            UpdateRangeItems();
+        }
+
+        private void UpdateRangeItems()
+        {
+            // 保存当前选择状态
+            Dictionary<string, bool> selectedStates = new Dictionary<string, bool>();
+            foreach (var item in m_userItems)
+            {
+                selectedStates[item.Expression] = item.Selected;
+            }
+
+            m_userItems.Clear();
+
+            if (_trackedSliders.Count == 0)
+            {
+                m_userItems.Add(new Motion_ValueListItem("No TimeLine sliders found", "null", null));
+                ExpireSolution(true);
+                return;
+            }
+
+            // 为每个滑块创建区间项
+            foreach (var slider in _trackedSliders)
+            {
+                double min = (double)slider.Slider.Minimum;
+                double max = (double)slider.Slider.Maximum;
+                var interval = new Interval(min, max);
+                string expression = interval.ToString();
+                
+                var item = new Motion_ValueListItem(
+                    $"{min}-{max}", 
+                    expression, 
+                    new GH_Interval(interval));
+
+                // 恢复选择状态
+                if (selectedStates.ContainsKey(expression))
+                {
+                    item.Selected = selectedStates[expression];
+                }
+
+                m_userItems.Add(item);
+            }
+
+            ExpireSolution(true);
         }
 
         public override void CreateAttributes()
@@ -327,10 +457,30 @@ namespace Motion.Motility
         protected override void CollectVolatileData_Custom()
         {
             m_data.Clear();
-            foreach (Motion_ValueListItem selectedItem in SelectedItems)
+            if (_trackedSliders.Count == 0)
             {
-                m_data.Append(selectedItem.Value, new GH_Path(0));
+                this.Description = "No TimeLine sliders found";
+                return;
             }
+
+            // 获取所有选中的区间
+            var selectedItems = SelectedItems;
+            if (selectedItems.Count == 0)
+            {
+                this.Description = "No ranges selected";
+                return;
+            }
+
+            // 输出所有选中的区间到同一个分支
+            foreach (var item in selectedItems)
+            {
+                if (item.Value != null)
+                {
+                    m_data.Append(item.Value, new GH_Path(0));  // 所有数据都放在路径 0
+                }
+            }
+
+            this.Description = $"{selectedItems.Count} range(s)";
         }
 
         public void DrawViewportMeshes(IGH_PreviewArgs args)
@@ -444,6 +594,60 @@ namespace Motion.Motility
                 m_userItems.Add(motionValueListItem);
             }
             return base.Read(reader);
+        }
+
+        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+        {
+            base.AppendAdditionalMenuItems(menu);
+            Menu_AppendSeparator(menu);
+
+            // 添加列表模式切换选项
+            Menu_AppendItem(menu, "Multi-select mode", (s, e) =>
+            {
+                ListMode = GH_ValueListMode.CheckList;
+                ExpireSolution(true);
+            }, true, ListMode == GH_ValueListMode.CheckList);
+
+            Menu_AppendItem(menu, "Single-select mode", (s, e) =>
+            {
+                ListMode = GH_ValueListMode.DropDown;
+                ExpireSolution(true);
+            }, true, ListMode == GH_ValueListMode.DropDown);
+
+            Menu_AppendSeparator(menu);
+
+            // 为每个区间添加复选框菜单项
+            foreach (var item in m_userItems)
+            {
+                if (item.Value == null) continue;  // 跳过无效项
+
+                Menu_AppendItem(menu, item.Name, (s, e) =>
+                {
+                    item.Selected = !item.Selected;  // 切换选中状态
+                    ExpireSolution(true);
+                }, true, item.Selected);
+            }
+
+            Menu_AppendSeparator(menu);
+
+            // 添加全选和取消全选选项
+            Menu_AppendItem(menu, "Select All", (s, e) =>
+            {
+                foreach (var item in m_userItems)
+                {
+                    item.Selected = true;
+                }
+                ExpireSolution(true);
+            }, m_userItems.Count > 0);
+
+            Menu_AppendItem(menu, "Deselect All", (s, e) =>
+            {
+                foreach (var item in m_userItems)
+                {
+                    item.Selected = false;
+                }
+                ExpireSolution(true);
+            }, m_userItems.Count > 0);
         }
     }
 }

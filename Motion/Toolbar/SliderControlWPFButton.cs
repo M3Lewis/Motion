@@ -11,7 +11,7 @@ using System.Windows.Forms;
 
 namespace Motion.Toolbar
 {
-    public class SliderControlWPFButton : GH_AssemblyPriority
+    public class SliderControlWPFButton : MotionToolbarButton
     {
         private ToolStripButton button;
 
@@ -21,11 +21,10 @@ namespace Motion.Toolbar
         }
         private void AddSliderControlWPFButton()
         {
-            ToolStrip toolbar = (ToolStrip)Grasshopper.Instances.DocumentEditor.Controls[0].Controls[1];
-
+            InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            toolbar.Items.Add(button);
+            AddButtonToGroup(button); // 使用基类方法添加按钮
         }
 
         public override GH_LoadingInstruction PriorityLoad()

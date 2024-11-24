@@ -29,6 +29,7 @@ namespace Motion.Motility
         }
 
         protected string nicknameKey = "";
+        private Guid _connectedSliderGuid = Guid.Empty;
 
         public override void AddedToDocument(GH_Document document)
         {
@@ -59,6 +60,7 @@ namespace Motion.Motility
                     }
                 }
             }
+            
         }
 
         private GH_NumberSlider FindClosestSlider(List<GH_NumberSlider> sliders)
@@ -133,9 +135,33 @@ namespace Motion.Motility
                 var source = this.Sources[0];
                 if (source is GH_NumberSlider slider)
                 {
+                    _connectedSliderGuid = slider.InstanceGuid;
                     UpdateNicknameFromSlider(slider);
                     slider.NickName = this.NickName;
                 }
+            }
+        }
+
+        public override void RemovedFromDocument(GH_Document document)
+        {
+            try
+            {
+                if (_connectedSliderGuid != Guid.Empty)
+                {
+                    var slider = document.FindObject(_connectedSliderGuid,true) as GH_NumberSlider;
+                    if (slider != null)
+                    {
+                        slider.NickName = "Slider";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error resetting slider nickname: {ex.Message}");
+            }
+            finally
+            {
+                base.RemovedFromDocument(document);
             }
         }
 
@@ -183,7 +209,7 @@ namespace Motion.Motility
                     this.Attributes.Bounds.Bottom + 25
                 );
 
-                // 计算文本���小
+                // 计算文本小
                 SizeF textSize = GH_FontServer.MeasureString(message, GH_FontServer.Standard);
                 RectangleF textBounds = new RectangleF(location, textSize);
                 textBounds.Inflate(6, 3);  // 添加一些内边距
@@ -304,6 +330,7 @@ namespace Motion.Motility
             {
                 writer.SetBoolean("AutoRename", _autoRename);
                 writer.SetString("NicknameKey", nicknameKey);
+                writer.SetString("ConnectedSliderGuid", _connectedSliderGuid.ToString());
             }
             catch
             {
@@ -323,6 +350,8 @@ namespace Motion.Motility
                     _autoRename = reader.GetBoolean("AutoRename");
                 if (reader.ItemExists("NicknameKey"))
                     nicknameKey = reader.GetString("NicknameKey");
+                if (reader.ItemExists("ConnectedSliderGuid"))
+                    _connectedSliderGuid = new Guid(reader.GetString("ConnectedSliderGuid"));
             }
             catch
             {
@@ -332,98 +361,6 @@ namespace Motion.Motility
             return true;
         }
 
-        //public override void RemovedFromDocument(GH_Document document)
-        //{
-        //    try
-        //    {
-        //        if (document != null)
-        //        {
-        //            // 创建一个单独的撤销记录，用于处理 Remote 组件的删除
-        //            var remoteUndoRecord = new GH_UndoRecord("Remove Remote Components");
-
-        //            // 获取所有要删除的组件
-        //            var componentsToDelete = new List<IGH_DocumentObject>();
-
-        //            // 获取所有匹配的 Location 和 Target
-        //            var matchingLocations = document.Objects
-        //                .OfType<Param_RemoteLocation>()
-        //                .Where(rd => rd.NickName == this.NickName)
-        //                .ToList();
-
-        //            var matchingTargets = document.Objects
-        //                .OfType<Param_RemoteTarget>()
-        //                .Where(rd => rd.NickName == this.NickName)
-        //                .ToList();
-
-        //            // 先确保所有连接都已建立
-        //            foreach (var location in matchingLocations)
-        //            {
-        //                var mergeLocations = document.Objects
-        //                    .Where(obj => obj.Name.Contains("MergeCameraLocation") && obj is IGH_Component)
-        //                    .Cast<IGH_Component>()
-        //                    .ToList();
-
-        //                foreach (var merge in mergeLocations)
-        //                {
-        //                    foreach (var param in merge.Params.Input)
-        //                    {
-        //                        if (param.NickName == location.NickName && !param.Sources.Contains(location))
-        //                        {
-        //                            param.AddSource(location);
-        //                        }
-        //                    }
-        //                }
-        //            }
-
-        //            foreach (var target in matchingTargets)
-        //            {
-        //                var mergeTargets = document.Objects
-        //                    .Where(obj => obj.Name.Contains("MergeCameraTarget") && obj is IGH_Component)
-        //                    .Cast<IGH_Component>()
-        //                    .ToList();
-
-        //                foreach (var merge in mergeTargets)
-        //                {
-        //                    foreach (var param in merge.Params.Input)
-        //                    {
-        //                        if (param.NickName == target.NickName && !param.Sources.Contains(target))
-        //                        {
-        //                            param.AddSource(target);
-        //                        }
-        //                    }
-        //                }
-        //            }
-
-        //            // 等待一帧以确保连接已经建立
-        //            document.ScheduleSolution(5, (doc) =>
-        //            {
-        //                // 添加到要删除的组件列表
-        //                //componentsToDelete.AddRange(matchingLocations);
-        //                //componentsToDelete.AddRange(matchingTargets);
-
-        //                if (componentsToDelete.Any())
-        //                {
-        //                    // 添加撤销动作
-        //                    remoteUndoRecord.AddAction(new RemoteComponentsUndoAction(componentsToDelete, document));
-        //                    document.UndoServer.PushUndoRecord(remoteUndoRecord);
-
-        //                    // 执行删除操作
-        //                    foreach (var comp in componentsToDelete)
-        //                    {
-        //                        document.RemoveObject(comp, false);
-        //                    }
-        //                }
-        //            });
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Rhino.RhinoApp.WriteLine($"Error removing matching Remote params: {ex.Message}");
-        //    }
-        //    finally
-        //    {
-        //        base.RemovedFromDocument(document);
-        //    }
-        //}
+        
     }
 }

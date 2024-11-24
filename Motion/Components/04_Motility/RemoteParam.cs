@@ -53,7 +53,7 @@ namespace Motion.Motility
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
-            
+
             // 延迟执行以确保文档完全加载
             document.ScheduleSolution(15, doc =>
             {
@@ -115,7 +115,7 @@ namespace Motion.Motility
             this.Attributes.ExpireLayout();
         }
 
-        
+
 
         //public override bool Write(GH_IWriter writer)
         //{
@@ -125,7 +125,7 @@ namespace Motion.Motility
         //    {
         //        writer.SetBoolean("HideWhenEmpty", _hideWhenEmpty);
         //        writer.SetBoolean("LockWhenEmpty", _lockWhenEmpty);
-                
+
         //        // 序列化折叠状态
         //        var attributes = this.Attributes as RemoteParamAttributes;
         //        if (attributes != null)
@@ -159,7 +159,7 @@ namespace Motion.Motility
         //            _hideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
         //        if (reader.ItemExists("LockWhenEmpty"))
         //            _lockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
-                    
+
         //        // 读取折叠状态
         //        if (reader.ItemExists("IsCollapsed"))
         //        {
@@ -255,5 +255,7 @@ namespace Motion.Motility
             // 刷新文档
             doc.ScheduleSolution(5);
         }
+
+        
     }
 }

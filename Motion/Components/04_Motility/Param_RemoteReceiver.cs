@@ -122,6 +122,8 @@ namespace Motion.Motility
 
         protected override Bitmap Icon => Properties.Resources.Receiver;
 
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
+
         private void ShowTemporaryMessage(GH_Canvas canvas, string message)
         {
             // 创建一个自定义事件处理器来绘制消息

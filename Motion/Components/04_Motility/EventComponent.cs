@@ -234,6 +234,7 @@ namespace Motion.Motility
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddNumberParameter("Value", "V", "当前时间在区间内的比例值", GH_ParamAccess.item);
+            pManager.AddIntervalParameter("Domain", "D", "区间参数", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -264,7 +265,7 @@ namespace Motion.Motility
             // 获取输入数据
             if (!DA.GetData(0, ref time)) return;
             if (!DA.GetData(1, ref domain)) return;
-
+            DA.SetData(1, domain);
             // 从NickName解析区间
             string[] parts = this.NickName.Split('-');
             if (parts.Length == 2 &&

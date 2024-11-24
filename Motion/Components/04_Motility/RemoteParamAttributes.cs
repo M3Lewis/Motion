@@ -412,9 +412,9 @@ namespace Motion.Motility
                     graphMapper.CreateAttributes();
                     graphMapper.Attributes.Pivot = new PointF(
                         eventComp.Attributes.Pivot.X + 100,
-                        eventComp.Attributes.Pivot.Y - 75
+                        eventComp.Attributes.Pivot.Y - 85
                     );
-
+                    
                     doc.AddObject(graphMapper, false);
 
                     graphMapper.AddSource(eventComp.Params.Output[0]);
@@ -444,6 +444,9 @@ namespace Motion.Motility
                     }
 
                     graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
+
+                    graphMapper.Attributes.Selected = true;
+                    eventComp.Attributes.Selected = true;
 
                     doc.ScheduleSolution(10, d => {
                         graphMapper.ExpireSolution(true);

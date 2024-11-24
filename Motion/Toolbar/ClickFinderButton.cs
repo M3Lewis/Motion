@@ -16,7 +16,7 @@ using System.Windows.Forms;
 
 namespace Motion.Toolbar
 {
-    public class ClickFinderButton : GH_AssemblyPriority, IGH_PreviewObject
+    public class ClickFinderButton : MotionToolbarButton, IGH_PreviewObject
     {
         private ToolStripButton button;
         private bool isActive = false;
@@ -36,11 +36,10 @@ namespace Motion.Toolbar
 
         private void AddClickFinderButton()
         {
-            ToolStrip toolbar = (ToolStrip)Grasshopper.Instances.DocumentEditor.Controls[0].Controls[1];
-
+            InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            toolbar.Items.Add(button);
+            AddButtonToGroup(button); // 使用基类方法添加按钮
         }
 
         public override GH_LoadingInstruction PriorityLoad()
