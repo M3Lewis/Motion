@@ -15,7 +15,7 @@ namespace Motion.Animation
         private const string EXCLUDED_NICKNAME = "TimeLine(Union)";
 
         public override Guid ComponentGuid => new Guid("0cad63d7-7a60-490b-b520-0ca19b310784");
-        public override GH_Exposure Exposure => GH_Exposure.secondary;
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
         protected override System.Drawing.Bitmap Icon => Properties.Resources.TimelineRange;
 
         public TimelineRangeComponent()

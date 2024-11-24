@@ -62,6 +62,7 @@
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
+    <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
   </ItemGroup>
   
@@ -89,6 +90,7 @@
     <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
     <None Include="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
     <None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
+    <None Include="Components\OBSOLETE\TimelineRange.cs" />
     <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
   </ItemGroup>
   
