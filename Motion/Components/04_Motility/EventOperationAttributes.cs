@@ -68,6 +68,7 @@ namespace Motion.Motility
         {
             base.Render(canvas, graphics, channel);
 
+            /*
             if (channel == GH_CanvasChannel.Objects)
             {
                 var eventOperation = Owner as EventOperation;
@@ -106,6 +107,7 @@ namespace Motion.Motility
                     }
                 }
             }
+            */
         }
     }
 }

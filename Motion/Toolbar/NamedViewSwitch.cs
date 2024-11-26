@@ -77,7 +77,7 @@ namespace Motion.Toolbar
             if (isActive)
             {
                 //button.Image = Properties.Resources.YourActiveIcon; // 激活状态图标
-                button.BackColor = Color.FromArgb(41, 141, 173); // 激活状态背景色
+                button.BackColor = Color.Orange; // 激活状态背景色
                 Instances.DocumentEditor.KeyDown += KeyDownEventHandler;
             }
             else

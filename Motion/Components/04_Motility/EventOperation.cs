@@ -139,95 +139,104 @@ namespace Motion.Motility
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            // 1. 预分配容器大小以避免动态扩容
             List<double> eventValues = new List<double>();
             if (!DA.GetDataList(0, eventValues)) return;
+            
+            int capacity = eventValues.Count;
+            var mappedEventValues = new List<double>(capacity);
+            var eventStart = new List<double>(capacity);
+            var eventInterval = new List<Interval>(capacity);
+            var isReversedIntervals = new List<bool>(capacity);
+            var valueDomains = new List<Interval>(capacity);
 
-            List<double> mappedEventValues = new List<double>();
-            List<double> eventStart = new List<double>();
-            List<Interval> eventInterval = new List<Interval>();
-            List<bool> isReversedIntervals = new List<bool>();
-            List<Interval> valueDomains = new List<Interval>();
-
-            // 声明用于存储当前状态的变量
-            Interval currentInterval;
-            double currentEventValue;
-            Interval currentDomain;
-
-            Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
-
+Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
+            // 2. 缓存常用对象
             var doc = OnPingDocument();
-            double timelineSliderValue = (double)doc.Objects
+            var timelineSlider = doc.Objects
                     .OfType<GH_NumberSlider>()
-                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase)).Slider.Value;
+                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+            
+            if (timelineSlider == null) return;
+            double timelineSliderValue = (double)timelineSlider.Slider.Value;
 
-
+            // 3. 优化循环
+            var sources = Params.Input[0].Sources;
             for (int i = 0; i < eventValues.Count; i++)
             {
-                IGH_DocumentObject graphMapperDocumentObject = Params.Input[0].Sources[i].Attributes.GetTopLevel.DocObject;
-                if (graphMapperDocumentObject is GH_GraphMapper graphMapper)
-                {
-                    graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
-                    if (graphMapper.Sources[0].Attributes.GetTopLevel.DocObject is EventComponent eventComponent)
-                    {
-                        string[] timeDomainExtremes = eventComponent.NickName.Split('-');
-                        double timeDomainStart = double.Parse(timeDomainExtremes[0]);
-                        double timeDomainEnd = double.Parse(timeDomainExtremes[1]);
-                        Interval timeDomain = new Interval(timeDomainStart, timeDomainEnd);
-                        eventStart.Add(timeDomainStart);
-                        eventInterval.Add(timeDomain);
+                var source = sources[i];
+                if (source == null) continue;
 
-                        GH_Interval ghValueDomain = eventComponent.Params.Input[1].VolatileData.get_Branch(0)[0] as GH_Interval;
-                        Interval valueDomain = ghValueDomain.Value;
-                        valueDomains.Add(valueDomain);
+                var graphMapper = source.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
+                if (graphMapper == null) continue;
 
-                        isReversedIntervals.Add(valueDomain.T0 > valueDomain.T1);
+                graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
+                var eventComponent = graphMapper.Sources[0]?.Attributes.GetTopLevel.DocObject as EventComponent;
+                if (eventComponent == null) continue;
 
-                        double mappedValue;
-                        if (valueDomain.IsSingleton)
-                        {
-                            mappedValue = valueDomain.Mid;
-                        }
-                        else
-                        {
-                            mappedValue = valueDomain.T0 + eventValues[i] * valueDomain.Length;
-                            mappedValue = Math.Min(Math.Max(mappedValue, valueDomain.Min), valueDomain.Max);
-                        }
-                        mappedEventValues.Add(mappedValue);
-                    }
-                }
+                // 4. 使用 Split 的重载版本避免创建新数组
+                string[] timeDomainExtremes = eventComponent.NickName.Split(new char[] { '-' }, 2);
+                if (timeDomainExtremes.Length != 2) continue;
+
+                if (!double.TryParse(timeDomainExtremes[0], out double timeDomainStart) || 
+                    !double.TryParse(timeDomainExtremes[1], out double timeDomainEnd))
+                    continue;
+
+                var timeDomain = new Interval(timeDomainStart, timeDomainEnd);
+                eventStart.Add(timeDomainStart);
+                eventInterval.Add(timeDomain);
+
+                var ghValueDomain = eventComponent.Params.Input[1].VolatileData.get_Branch(0)[0] as GH_Interval;
+                if (ghValueDomain == null) continue;
+
+                Interval valueDomain = ghValueDomain.Value;
+                valueDomains.Add(valueDomain);
+                isReversedIntervals.Add(valueDomain.T0 > valueDomain.T1);
+
+                // 5. 优化数值计算
+                double mappedValue = valueDomain.IsSingleton 
+                    ? valueDomain.Mid 
+                    : Math.Min(Math.Max(valueDomain.T0 + eventValues[i] * valueDomain.Length, valueDomain.Min), valueDomain.Max);
+                
+                mappedEventValues.Add(mappedValue);
             }
 
-            sort(eventStart, mappedEventValues, eventInterval, eventValues, isReversedIntervals, valueDomains,
-                out eventStart, out mappedEventValues, out eventInterval, out eventValues, out isReversedIntervals, out valueDomains);
+            // 6. 避免不必要的排序
+            if (eventStart.Count == 0) return;
 
-            double result = GetCurrentValue(timelineSliderValue, eventInterval, mappedEventValues, eventValues,
-                isReversedIntervals, valueDomains, out currentInterval, out currentEventValue, out int currentIndex, out currentDomain);
+            sort(eventStart, mappedEventValues, eventInterval, eventValues, isReversedIntervals, valueDomains,
+                out var sortedStartTimes, out var sortedMappedValues, out var sortedTimeIntervals, 
+                out var sortedEventValues, out var sortedIsReversed, out var sortedValueDomains);
+
+            // 7. 优化输出处理
+            double result = GetCurrentValue(timelineSliderValue, sortedTimeIntervals, sortedMappedValues, 
+                sortedEventValues, sortedIsReversed, sortedValueDomains,
+                out var currentInterval, out var currentEventValue, out var currentIndex, out var currentDomain);
 
             _currentEventValue = currentEventValue;
             _currentMappedEventValue = result;
             _currentEventIndex = currentIndex;
-            bool isDefaultInterval = currentInterval.T0 == 0 && currentInterval.T1 == 1;
-            bool isInEventInterval = false;
-            foreach (var interval in eventInterval)
-            {
-                isInEventInterval = interval.IncludesParameter(timelineSliderValue);
-            }
-            this.Message = isDefaultInterval||!isInEventInterval ? "OUTSIDE" : $"【{currentInterval.T0}-{currentInterval.T1}】";
 
+            // 8. 优化条件判断
+            bool isDefaultInterval = currentInterval.T0 == 0 && currentInterval.T1 == 1;
+            bool isInEventInterval = currentInterval.IncludesParameter(timelineSliderValue);
+
+            this.Message = isDefaultInterval || !isInEventInterval 
+                ? "OUTSIDE" 
+                : $"【{currentInterval.T0}-{currentInterval.T1}】";
+
+            // 9. 优化输出赋值
             DA.SetData(0, result);
             DA.SetData(1, currentEventValue);
 
-            // 只在对应输出端存在时输出数据
-            if (Params.Output.Any(p => p.Name == "Index"))
+            var outputParams = Params.Output;
+            if (outputParams.Count > 2)
             {
-                DA.SetData("Index", currentIndex);
+                if (outputParams[2].Name == "Index")
+                    DA.SetData(2, currentIndex);
+                if (outputParams.Count > 3 && outputParams[3].Name == "Domain")
+                    DA.SetData(3, currentDomain);
             }
-            if (Params.Output.Any(p => p.Name == "Domain"))
-            {
-                DA.SetData("Domain", currentDomain);
-            }
-
-            this.OnDisplayExpired(true);
         }
 
         private double GetCurrentValue(

@@ -93,28 +93,27 @@ namespace Motion.Motility
             var doc = OnPingDocument();
             if (doc == null) return;
 
-            RhinoApp.WriteLine("InitializeAfterLoad: Starting initialization");
+            //RhinoApp.WriteLine("InitializeAfterLoad: Starting initialization");
 
-            // 查找并订阅 Timeline Slider
             _timelineSlider = doc.Objects
                 .OfType<GH_NumberSlider>()
                 .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
 
             if (_timelineSlider != null)
             {
-                RhinoApp.WriteLine($"Found Timeline Slider: {_timelineSlider.InstanceGuid}");
+                //RhinoApp.WriteLine($"Found Timeline Slider: {_timelineSlider.InstanceGuid}");
 
                 var numberSlider = _timelineSlider as GH_NumberSlider;
                 if (numberSlider?.Slider != null)
                 {
-                    numberSlider.Slider.ValueChanged -= new GH_SliderBase.ValueChangedEventHandler(OnSliderValueChanged);
-                    numberSlider.Slider.ValueChanged += new GH_SliderBase.ValueChangedEventHandler(OnSliderValueChanged);
-                    RhinoApp.WriteLine("Timeline Slider ValueChanged event subscribed");
+                    numberSlider.Slider.ValueChanged -= OnSliderValueChanged;
+                    numberSlider.Slider.ValueChanged += OnSliderValueChanged;
+                    //RhinoApp.WriteLine("Timeline Slider ValueChanged event subscribed");
                 }
             }
             else
             {
-                RhinoApp.WriteLine("WARNING: Timeline Slider not found!");
+                //RhinoApp.WriteLine("WARNING: Timeline Slider not found!");
             }
 
             _isInitialized = true;
@@ -124,7 +123,7 @@ namespace Motion.Motility
         // 修正事件处理器的参数类型
         private void OnSliderValueChanged(object sender, GH_SliderEventArgs e)
         {
-            RhinoApp.WriteLine($"Slider value changed to: {e.Value}");
+            //RhinoApp.WriteLine($"Slider value changed to: {e.Value}");
             UpdateGroupVisibilityAndLock();
         }
 
@@ -241,7 +240,7 @@ namespace Motion.Motility
         {
             if (!_isInitialized || _timelineSlider == null)
             {
-                RhinoApp.WriteLine("SolveInstance: Reinitializing");
+                //RhinoApp.WriteLine("SolveInstance: Reinitializing");
                 InitializeAfterLoad();
             }
 
@@ -253,7 +252,7 @@ namespace Motion.Motility
                 // 在空值模式下，直接更新状态
                 if (UseEmptyValueMode)
                 {
-                    RhinoApp.WriteLine("Empty input detected in Empty Value Mode");
+                    //RhinoApp.WriteLine("Empty input detected in Empty Value Mode");
                     UpdateGroupVisibilityAndLock();
                 }
                 return;
@@ -494,7 +493,7 @@ namespace Motion.Motility
 
             try
             {
-                RhinoApp.WriteLine("Reading component state");
+                //RhinoApp.WriteLine("Reading component state");
 
                 // 取基本状态
                 if (reader.ItemExists("HideWhenEmpty"))
@@ -509,7 +508,7 @@ namespace Motion.Motility
                 if (reader.ItemExists("NickNameKey"))
                     nicknameKey = reader.GetString("NickNameKey");
 
-                // 读取折叠��态
+                // 读取折叠态
                 if (reader.ItemExists("IsCollapsed"))
                 {
                     var isCollapsed = reader.GetBoolean("IsCollapsed");
@@ -536,7 +535,7 @@ namespace Motion.Motility
                     }
                 }
 
-                RhinoApp.WriteLine($"Read {_pendingGuids.Count} pending GUIDs");
+                //RhinoApp.WriteLine($"Read {_pendingGuids.Count} pending GUIDs");
 
                 // 延迟初始化到组件被添加到文档后
                 Grasshopper.Instances.DocumentServer.DocumentAdded += OnDocumentAdded;
@@ -545,7 +544,7 @@ namespace Motion.Motility
             }
             catch (Exception ex)
             {
-                RhinoApp.WriteLine($"Error reading component state: {ex.Message}");
+                //RhinoApp.WriteLine($"Error reading component state: {ex.Message}");
                 return false;
             }
         }
@@ -557,7 +556,7 @@ namespace Motion.Motility
             // 确保只处理一次
             Grasshopper.Instances.DocumentServer.DocumentAdded -= OnDocumentAdded;
 
-            RhinoApp.WriteLine("Document added, initializing component");
+            //RhinoApp.WriteLine("Document added, initializing component");
 
             // 使用 SolutionStart 事件来确保文档完全加载
             doc.SolutionStart += Doc_SolutionStart;
@@ -572,7 +571,7 @@ namespace Motion.Motility
             if (doc == null) return;
 
             doc.SolutionStart -= Doc_SolutionStart;
-            RhinoApp.WriteLine("Doc_SolutionStart: Restoring state");
+            //RhinoApp.WriteLine("Doc_SolutionStart: Restoring state");
 
             try
             {
@@ -586,7 +585,7 @@ namespace Motion.Motility
                     if (obj != null && !(obj is EventComponent))
                     {
                         affectedObjects.Add(obj);
-                        RhinoApp.WriteLine($"Restored affected object: {obj.GetType().Name}|{obj.Name}|{obj.InstanceGuid}");
+                        //RhinoApp.WriteLine($"Restored affected object: {obj.GetType().Name}|{obj.Name}|{obj.InstanceGuid}");
                     }
                 }
                 _pendingGuids.Clear();
@@ -609,14 +608,14 @@ namespace Motion.Motility
                     {
                         bool shouldHideOrLock = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
 
-                        RhinoApp.WriteLine($"Reapplying initial state - Timeline: {currentValue}, Interval: [{min}-{max}]");
+                        //RhinoApp.WriteLine($"Reapplying initial state - Timeline: {currentValue}, Interval: [{min}-{max}]");
 
                         foreach (var obj in affectedObjects)
                         {
                             if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                             {
                                 previewObj.Hidden = shouldHideOrLock;
-                                RhinoApp.WriteLine($"Initial HIDE={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                                //RhinoApp.WriteLine($"Initial HIDE={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
                             }
                             if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
                             {
@@ -625,7 +624,7 @@ namespace Motion.Motility
                                 {
                                     activeObj.ClearData();
                                 }
-                                RhinoApp.WriteLine($"Initial LOCK={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                                //RhinoApp.WriteLine($"Initial LOCK={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
                             }
                         }
 
@@ -638,7 +637,7 @@ namespace Motion.Motility
             }
             catch (Exception ex)
             {
-                RhinoApp.WriteLine($"Error in Doc_SolutionStart: {ex.Message}");
+                //RhinoApp.WriteLine($"Error in Doc_SolutionStart: {ex.Message}");
             }
         }
 
@@ -706,7 +705,7 @@ namespace Motion.Motility
 
                     lastEmptyState = isEmpty;
 
-                    RhinoApp.WriteLine($"Empty Value Mode - Is Empty: {isEmpty}");
+                    //RhinoApp.WriteLine($"Empty Value Mode - Is Empty: {isEmpty}");
 
                     // 更新所有受影响对象的状态
                     foreach (var obj in affectedObjects)
@@ -714,7 +713,7 @@ namespace Motion.Motility
                         if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                         {
                             previewObj.Hidden = isEmpty;
-                            RhinoApp.WriteLine($"HIDE={isEmpty}: {obj.GetType().Name}|{obj.Name}");
+                            //RhinoApp.WriteLine($"HIDE={isEmpty}: {obj.GetType().Name}|{obj.Name}");
                         }
                         if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
                         {
@@ -723,7 +722,7 @@ namespace Motion.Motility
                             {
                                 activeObj.ClearData();
                             }
-                            RhinoApp.WriteLine($"LOCK={isEmpty}: {obj.GetType().Name}|{obj.Name}");
+                            //RhinoApp.WriteLine($"LOCK={isEmpty}: {obj.GetType().Name}|{obj.Name}");
                         }
                     }
 
@@ -743,14 +742,14 @@ namespace Motion.Motility
 
                         if (_lastHideOrLockState != shouldHideOrLock)
                         {
-                            RhinoApp.WriteLine($"Timeline Value: {currentValue}, Interval: [{min}-{max}]");
+                            //RhinoApp.WriteLine($"Timeline Value: {currentValue}, Interval: [{min}-{max}]");
 
                             foreach (var obj in affectedObjects)
                             {
                                 if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                                 {
                                     previewObj.Hidden = shouldHideOrLock;
-                                    RhinoApp.WriteLine($"HIDE={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                                    //RhinoApp.WriteLine($"HIDE={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
                                 }
                                 if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
                                 {
@@ -759,7 +758,7 @@ namespace Motion.Motility
                                     {
                                         activeObj.ClearData();
                                     }
-                                    RhinoApp.WriteLine($"LOCK={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                                    //RhinoApp.WriteLine($"LOCK={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
                                 }
                             }
 
@@ -780,7 +779,7 @@ namespace Motion.Motility
         {
             if (!_isInitialized)
             {
-                RhinoApp.WriteLine("BeforeSolveInstance: Initializing component");
+                //RhinoApp.WriteLine("BeforeSolveInstance: Initializing component");
                 InitializeAfterLoad();
             }
             base.BeforeSolveInstance();
@@ -809,7 +808,7 @@ namespace Motion.Motility
         // 添加一个方法来重新订阅事件
         private void ResubscribeToEvents()
         {
-            RhinoApp.WriteLine("Resubscribing to events");
+            //RhinoApp.WriteLine("Resubscribing to events");
             if (_timelineSlider != null)
             {
                 var numberSlider = _timelineSlider as GH_NumberSlider;
@@ -817,7 +816,7 @@ namespace Motion.Motility
                 {
                     numberSlider.Slider.ValueChanged -= OnSliderValueChanged;
                     numberSlider.Slider.ValueChanged += OnSliderValueChanged;
-                    RhinoApp.WriteLine("Timeline Slider ValueChanged event resubscribed");
+                    //RhinoApp.WriteLine("Timeline Slider ValueChanged event resubscribed");
                 }
             }
         }

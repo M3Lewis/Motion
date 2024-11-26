@@ -445,6 +445,7 @@ namespace Motion.Motility
 
                     graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
 
+                    senderParam.Attributes.Selected = false;
                     graphMapper.Attributes.Selected = true;
                     eventComp.Attributes.Selected = true;
 

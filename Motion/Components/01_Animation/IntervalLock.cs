@@ -4,6 +4,7 @@ using Rhino.Geometry;
 using System;
 using System.Drawing;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Motion.Animation
 {
@@ -20,7 +21,7 @@ namespace Motion.Animation
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddNumberParameter("Time", "T", "当前时间", GH_ParamAccess.item);
-            pManager.AddIntervalParameter("Domain", "D", "检测区间", GH_ParamAccess.item);
+            pManager.AddIntervalParameter("Domains", "D", "检测区间列表", GH_ParamAccess.list);
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -31,15 +32,24 @@ namespace Motion.Animation
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             double time = 0;
-            Interval domain = new Interval();
+            var domains = new List<Interval>();
 
             if (!DA.GetData(0, ref time)) return;
-            if (!DA.GetData(1, ref domain)) return;
+            if (!DA.GetDataList(1, domains)) return;
 
-            bool isIncluded = domain.IncludesParameter(time);
-            DA.SetData(0, isIncluded);
+            bool isIncludedInAny = false;
+            foreach (var domain in domains)
+            {
+                if (domain.IncludesParameter(time))
+                {
+                    isIncludedInAny = true;
+                    break;
+                }
+            }
 
-            SetGroupComponentsLock(!isIncluded);
+            DA.SetData(0, isIncludedInAny);
+
+            SetGroupComponentsLock(!isIncludedInAny);
         }
 
         private void SetGroupComponentsLock(bool lockState)
@@ -60,6 +70,10 @@ namespace Motion.Animation
                 if (obj is not IGH_ActiveObject activeObj) continue;
 
                 activeObj.Locked = lockState;
+                if (lockState)
+                {
+                    activeObj.ClearData();
+                }
             }
         }
 

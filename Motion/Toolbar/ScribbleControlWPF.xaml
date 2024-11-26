@@ -1,0 +1,69 @@
+<Window x:Class="Motion.Windows.ScribbleControlWPF"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add Scribble" Height="600" Width="400" 
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 选项区域 -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="True">
+            <Label Content="Scribble Type:" DockPanel.Dock="Left"/>
+            <ComboBox x:Name="ScribbleTypeComboBox" Width="150" HorizontalAlignment="Right" SelectionChanged="ScribbleTypeComboBox_SelectionChanged">
+                <ComboBoxItem Content="Custom Text" Tag="text"/>
+                <ComboBoxItem Content="Current Time" Tag="time"/>
+            </ComboBox>
+        </DockPanel>
+
+        <!-- 文本设置区域 -->
+        <GroupBox Grid.Row="1" Header="Text Settings" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBox x:Name="TextContentBox" Text="Hello!" Margin="0,5" Height="30" BorderBrush="LightSkyBlue" BorderThickness="0.5"/>
+                
+                <DockPanel Margin="0,5" LastChildFill="True">
+                    <Label Content="Text Size:" DockPanel.Dock="Left"/>
+                    <TextBox x:Name="TextSizeBox" Text="100" Width="50" HorizontalAlignment="Right"/>
+                </DockPanel>
+                
+                <DockPanel Margin="0,5" LastChildFill="True">
+                    <Label Content="Font:" DockPanel.Dock="Left"/>
+                    <ComboBox x:Name="FontComboBox" Width="200" HorizontalAlignment="Right"/>
+                </DockPanel>
+                
+                <DockPanel Margin="0,5" LastChildFill="True">
+                    <Label Content="Font Style:" DockPanel.Dock="Left"/>
+                    <ComboBox x:Name="FontStyleComboBox" Width="100" HorizontalAlignment="Right">
+                        <ComboBoxItem Content="Regular" Tag="0"/>
+                        <ComboBoxItem Content="Bold" Tag="1"/>
+                        <ComboBoxItem Content="Italic" Tag="2"/>
+                        <ComboBoxItem Content="Underline" Tag="4"/>
+                        <ComboBoxItem Content="Strikeout" Tag="8"/>
+                    </ComboBox>
+                </DockPanel>
+                
+                <DockPanel Margin="0,5" LastChildFill="True">
+                    <Label Content="Max Chars Per Line:" DockPanel.Dock="Left"/>
+                    <TextBox x:Name="MaxCharsBox" Text="100" Width="50" HorizontalAlignment="Right"/>
+                </DockPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- 预览区域 -->
+        <GroupBox Grid.Row="2" Header="Text Preivew" Margin="0,0,0,10">
+            <Border BorderBrush="Gray" BorderThickness="1" Margin="0,0,0,10">
+                <TextBlock x:Name="PreviewText" Margin="5" TextWrapping="Wrap"/>
+            </Border>
+        </GroupBox>
+
+        <!-- 按钮区域 -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Clear" Width="75" Height="23" Click="ClearButton_Click" HorizontalAlignment="Left"/>
+            <Button Content="Create" Width="75" Height="23" Margin="0,0,10,0" Click="CreateButton_Click" HorizontalAlignment="Right"/>
+        </StackPanel>
+    </Grid>
+</Window> 
