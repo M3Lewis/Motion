@@ -364,3 +364,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Motion/NS/GH_NumberSlider.cs
+/Motion/NS/GH_NumberSliderAttributes.cs
+/Motion/Components/OBSOLETE
