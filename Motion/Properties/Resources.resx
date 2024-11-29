@@ -139,6 +139,9 @@
   <data name="CreateMultipleEvents" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\CreateMultipleEvents.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="CreateUnionSlider" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\CreateUnionSlider.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="DynamicOutput" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\DynamicOutput.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -169,6 +172,9 @@
   <data name="MergeCameraTarget" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\MergeCameraTarget.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="MotionSlider" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\MotionSlider.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="Motion_Logo" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\Motion Logo.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -192,6 +198,9 @@
   </data>
   <data name="SliderControlWPF" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\SliderControlWPF.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="SliderControlWPF2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\SliderControlWPF2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="SliderInterval" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\SliderInterval.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

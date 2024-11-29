@@ -1,9 +1,9 @@
-﻿using System.Windows;
-using System.Windows.Input;
-using System.Text.RegularExpressions;
-using Grasshopper.Kernel.Special;
-using System.ComponentModel;
+﻿using Grasshopper.Kernel.Special;
 using System;
+using System.ComponentModel;
+using System.Text.RegularExpressions;
+using System.Windows;
+using System.Windows.Input;
 
 namespace Motion.Toolbar
 {
@@ -16,6 +16,13 @@ namespace Motion.Toolbar
         private static readonly Regex _numericRegex = new Regex("[^0-9-]+");
         private System.Windows.Threading.DispatcherTimer _timer;
         private bool _updatingFromTimer = false;
+        private const int UPDATE_DELAY = 16; // 约60fps
+        private DateTime _lastUpdateTime = DateTime.Now;
+        private bool _isDragging = false;
+        private double _pendingValue = 0;
+        private System.Windows.Threading.DispatcherTimer _updateTimer;
+        private System.Windows.Threading.DispatcherTimer _buttonRepeatTimer;
+        private System.Windows.Controls.Button _currentButton;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -54,14 +61,14 @@ namespace Motion.Toolbar
                 if (Math.Abs(_value - roundedValue) > double.Epsilon)
                 {
                     _value = roundedValue;
-                    if (_ghSlider != null)
+                    _pendingValue = roundedValue;
+                    
+                    // 如果不是正在拖动，立即更新
+                    if (!_isDragging)
                     {
-                        if (!_updatingFromTimer)
-                        {
-                            _ghSlider.Slider.Value = (decimal)roundedValue;
-                            _ghSlider.ExpireSolution(true);
-                        }
+                        UpdateGHSlider(roundedValue);
                     }
+                    
                     OnPropertyChanged(nameof(Value));
                 }
             }
@@ -79,19 +86,34 @@ namespace Motion.Toolbar
             _value = Math.Round((double)_ghSlider.Slider.Value);
 
             DataContext = this;
+
+            // 设置滑块事件
+            slider.PreviewMouseDown += (s, e) => _isDragging = true;
+            slider.PreviewMouseUp += (s, e) => 
+            {
+                _isDragging = false;
+                UpdateGHSlider(_pendingValue);
+            };
             slider.ValueChanged += Slider_ValueChanged;
 
-            // 设置窗口置顶
-            this.Topmost = true;
+            // 初始化更新计时器
+            _updateTimer = new System.Windows.Threading.DispatcherTimer();
+            _updateTimer.Interval = TimeSpan.FromMilliseconds(UPDATE_DELAY);
+            _updateTimer.Tick += UpdateTimer_Tick;
 
-            // 初始化定时器
+            // 初始化监控计时器
             _timer = new System.Windows.Threading.DispatcherTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(100); // 100ms 检查一次
+            _timer.Interval = TimeSpan.FromMilliseconds(100);
             _timer.Tick += Timer_Tick;
             _timer.Start();
 
-            // 窗口关闭时停止定时器
-            this.Closed += (s, e) => _timer.Stop();
+            this.Closed += (s, e) => 
+            {
+                _timer.Stop();
+                _updateTimer.Stop();
+            };
+
+            this.Topmost = true;
         }
 
         private void Timer_Tick(object sender, EventArgs e)
@@ -141,6 +163,13 @@ namespace Motion.Toolbar
         private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             Value = e.NewValue;
+            
+            // 如果正在拖动，启动更新计时器
+            if (_isDragging)
+            {
+                _updateTimer.Stop();
+                _updateTimer.Start();
+            }
         }
 
         protected void OnPropertyChanged(string name)
@@ -186,11 +215,13 @@ namespace Motion.Toolbar
 
         private void PlusButton_Click(object sender, RoutedEventArgs e)
         {
+            if ((DateTime.Now - _lastUpdateTime).TotalMilliseconds < UPDATE_DELAY) return;
             Value = Math.Min(Max, Value + 1);
         }
 
         private void MinusButton_Click(object sender, RoutedEventArgs e)
         {
+            if ((DateTime.Now - _lastUpdateTime).TotalMilliseconds < UPDATE_DELAY) return;
             Value = Math.Max(Min, Value - 1);
         }
 
@@ -202,6 +233,59 @@ namespace Motion.Toolbar
         private void MaxButton_Click(object sender, RoutedEventArgs e)
         {
             Value = Max;
+        }
+
+        private void UpdateTimer_Tick(object sender, EventArgs e)
+        {
+            _updateTimer.Stop();
+            if (_isDragging)
+            {
+                UpdateGHSlider(_pendingValue);
+            }
+        }
+
+        private void UpdateGHSlider(double value)
+        {
+            if (_ghSlider == null || _updatingFromTimer) return;
+
+            var now = DateTime.Now;
+            if ((now - _lastUpdateTime).TotalMilliseconds < UPDATE_DELAY) return;
+
+            _ghSlider.Slider.Value = (decimal)value;
+            _ghSlider.ExpireSolution(true);
+            _lastUpdateTime = now;
+        }
+
+        private void Button_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            _currentButton = sender as System.Windows.Controls.Button;
+            
+            if (_buttonRepeatTimer == null)
+            {
+                _buttonRepeatTimer = new System.Windows.Threading.DispatcherTimer();
+                _buttonRepeatTimer.Interval = TimeSpan.FromMilliseconds(50); // 调整重复速率
+                _buttonRepeatTimer.Tick += ButtonRepeatTimer_Tick;
+            }
+            
+            _buttonRepeatTimer.Start();
+        }
+
+        private void Button_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            _buttonRepeatTimer?.Stop();
+            _currentButton = null;
+        }
+
+        private void ButtonRepeatTimer_Tick(object sender, EventArgs e)
+        {
+            if (_currentButton == plusButton)
+            {
+                Value = Math.Min(Max, Value + 1);
+            }
+            else if (_currentButton == minusButton)
+            {
+                Value = Math.Max(Min, Value - 1);
+            }
         }
     }
 }

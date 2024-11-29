@@ -4,7 +4,7 @@
         x:Class="Motion.Toolbar.SliderControlWPF"
         Topmost="True"
         xmlns:local="clr-namespace:Motion.Toolbar">
-        
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -26,7 +26,7 @@
                 Margin="5" 
                 Grid.Row="0"
                 Grid.ColumnSpan="2"/>
-                
+
         <TextBox x:Name="valueTextBox" 
                 Text="{Binding Value, StringFormat={}{0:F0}, UpdateSourceTrigger=LostFocus}"
                 Grid.Row="1" 
@@ -39,16 +39,20 @@
                 PreviewTextInput="NumberValidationTextBox"
                 KeyDown="ValueTextBox_KeyDown"
                 LostFocus="ValueTextBox_LostFocus"/>
-               
-        <Button x:Name="plusButton" 
-                Content="+" 
-                Click="PlusButton_Click" 
+
+        <Button x:Name="minusButton" 
+                Content="-" 
+                Click="MinusButton_Click"
+                PreviewMouseDown="Button_PreviewMouseDown"
+                PreviewMouseUp="Button_PreviewMouseUp"
                 Margin="5" 
                 Grid.Row="2" 
                 Grid.Column="0"/>
-        <Button x:Name="minusButton" 
-                Content="-" 
-                Click="MinusButton_Click" 
+        <Button x:Name="plusButton" 
+                Content="+" 
+                Click="PlusButton_Click"
+                PreviewMouseDown="Button_PreviewMouseDown"
+                PreviewMouseUp="Button_PreviewMouseUp"
                 Margin="5" 
                 Grid.Row="2" 
                 Grid.Column="1"/>

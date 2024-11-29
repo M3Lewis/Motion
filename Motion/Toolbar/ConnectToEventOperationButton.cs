@@ -3,6 +3,7 @@ using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
+using Motion.Animation;
 using Motion.Motility;
 using System;
 using System.Collections.Generic;
@@ -15,7 +16,7 @@ namespace Motion.Toolbar
     public class ConnectToEventOperationButton : MotionToolbarButton
     {
         private ToolStripButton button;
-
+        protected override int ToolbarOrder => 50;
         public ConnectToEventOperationButton()
         {
         }

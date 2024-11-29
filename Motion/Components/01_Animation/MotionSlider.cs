@@ -8,6 +8,12 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
 using GH_IO.Serialization;
+using System.Windows.Controls.Primitives;
+using Grasshopper.Kernel.Attributes;
+using System.Linq;
+using Grasshopper.Kernel.Expressions;
+using static Grasshopper.GUI.Base.GH_SliderBase;
+using Grasshopper;
 
 namespace Motion.Animation
 {
@@ -15,33 +21,40 @@ namespace Motion.Animation
     {
         // 添加静态事件来通知新滑块创建
         public static event EventHandler<MotionSlider> SliderCreated;
-        
+
         // 添加静态字段来跟踪主控滑块
         private static MotionSlider _mainController;
-        
-        private List<MotionSlider> _controlledSliders = new List<MotionSlider>();
-        private bool _isControlled;
+        private bool _isPositionInitialized = false;
+        public List<MotionSlider> _controlledSliders = new List<MotionSlider>();
+        public List<Guid> _controlledSliderGuids = new List<Guid>();
+        public bool _isControlled;
+        public Guid _controllerGuid = Guid.Empty;
         private decimal _lastValue;
         private bool _isDragging = false;
         private bool _isDraggingLeft = false;
         private PointF _lastMouseLocation;
-        private bool _isRefreshing = false;
+        public bool _isRefreshing = false;
 
         public event EventHandler<decimal> ValueChanged;
 
         public override Guid ComponentGuid => new Guid("A6704806-4EE3-42AF-B742-3C348C5F7F38");
+
+        protected override Bitmap Icon => Properties.Resources.MotionSlider;
         public MotionSlider()
         {
-            NickName = "MotionSlider";
+            NickName = "Slider";
             Name = "Motion Slider";
             Description = "可调节区间的动画滑块";
             Category = "Motion";
             SubCategory = "01_Animation";
 
             SetInitialValues();
-            
+
             // 触发新建事件
             SliderCreated?.Invoke(this, this);
+
+            // 添加值变化事件处理
+            this.Slider.ValueChanged += Slider_ValueChanged;
         }
 
         public MotionSlider(decimal minimum, decimal maximum) : base()
@@ -53,31 +66,71 @@ namespace Motion.Animation
             SubCategory = "01_Animation";
 
             // 设置滑块属性
-            Slider.Type = GH_SliderAccuracy.Float;
-            Slider.DecimalPlaces = 2;
+            Slider.Type = GH_SliderAccuracy.Integer;
             Slider.TickDisplay = GH_SliderTickDisplay.None;
             Slider.RailDisplay = GH_SliderRailDisplay.Filled;
-            
+
             // 设置区间范围
             Slider.Minimum = minimum;
             Slider.Maximum = maximum;
             Slider.Value = minimum;
 
             _lastValue = minimum;
-            
+
             // 触发新建事件
             SliderCreated?.Invoke(this, this);
+
+            // 添加值变化事件处理
+            this.Slider.ValueChanged += Slider_ValueChanged;
         }
 
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
-            document.ObjectsDeleted += Document_ObjectsDeleted;
-            
-            // 如果是新创建的滑块，触发事件
-            if (_mainController != null && _mainController != this)
+
+            if (!_isPositionInitialized)
             {
-                SliderCreated?.Invoke(this, this);
+                // 获取当前鼠标位置作为放置位置
+                PointF mouseLoc = Instances.ActiveCanvas.CursorCanvasPosition;
+                if (mouseLoc.X != 0 || mouseLoc.Y != 0)  // 确保有有效的鼠标位置
+                {
+                    this.Attributes.Pivot = mouseLoc;
+
+                    // 如果需要，也可以更新 Bounds
+                    RectangleF bounds = this.Attributes.Bounds;
+                    bounds.Location = mouseLoc;
+                    this.Attributes.Bounds = bounds;
+                }
+
+                _isPositionInitialized = true;
+            }
+
+            // 确保在添加到文档时立即更新区间
+            if (m_attributes is MotionSliderAttributes attributes)
+            {
+                attributes.UpdateSliderRange();
+            }
+
+            // 使用延迟更新确保所有连接都已建立
+            document.ScheduleSolution(5, doc =>
+            {
+                if (m_attributes is MotionSliderAttributes delayedAttributes)
+                {
+                    delayedAttributes.UpdateSliderRange();
+                    ExpireSolution(true);
+                }
+            });
+
+            //Rhino.RhinoApp.WriteLine($"\nMotionSlider {InstanceGuid} added to document");
+
+            // 如果有保存的控制关系，尝试立即恢复
+            if (_isControlled || _controlledSliderGuids.Count > 0)
+            {
+                //Rhino.RhinoApp.WriteLine("Has saved relationships, scheduling restoration");
+                document.ScheduleSolution(50, doc =>
+                {
+                    RestoreControlRelationships();
+                });
             }
         }
 
@@ -87,12 +140,18 @@ namespace Motion.Animation
             {
                 document.ObjectsDeleted -= Document_ObjectsDeleted;
             }
-            
+
             if (IsMainController)
             {
                 IsMainController = false;
             }
-            
+
+            // 清理事件订阅
+            if (Slider != null)
+            {
+                Slider.ValueChanged -= Slider_ValueChanged;
+            }
+
             base.RemovedFromDocument(document);
         }
 
@@ -129,16 +188,16 @@ namespace Motion.Animation
         private void HandleNewSliderCreated(object sender, MotionSlider newSlider)
         {
             if (sender == this) return; // 忽略自己的创建事件
-            
+
             // 更新范围
             decimal newMin = Math.Min(Slider.Minimum, newSlider.Slider.Minimum);
             decimal newMax = Math.Max(Slider.Maximum, newSlider.Slider.Maximum);
-            
+
             // 如果范围有变化，更新主控滑块
             if (newMin != Slider.Minimum || newMax != Slider.Maximum)
             {
                 SetRange(newMin, newMax);
-                
+
                 // 请求重新计算解决方案
                 if (OnPingDocument() != null)
                 {
@@ -164,21 +223,32 @@ namespace Motion.Animation
 
         public override void ExpireSolution(bool recompute)
         {
-            if (CurrentValue != _lastValue)
+            if (!_isRefreshing && CurrentValue != _lastValue)
             {
-                ValueChanged?.Invoke(this, CurrentValue);
-                
-                // 更新所有被控制的滑块
-                foreach (var slider in _controlledSliders)
+                try
                 {
-                    if (CurrentValue >= slider.Slider.Minimum && 
-                        CurrentValue <= slider.Slider.Maximum)
+                    _isRefreshing = true;
+
+                    if (_controlledSliders.Count > 0)
                     {
-                        slider.UpdateValue(CurrentValue);
+                        decimal currentValue = CurrentValue;
+                        foreach (var slider in _controlledSliders)
+                        {
+                            if (currentValue >= slider.Slider.Minimum &&
+                                currentValue <= slider.Slider.Maximum)
+                            {
+                                slider.UpdateValue(currentValue);
+                            }
+                        }
                     }
+
+                    ValueChanged?.Invoke(this, CurrentValue);
+                    _lastValue = CurrentValue;
                 }
-                
-                _lastValue = CurrentValue;
+                finally
+                {
+                    _isRefreshing = false;
+                }
             }
             base.ExpireSolution(recompute);
         }
@@ -191,7 +261,9 @@ namespace Motion.Animation
 
         public void UpdateValue(decimal unionValue)
         {
-            if (_isControlled && unionValue >= Slider.Minimum && unionValue <= Slider.Maximum)
+            if (!_isRefreshing && _isControlled &&
+                unionValue >= Slider.Minimum &&
+                unionValue <= Slider.Maximum)
             {
                 SetSliderValue(unionValue);
             }
@@ -200,25 +272,39 @@ namespace Motion.Animation
         /// <summary>
         /// 添加要控制的滑块
         /// </summary>
-        public void AddControlledSlider(MotionSlider slider)
+        public virtual void AddControlledSlider(MotionSlider slider)
         {
-            if (slider != null && !_controlledSliders.Contains(slider))
+            if (!_controlledSliders.Contains(slider))
             {
                 _controlledSliders.Add(slider);
-                slider.IsControlled = true;
+                slider._isControlled = true;
+                slider._controllerGuid = this.InstanceGuid;
+                
+                // 确保GUID也被添加到列表中
+                if (!_controlledSliderGuids.Contains(slider.InstanceGuid))
+                {
+                    _controlledSliderGuids.Add(slider.InstanceGuid);
+                }
+                
+                // 添加调试输出
+                Rhino.RhinoApp.WriteLine($"Added controlled slider: {slider.InstanceGuid}");
+                Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
             }
         }
 
         /// <summary>
         /// 移除被控制的滑块
         /// </summary>
-        public void RemoveControlledSlider(MotionSlider slider)
+        public virtual void RemoveControlledSlider(MotionSlider slider)
         {
-            if (slider != null && _controlledSliders.Contains(slider))
-            {
-                _controlledSliders.Remove(slider);
-                slider.IsControlled = false;
-            }
+            _controlledSliders.Remove(slider);
+            _controlledSliderGuids.Remove(slider.InstanceGuid);
+            slider._isControlled = false;
+            slider._controllerGuid = Guid.Empty;
+            
+            // 添加调试输出
+            Rhino.RhinoApp.WriteLine($"Removed controlled slider: {slider.InstanceGuid}");
+            Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
         }
 
         /// <summary>
@@ -229,9 +315,9 @@ namespace Motion.Animation
         /// <summary>
         /// 获取所有被控制的滑块
         /// </summary>
-        public IEnumerable<MotionSlider> GetControlledSliders()
+        public List<MotionSlider> GetControlledSliders()
         {
-            return _controlledSliders.AsReadOnly();
+            return new List<MotionSlider>(_controlledSliders);
         }
 
         /// <summary>
@@ -247,35 +333,222 @@ namespace Motion.Animation
         }
 
         // 添加一个新的方法来更新区间范围
-        public void SetRange(decimal minimum, decimal maximum)
+
+        public override bool Write(GH_IWriter writer)
         {
-            Slider.Minimum = minimum;
-            Slider.Maximum = maximum;
-            Slider.Value = Math.Max(minimum, Math.Min(maximum, Slider.Value));
-            ExpireSolution(true);
+            if (!base.Write(writer)) return false;
+
+            try
+            {
+                // 添加调试输出
+                Rhino.RhinoApp.WriteLine($"Writing controlled sliders. Count: {_controlledSliderGuids.Count}");
+                
+                writer.SetDrawingPoint("CanvasPosition", new Point(
+                    (int)Attributes.Pivot.X,
+                    (int)Attributes.Pivot.Y
+                ));
+
+                writer.SetBoolean("IsControlled", _isControlled);
+                writer.SetBoolean("IsMainController", IsMainController);
+                writer.SetString("ControllerGuid", _controllerGuid.ToString());
+
+                // 确保在写入之前同步两个列表
+                _controlledSliderGuids = _controlledSliders.Select(s => s.InstanceGuid).ToList();
+                
+                writer.SetInt32("ControlledSlidersCount", _controlledSliderGuids.Count);
+                for (int i = 0; i < _controlledSliderGuids.Count; i++)
+                {
+                    writer.SetString($"ControlledSlider_{i}", _controlledSliderGuids[i].ToString());
+                    // 添加调试输出
+                    Rhino.RhinoApp.WriteLine($"Writing controlled slider {i}: {_controlledSliderGuids[i]}");
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error writing slider data: {ex.Message}");
+                return false;
+            }
+        }
+
+        public override bool Read(GH_IReader reader)
+        {
+            try
+            {
+                // 读取滑块在画布中的位置
+                if (reader.ItemExists("CanvasPosition"))
+                {
+                    Point position = reader.GetDrawingPoint("CanvasPosition");
+                    Attributes.Pivot = new PointF(position.X, position.Y);
+                    _isPositionInitialized = true;
+                }
+
+                // 读取控制关系
+                _isControlled = reader.GetBoolean("IsControlled");
+                bool isMainController = reader.GetBoolean("IsMainController");
+                string controllerGuidStr = reader.GetString("ControllerGuid");
+                _controllerGuid = string.IsNullOrEmpty(controllerGuidStr) ?
+                    Guid.Empty : new Guid(controllerGuidStr);
+
+                // 读取受控滑块的GUID列表
+                _controlledSliderGuids.Clear();
+                _controlledSliders.Clear();
+
+                int count = reader.GetInt32("ControlledSlidersCount");
+
+                for (int i = 0; i < count; i++)
+                {
+                    string guidStr = reader.GetString($"ControlledSlider_{i}");
+                    if (Guid.TryParse(guidStr, out Guid guid))
+                    {
+                        _controlledSliderGuids.Add(guid);
+                    }
+                }
+                // 设置一个延迟执行的恢复
+                GH_Document doc = this.OnPingDocument();
+                if (doc != null)
+                {
+                    doc.ScheduleSolution(100, d => RestoreControlRelationships());
+                }
+
+                // 调用基类的 Read 方法，但不要立即返回
+                base.Read(reader);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            
+        }
+        // 修改恢复方法，不再使用事件参数
+        private void RestoreControlRelationships()
+        {
+            // 确保只执行一次
+            var doc = OnPingDocument();
+            if (doc == null)
+            {
+                return;
+            }
+
+            // 移除事件处理器
+            doc.SolutionEnd -= (sender, e) => RestoreControlRelationships();
+
+            // 如果这个滑块被控制，找到它的控制者并建立关系
+            if (_isControlled && _controllerGuid != Guid.Empty)
+            {
+                var controller = doc.FindObject(_controllerGuid, true) as MotionUnionSlider;
+                if (controller != null)
+                {
+                    controller.AddControlledSlider(this);
+                    // 确保立即更新值
+                    controller.ExpireSolution(true);
+                }
+            }
+
+            // 如果这个滑块是控制者，重建对其他滑块的控制
+            if (_controlledSliderGuids.Count > 0)
+            {
+                _controlledSliders.Clear(); // 清空现有列表
+                foreach (var guid in _controlledSliderGuids.ToList())
+                {
+                    var slider = doc.FindObject(guid, true) as MotionSlider;
+                    if (slider != null)
+                    {
+                        _controlledSliders.Add(slider); // 直接添加到控制列表
+                        slider._isControlled = true;
+                        slider._controllerGuid = this.InstanceGuid;
+                    }
+                }
+                // 确保立即更新所有受控滑块的值
+                ExpireSolution(true);
+            }
+        }
+
+        private void Slider_ValueChanged(object sender, GH_SliderEventArgs e)
+        {
+            // 只更新受控滑块的值，不更新区间
+            foreach (var slider in _controlledSliders)
+            {
+                if (slider != null)
+                {
+                    slider.SetSliderValue(Slider.Value);
+                }
+            }
+        }
+
+        // 添加一个只更新值的方法，不影响区间
+        public virtual void SetSliderValue(decimal value)
+        {
+            if (!_isRefreshing && Slider.Value != value)
+            {
+                try
+                {
+                    _isRefreshing = true;
+
+                    // 临时移除事件处理器以避免循环调用
+                    this.Slider.ValueChanged -= Slider_ValueChanged;
+                    Slider.Value = value;
+                    ExpireSolution(true);
+                }
+                finally
+                {
+                    // 重新添加事件处理器
+                    this.Slider.ValueChanged += Slider_ValueChanged;
+                    _isRefreshing = false;
+                }
+            }
+        }
+
+        // 区间更新方法
+        public virtual void SetRange(decimal minimum, decimal maximum)
+        {
+            if (Slider.Minimum != minimum || Slider.Maximum != maximum)
+            {
+                Slider.Minimum = minimum;
+                Slider.Maximum = maximum;
+
+                // 确保当前值在新区间内
+                if (Slider.Value < minimum)
+                    SetSliderValue(minimum);
+                else if (Slider.Value > maximum)
+                    SetSliderValue(maximum);
+
+                ExpireSolution(true);
+            }
         }
     }
 
-    public class MotionSliderAttributes : GH_NumberSliderAttributes
+    public class MotionSliderAttributes : GH_ResizableAttributes<GH_NumberSlider>
     {
         private RectangleF _lastBounds;
         private readonly new MotionSlider Owner;
         private bool _initialized = false;
         private bool _isUpdating = false;
+        private int _dragMode = 0;
+        protected override Size MinimumSize => new Size(2, 20);
+        protected override Size MaximumSize => new Size(5000, 20);
+        protected override Padding SizingBorders => new Padding(6, 0, 6, 0);
 
         public MotionSliderAttributes(MotionSlider owner) : base(owner)
         {
             Owner = owner;
         }
 
+        public override bool HasInputGrip
+        {
+            get { return false; }
+        }
+
         protected override void Layout()
         {
             // 计算名称区域大小
-            SizeF sizeF = GH_FontServer.MeasureString(base.Owner.ImpliedNickName, GH_FontServer.StandardAdjusted);
-            sizeF.Width = Math.Max(sizeF.Width, MinimumSize.Height);
+            SizeF sizeF = new SizeF(2, 20);
 
             // 设置整体边界
-            Bounds = new RectangleF(Pivot.X, Pivot.Y, Math.Max(Bounds.Width, sizeF.Width + 1), MinimumSize.Height);
+            Bounds = new RectangleF(Pivot.X, Pivot.Y, Math.Max(Bounds.Width, sizeF.Width), MinimumSize.Height);
             Bounds = GH_Convert.ToRectangle(Bounds);
 
             // 设置名称区域
@@ -301,9 +574,9 @@ namespace Motion.Animation
             base.Owner.Slider.RailBrightColour = Color.FromArgb(255, Color.LightSkyBlue);
             base.Owner.Slider.RailFullColour = Color.FromArgb(255, Color.White);
             base.Owner.Slider.TickDisplay = GH_SliderTickDisplay.None;
-            base.Owner.Slider.RailDisplay = GH_SliderRailDisplay.Filled;
-            base.Owner.Slider.GripDisplay = GH_SliderGripDisplay.Shape;
-            base.Owner.Slider.TextColour = Color.FromArgb(255, 43, 141, 174);
+            base.Owner.Slider.RailDisplay = GH_SliderRailDisplay.Etched;
+            base.Owner.Slider.GripDisplay = GH_SliderGripDisplay.ShapeAndText;
+            base.Owner.Slider.TextColour = Color.FromArgb(255, 40, 40, 40);
             base.Owner.Slider.Padding = new Padding(6, 2, 6, 1);
             base.Owner.Slider.Bounds = boundsSlider;
         }
@@ -327,26 +600,28 @@ namespace Motion.Animation
             if (!viewport.IsVisible(ref rec, 10f))
                 return;
 
-            // 绘制名称区域
-            int[] radii = new int[4] { 3, 0, 0, 3 };
-            Rectangle textbox = Owner.Slider.Bounds;
-            GH_Capsule nameCapsule = GH_Capsule.CreateTextCapsule(
-                textbox, textbox, GH_Palette.Hidden,
-                Owner.ImpliedNickName, radii, 5
-            );
-            nameCapsule.Render(graphics, Selected, Owner.Locked, true);
-            nameCapsule.Dispose();
+            //// 绘制名称区域
+            //int[] radii = new int[4] { 3, 0, 0, 3 };
+            //Rectangle textbox = Owner.Slider.Bounds;
+            //GH_Capsule nameCapsule = GH_Capsule.CreateTextCapsule(
+            //    textbox, textbox, GH_Palette.Hidden,
+            //    Owner.ImpliedNickName, radii, 5
+            //);
+            //nameCapsule.Render(graphics, Selected, Owner.Locked, true);
+            //nameCapsule.Dispose();
 
             // 绘制滑块区域
-            int[] radii2 = new int[4] { 0, 3, 3, 0 };
-            GH_Capsule sliderCapsule = GH_Capsule.CreateCapsule(
+            int[] radii2 = new int[4] { 3, 3, 3, 3 };
+
+            using (GH_Capsule sliderCapsule = GH_Capsule.CreateCapsule(
                 Owner.Slider.Bounds,
                 GH_Palette.Normal,
                 radii2,
-                5
-            );
-            sliderCapsule.Render(graphics, Selected, Owner.Locked, false);
-            sliderCapsule.Dispose();
+                5))
+            {
+                sliderCapsule.AddOutputGrip(OutputGrip.Y);
+                sliderCapsule.Render(graphics, Selected, Owner.Locked, false);
+            }
 
             // 绘制滑块
             Owner.Slider.Render(graphics);
@@ -374,7 +649,7 @@ namespace Motion.Animation
             }
         }
 
-        private void UpdateSliderRange()
+        public void UpdateSliderRange()
         {
             if (_isUpdating) return;
 
@@ -386,7 +661,7 @@ namespace Motion.Animation
                     _isUpdating = true;
 
                     // 使用 Owner.Slider.Bounds 获取实际滑块区域
-                    var sliderBounds = Owner.Slider.Bounds;
+                    var sliderBounds = currentBounds;
                     decimal newMin = Math.Max(0, (decimal)sliderBounds.Left);
                     decimal newMax = (decimal)sliderBounds.Right;
 
@@ -420,6 +695,226 @@ namespace Motion.Animation
                 finally
                 {
                     _isUpdating = false;
+                }
+            }
+        }
+
+        private void UpdateSliderBounds()
+        {
+            if (Owner.Slider == null) return;
+
+            float outputWidth = 10f;  // 输出端宽度
+
+            // 设置滑块的边界，考虑输出端空间
+            Rectangle boundsSlider = Rectangle.FromLTRB(
+                (int)(Owner.Slider.Bounds.Left),
+                (int)Owner.Slider.Bounds.Top,
+                (int)(Owner.Slider.Bounds.Right - outputWidth),  // 减去输出端宽度
+                (int)Owner.Slider.Bounds.Bottom
+            );
+
+            // 配置滑块属性
+            Owner.Slider.Font = GH_FontServer.StandardAdjusted;
+            Owner.Slider.DrawControlBorder = false;
+            Owner.Slider.DrawControlShadows = false;
+            Owner.Slider.DrawControlBackground = false;
+            Owner.Slider.Bounds = boundsSlider;
+        }
+        public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            // 首先让基类处理大小调整
+            var response = base.RespondToMouseMove(sender, e);
+
+            //// 果基类处理了事件（说明正在调整大小），更新滑块
+            //if (response == GH_ObjectResponse.Handled)
+            //{
+            //    UpdateSliderBounds();
+            //    sender.Invalidate();
+            //    return GH_ObjectResponse.Handled;
+            //}
+
+            // 处理其他拖动模式
+            switch (_dragMode)
+            {
+                case 1: // 滑块拖动开始
+                    Owner.RecordUndoEvent("Slider change");
+                    _dragMode = 2;
+                    goto case 2;
+
+                case 2: // 滑块正在拖动
+                    Owner.Slider.MouseMove(e.WinFormsEventArgs, e.CanvasLocation);
+                    using (var region = new Region(Owner.Slider.Bounds))
+                    {
+                        sender.Invalidate(region);
+                    }
+                    return GH_ObjectResponse.Handled;
+
+                    //case 3: // 左边界拖动
+                    //    float newMin = Math.Max(0, e.CanvasLocation.X);
+                    //    Owner.SetRange((decimal)newMin, Owner.Slider.Maximum);
+                    //    using (var region = new Region(Bounds))
+                    //    {
+                    //        sender.Invalidate(region);
+                    //    }
+                    //    return GH_ObjectResponse.Handled;
+            }
+
+            return response;
+        }
+
+        public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            // 忽略左侧的鼠标点击，防止创建连线
+            //if (e.CanvasLocation.X < Bounds.Left + 5)
+            //{
+            //    return GH_ObjectResponse.Ignore;
+            //}
+
+            if (Owner.Slider.MouseDown(e.WinFormsEventArgs, e.CanvasLocation))
+            {
+                _dragMode = 1;
+                sender.Invalidate();
+
+                // 计算滑块的捕捉距离
+                var rail = Owner.Slider.Rail;
+                decimal railWidth = new decimal(rail.Right - rail.Left);
+                decimal zoomFactor = Convert.ToDecimal(sender.Viewport.Zoom);
+                decimal range = Owner.Slider.Maximum - Owner.Slider.Minimum;
+                decimal snapDistance = (range / (railWidth * zoomFactor)) * 10m;
+                Owner.Slider.SnapDistance = snapDistance;
+
+                return GH_ObjectResponse.Capture;
+            }
+
+            // 检查边界拖动
+            RectangleF leftEdge = new RectangleF(Owner.Slider.Bounds.Left, Owner.Slider.Bounds.Top, 5, Owner.Slider.Bounds.Height);
+            RectangleF rightEdge = new RectangleF(Owner.Slider.Bounds.Right, Owner.Slider.Bounds.Top, 5, Owner.Slider.Bounds.Height);
+
+            if (leftEdge.Contains(e.CanvasLocation))
+            {
+                _dragMode = 3;
+                return GH_ObjectResponse.Capture;
+            }
+            else if (rightEdge.Contains(e.CanvasLocation))
+            {
+                _dragMode = 4;
+                return GH_ObjectResponse.Capture;
+            }
+
+            return base.RespondToMouseDown(sender, e);
+        }
+
+        public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (_dragMode > 0)
+            {
+                if (_dragMode == 2)
+                {
+                    Owner.Slider.MouseUp(e.WinFormsEventArgs, e.CanvasLocation);
+                }
+                _dragMode = 0;
+                sender.Invalidate();
+                return GH_ObjectResponse.Release;
+            }
+            return base.RespondToMouseUp(sender, e);
+        }
+
+        public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                if ((double)sender.Viewport.Zoom >= 0.9 && Owner.Slider.Bounds.Contains(GH_Convert.ToPoint(e.CanvasLocation)))
+                {
+                    string content = base.Owner.Slider.GripTextPure;
+                   
+
+                    base.Owner.Slider.TextInputHandlerDelegate = TextInputHandler;
+                    base.Owner.Slider.ShowTextInputBox(sender, limitToBoundary: true, sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl), content);
+                }
+                else
+                {
+                    base.Owner.PopupEditor();
+                }
+
+                return GH_ObjectResponse.Handled;
+            }
+
+            return GH_ObjectResponse.Ignore;
+        }
+
+        private void TextInputHandler(GH_SliderBase slider, string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            try
+            {
+                if (GH_Convert.ToDouble(text, out var destination, GH_Conversion.Secondary))
+                {
+                    base.Owner.RecordUndoEvent("Slider Value Change");
+                    base.Owner.TrySetSliderValue(Convert.ToDecimal(destination));
+                }
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+    }
+
+    
+    public class MotionSliderLockAttributes : MotionSliderAttributes
+    {
+        public MotionSlider Owner;
+        private readonly PointF _lockedPivot;
+        public MotionSliderLockAttributes(MotionSlider owner) : base(owner)
+        {
+            Owner = owner;
+            // 保持原有的边界和位置信息
+            this.Bounds = owner.Attributes.Bounds;
+            _lockedPivot = owner.Attributes.Pivot;
+        }
+
+        // 禁止选择
+        public override bool Selected
+        {
+            get { return false; }
+            set { /* 不做任何事 */ }
+        }
+
+        protected override Padding SizingBorders => new Padding(0, 0, 0, 0);
+        // 禁止拾取
+        public override bool IsPickRegion(PointF pt)
+        {
+            return false;
+        }
+
+        // 锁定 Pivot - 只返回固定位置，忽略所有设置
+        public override PointF Pivot
+        {
+            get => _lockedPivot;
+        }
+        // 禁止拖动
+
+
+
+        protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
+        {
+            // 首先调用基类的渲染
+            base.Render(canvas, graphics, channel);
+
+            if (channel == GH_CanvasChannel.Objects)
+            {
+                // 绘制锁定状态的边框
+                RectangleF bounds = Owner.Slider.Bounds;
+                bounds.Inflate(2, 2); // 扩大边框范围
+
+                // 创建虚线画笔
+                using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))
+                {
+                    lockPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
+                    graphics.DrawRectangle(lockPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
                 }
             }
         }

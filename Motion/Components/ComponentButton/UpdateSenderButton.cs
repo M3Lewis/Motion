@@ -6,6 +6,7 @@ using System.Drawing;
 using Motion.Motility;
 using System.Linq;
 using Rhino.Geometry;
+using Motion.Animation;
 
 namespace Motion.Button
 {
@@ -15,7 +16,7 @@ namespace Motion.Button
 
         protected override Bitmap Icon => Properties.Resources.UpdateSender;
 
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
 
         public override Guid ComponentGuid => new Guid("af57219a-1d36-4edc-9527-0707824fb52c");
 
@@ -32,6 +33,20 @@ namespace Motion.Button
                 if (base.ButtonPressed)
                 {
                     GH_Document doc = OnPingDocument();
+
+                    // 找出所有slider右边界的最大x值
+                    float maxRightBoundary = float.MinValue;
+                    foreach (GH_NumberSlider slider in allTimelineSliders)
+                    {
+                        float rightBoundary = slider.Attributes.Bounds.Right;
+                        if (rightBoundary > maxRightBoundary)
+                        {
+                            maxRightBoundary = rightBoundary;
+                        }
+                    }
+
+                    // 设置统一的x坐标（最大右边界 + 50）
+                    float uniformX = maxRightBoundary + 150;
 
                     foreach (GH_NumberSlider timelineSlider in allTimelineSliders)
                     {
@@ -74,11 +89,10 @@ namespace Motion.Button
                         Param_RemoteSender remoteSender = new Param_RemoteSender();
                         doc.AddObject(remoteSender, false);
 
-                        // 设置位置 - 在slider右侧
+                        // 设置位置 - 使用统一的x坐标，y坐标保持不变
                         PointF sliderPivot = timelineSlider.Attributes.Pivot;
-                        float offsetX = timelineSlider.Attributes.Bounds.Width + 60;
-                        float offsetY = timelineSlider.Attributes.Bounds.Height / 4;
-                        remoteSender.Attributes.Pivot = new PointF(sliderPivot.X + offsetX, sliderPivot.Y + offsetY);
+                        float offsetY = timelineSlider.Attributes.Bounds.Height / 2;
+                        remoteSender.Attributes.Pivot = new PointF(uniformX, sliderPivot.Y + offsetY);
 
                         // 连接 slider 到 remoteSender
                         remoteSender.AddSource(timelineSlider);
@@ -110,7 +124,8 @@ namespace Motion.Button
                 // 查找所有 pOd_TimeLineSlider，排除 TimeLine(Union)
                 var sliders = gH_Document.Objects
                     .Where(o => o != null && 
-                               o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider" &&
+                               o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider" ||
+                               o.GetType().ToString() == "Motion.Animation.MotionSlider" &&
                                o.NickName != "TimeLine(Union)")
                     .Cast<GH_NumberSlider>()
                     .ToList();

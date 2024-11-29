@@ -10,7 +10,7 @@ using Grasshopper.Kernel.Special;
 using System.Linq;
 using Grasshopper;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public class EventOperationAttributes : GH_ComponentAttributes
     {

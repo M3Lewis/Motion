@@ -5,10 +5,10 @@ using System.Linq;
 using System.Windows.Forms;
 using System;
 using GH_IO.Serialization;
-using Motion.Utils;
 using System.Collections.Generic;
+using Motion.Components.OBSOLETE;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public abstract class RemoteParam : Param_GenericObject, IGH_InitCodeAware
     {
@@ -71,9 +71,7 @@ namespace Motion.Motility
                     }
                     _pendingGuids.Clear();
                 }
-
-                // 连接参数并更新状态
-                MotilityUtils.connectMatchingParams(doc, true);
+                
                 if (_hideWhenEmpty || _lockWhenEmpty)
                 {
                     UpdateGroupVisibilityAndLock();

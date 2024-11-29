@@ -8,7 +8,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public class EventComponentAttributes : GH_ComponentAttributes
     {
@@ -127,6 +127,7 @@ namespace Motion.Motility
                             var objBounds = obj.Attributes.Bounds;
                             objBounds.Inflate(5f, 5f);
                             DrawBoundary(graphics, objBounds, boundaryColor);
+                            DrawGuideLine(graphics, Owner.Attributes.Bounds, objBounds, boundaryColor);
                         }
                     }
                 }
@@ -196,6 +197,42 @@ namespace Motion.Motility
                 pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
                 pen.Width = 2;
                 graphics.DrawRectangle(pen, bounds.X - 3, bounds.Y - 3, bounds.Width + 6, bounds.Height + 6);
+            }
+        }
+
+        private void DrawGuideLine(Graphics graphics, RectangleF eventComponentBounds, RectangleF affectComponentBounds, Color color)
+        {
+            using (var pen = new Pen(color, 1f))
+            {
+                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
+                pen.Width = 1;
+
+                // 计算起点（事件组件的中心点）
+                PointF startPoint = new PointF(
+                    eventComponentBounds.Left + eventComponentBounds.Width / 2,
+                    eventComponentBounds.Top + eventComponentBounds.Height / 2
+                );
+
+                
+                // 计算终点（受影响组件的中心点）
+                PointF endPoint = new PointF(
+                    affectComponentBounds.Left + affectComponentBounds.Width / 2,
+                    affectComponentBounds.Top + affectComponentBounds.Height / 2
+                );
+
+                // 绘制连接线
+                graphics.DrawLine(pen, startPoint, endPoint);
+
+                // 可选：添加一个小圆点在线的起点和终点
+                float dotSize = 4f;
+                graphics.FillEllipse(new SolidBrush(color), 
+                    startPoint.X - dotSize/2, 
+                    startPoint.Y - dotSize/2, 
+                    dotSize, dotSize);
+                graphics.FillEllipse(new SolidBrush(color), 
+                    endPoint.X - dotSize/2, 
+                    endPoint.Y - dotSize/2, 
+                    dotSize, dotSize);
             }
         }
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)

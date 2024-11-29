@@ -133,6 +133,16 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap CreateUnionSlider {
+            get {
+                object obj = ResourceManager.GetObject("CreateUnionSlider", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap DynamicOutput {
             get {
                 object obj = ResourceManager.GetObject("DynamicOutput", resourceCulture);
@@ -243,6 +253,16 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap MotionSlider {
+            get {
+                object obj = ResourceManager.GetObject("MotionSlider", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap MultiTransform {
             get {
                 object obj = ResourceManager.GetObject("MultiTransform", resourceCulture);
@@ -306,6 +326,16 @@ namespace Motion.Properties {
         public static System.Drawing.Bitmap SliderControlWPF {
             get {
                 object obj = ResourceManager.GetObject("SliderControlWPF", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap SliderControlWPF2 {
+            get {
+                object obj = ResourceManager.GetObject("SliderControlWPF2", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

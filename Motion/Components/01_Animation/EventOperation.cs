@@ -10,7 +10,7 @@ using Grasshopper.Kernel.Types;
 using Rhino.Geometry;
 using Grasshopper.Kernel.Parameters;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public class EventOperation : GH_Component, IGH_VariableParameterComponent
     {
@@ -24,7 +24,7 @@ namespace Motion.Motility
             "处理事件序列的操作\n" +
             "放大组件 可以添加额外的[当前事件序号]/[当前事件区间]输出端",
             "Motion", // 替换为您想要的类别
-            "04_Motility") // 替换为您想要的子类别
+            "01_Animation") // 替换为您想要的子类别
         {
         }
         public override GH_Exposure Exposure => GH_Exposure.secondary;

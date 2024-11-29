@@ -7,11 +7,11 @@ using System.Collections.Generic;
 using Rhino.Geometry;
 using GH_IO.Serialization;
 using System.Windows.Forms;
-using Motion.Utils;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel.Undo;
+using Motion.Components.OBSOLETE;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public class Param_RemoteSender : RemoteParam
     {
@@ -42,7 +42,7 @@ namespace Motion.Motility
             if (doc == null) return;
 
             var sliders = doc.Objects
-                .Where(o => o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider")
+                .Where(o => o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider"|| o.GetType().ToString() == "Motion.Animation.MotionSlider")
                 .Cast<GH_NumberSlider>()
                 .ToList();
 
@@ -285,14 +285,14 @@ namespace Motion.Motility
                                 ShowTemporaryMessage(canvas, 
                                     $"已存在相同标识({nicknameKey})的 Sender!");
                             }
-                            doc.RemoveObject(this, false);
+                            
                             return;
                         }
 
                         // 触发 NickNameChanged 事件
                         NickNameChanged?.Invoke(this, nicknameKey);
                         
-                        doc.ScheduleSolution(10, MotilityUtils.connectMatchingParams);
+                        //doc.ScheduleSolution(10, MotilityUtils.connectMatchingParams);
                     }
                 }
             }
@@ -308,7 +308,7 @@ namespace Motion.Motility
         }
         public override string SubCategory
         {
-            get => "04_Motility";
+            get => "01_Animation";
             set => base.SubCategory = value;
         }
 

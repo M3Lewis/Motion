@@ -31,25 +31,32 @@ namespace Motion.Animation
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            double time = 0;
-            var domains = new List<Interval>();
-
-            if (!DA.GetData(0, ref time)) return;
-            if (!DA.GetDataList(1, domains)) return;
-
-            bool isIncludedInAny = false;
-            foreach (var domain in domains)
+            try
             {
-                if (domain.IncludesParameter(time))
+                double time = 0;
+                var domains = new List<Interval>();
+
+                if (!DA.GetData(0, ref time)) return;
+                if (!DA.GetDataList(1, domains)) return;
+
+                bool isIncludedInAny = false;
+                foreach (var domain in domains)
                 {
-                    isIncludedInAny = true;
-                    break;
+                    if (domain.IncludesParameter(time))
+                    {
+                        isIncludedInAny = true;
+                        break;
+                    }
                 }
+
+                DA.SetData(0, isIncludedInAny);
+
+                OnPingDocument()?.ScheduleSolution(1, d => SetGroupComponentsLock(!isIncludedInAny));
             }
-
-            DA.SetData(0, isIncludedInAny);
-
-            SetGroupComponentsLock(!isIncludedInAny);
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error in IntervalLock SolveInstance: {ex.Message}");
+            }
         }
 
         private void SetGroupComponentsLock(bool lockState)
@@ -63,18 +70,56 @@ namespace Motion.Animation
 
             if (currentGroup == null) return;
 
-            foreach (var id in currentGroup.ObjectIDs)
+            doc.ScheduleSolution(5, d =>
             {
-                var obj = doc.FindObject(id, true);
-                if (obj == this) continue;
-                if (obj is not IGH_ActiveObject activeObj) continue;
-
-                activeObj.Locked = lockState;
-                if (lockState)
+                try
                 {
-                    activeObj.ClearData();
+                    var groupObjects = currentGroup.ObjectIDs
+                        .Select(id => doc.FindObject(id, true))
+                        .Where(obj => obj != null && obj != this)
+                        .ToList();
+
+                    foreach (var obj in groupObjects)
+                    {
+                        if (obj is not IGH_ActiveObject activeObj) continue;
+
+                        try
+                        {
+                            activeObj.Locked = lockState;
+
+                            if (lockState)
+                            {
+                                d.ScheduleSolution(1, doc =>
+                                {
+                                    activeObj.Phase = GH_SolutionPhase.Blank;
+                                    if (obj is IGH_Component component)
+                                    {
+                                        component.ExpireSolution(false);
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                if (obj is IGH_Component component)
+                                {
+                                    d.ScheduleSolution(1, doc =>
+                                    {
+                                        component.ExpireSolution(true);
+                                    });
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Rhino.RhinoApp.WriteLine($"Error handling component {obj.Name}: {ex.Message}");
+                        }
+                    }
                 }
-            }
+                catch (Exception ex)
+                {
+                    Rhino.RhinoApp.WriteLine($"Error in SetGroupComponentsLock: {ex.Message}");
+                }
+            });
         }
 
         public override void AddedToDocument(GH_Document document)
@@ -99,7 +144,7 @@ namespace Motion.Animation
             }
         }
 
-        public override GH_Exposure Exposure => GH_Exposure.secondary;
+        public override GH_Exposure Exposure => GH_Exposure.tertiary;
 
         protected override Bitmap Icon => Properties.Resources.IntervalLock;
 

@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public class RemoteParamAttributes : GH_FloatingParamAttributes
     {
@@ -35,17 +35,17 @@ namespace Motion.Motility
         {
         }
 
-        private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiver)
-        {
-            var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
-            if (!selectedObjects.Any())
-                return false;
+        //private bool UpdateAffectedObjects(GH_Canvas sender, Param_RemoteReceiver receiver)
+        //{
+        //    var selectedObjects = sender.Document.SelectedObjects()?.ToList() ?? new List<IGH_DocumentObject>();
+        //    if (!selectedObjects.Any())
+        //        return false;
 
-            receiver.affectedObjects = selectedObjects
-                .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
-                .ToList();
-            return true;
-        }
+        //    receiver.affectedObjects = selectedObjects
+        //        .Where(obj => obj != null && !(obj is Param_RemoteReceiver))
+        //        .ToList();
+        //    return true;
+        //}
 
         public override void SetupTooltip(PointF point, GH_TooltipDisplayEventArgs e)
         {
@@ -94,56 +94,56 @@ namespace Motion.Motility
                 RectangleF arrowRect = new RectangleF(this.Bounds.Right, this.Bounds.Bottom, 10, 1);
                 this.Bounds = RectangleF.Union(this.Bounds, arrowRect);
             }
-            if (Owner is Param_RemoteReceiver)
-            {
-                RectangleF arrowRect = new RectangleF(this.Bounds.Left - 15, this.Bounds.Bottom, 15, 1);
-                this.Bounds = RectangleF.Union(this.Bounds, arrowRect);
-            }
+            //if (Owner is Param_RemoteReceiver)
+            //{
+            //    RectangleF arrowRect = new RectangleF(this.Bounds.Left - 15, this.Bounds.Bottom, 15, 1);
+            //    this.Bounds = RectangleF.Union(this.Bounds, arrowRect);
+            //}
 
-            if (Owner is Param_RemoteReceiver)
-            {
-                float buttonHeight = 20.0f;
-                float spacing = 1f;
+            //if (Owner is Param_RemoteReceiver)
+            //{
+            //    float buttonHeight = 20.0f;
+            //    float spacing = 1f;
 
-                HideButtonBounds = new RectangleF(
-                    Bounds.X,
-                    Bounds.Bottom + spacing,
-                    Bounds.Width,
-                    buttonHeight);
-                HideButtonBounds.Inflate(-1.0f, -1.0f);
+            //    HideButtonBounds = new RectangleF(
+            //        Bounds.X,
+            //        Bounds.Bottom + spacing,
+            //        Bounds.Width,
+            //        buttonHeight);
+            //    HideButtonBounds.Inflate(-1.0f, -1.0f);
 
-                LockButtonBounds = new RectangleF(
-                    Bounds.X,
-                    Bounds.Bottom + buttonHeight + spacing,
-                    Bounds.Width,
-                    buttonHeight);
-                LockButtonBounds.Inflate(-1.0f, -1.0f);
+            //    LockButtonBounds = new RectangleF(
+            //        Bounds.X,
+            //        Bounds.Bottom + buttonHeight + spacing,
+            //        Bounds.Width,
+            //        buttonHeight);
+            //    LockButtonBounds.Inflate(-1.0f, -1.0f);
 
-                DataButtonBounds = new RectangleF(
-                    Bounds.X,
-                    Bounds.Bottom + (buttonHeight) * 2 + spacing,
-                    Bounds.Width,
-                    buttonHeight);
-                DataButtonBounds.Inflate(-1.0f, -1.0f);
+            //    DataButtonBounds = new RectangleF(
+            //        Bounds.X,
+            //        Bounds.Bottom + (buttonHeight) * 2 + spacing,
+            //        Bounds.Width,
+            //        buttonHeight);
+            //    DataButtonBounds.Inflate(-1.0f, -1.0f);
 
-                CollapseButtonBounds = new RectangleF(
-                    Bounds.Right - 14,
-                    Bounds.Y,
-                    13,
-                    13);
+            //    CollapseButtonBounds = new RectangleF(
+            //        Bounds.Right - 14,
+            //        Bounds.Y,
+            //        13,
+            //        13);
 
-                if (!IsCollapsed)
-                {
-                    var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
-                    buttonArea = RectangleF.Union(buttonArea, DataButtonBounds);
-                    buttonArea.Inflate(2.0f, 2.0f);
-                    Bounds = RectangleF.Union(Bounds, buttonArea);
-                }
-                else
-                {
-                    return;
-                }
-            }
+            //    if (!IsCollapsed)
+            //    {
+            //        var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
+            //        buttonArea = RectangleF.Union(buttonArea, DataButtonBounds);
+            //        buttonArea.Inflate(2.0f, 2.0f);
+            //        Bounds = RectangleF.Union(Bounds, buttonArea);
+            //    }
+            //    else
+            //    {
+            //        return;
+            //    }
+            //}
         }
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
@@ -151,48 +151,6 @@ namespace Motion.Motility
 
             if (channel == GH_CanvasChannel.Objects)
             {
-                var remoteReceiver = Owner as Param_RemoteReceiver;
-
-                if (mouseOver && remoteReceiver?.affectedObjects != null && remoteReceiver.affectedObjects.Any())
-                {
-                    Color boundaryColor;
-
-                    Color orange = Color.Orange;
-                    Color dodgerBlue = Color.DodgerBlue;
-                    Color limeGreen = Color.LimeGreen;
-
-                    Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
-                    Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
-                    Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
-
-                    if (remoteReceiver.HideWhenEmpty && remoteReceiver.LockWhenEmpty)
-                    {
-                        boundaryColor = orangeWithLessAlpha;
-                    }
-                    else if (remoteReceiver.HideWhenEmpty)
-                    {
-                        boundaryColor = dodgerBlueWithLessAlpha;
-                    }
-                    else if (remoteReceiver.LockWhenEmpty)
-                    {
-                        boundaryColor = limeGreenWithLessAlpha;
-                    }
-                    else
-                    {
-                        boundaryColor = Color.Transparent;
-                    }
-
-                    foreach (var obj in remoteReceiver.affectedObjects)
-                    {
-                        if (obj?.Attributes != null)
-                        {
-                            var objBounds = obj.Attributes.Bounds;
-                            objBounds.Inflate(5f, 5f);
-                            DrawBoundary(graphics, objBounds, boundaryColor);
-                        }
-                    }
-                }
-
                 GH_Viewport viewport = canvas.Viewport;
                 RectangleF bounds = this.Bounds;
                 if (!viewport.IsVisible(ref bounds, 10f)) return;
@@ -201,94 +159,137 @@ namespace Motion.Motility
                 RenderCapsuleAndArrow(canvas, graphics, Bounds);
                 RenderStateTagsIfNeeded(graphics);
 
-                if (remoteReceiver != null)
-                {
-                    graphics.DrawString(
-                        IsCollapsed ? "▾" : "▴",
-                        GH_FontServer.Standard,
-                        Brushes.LightSkyBlue,
-                        CollapseButtonBounds,
-                        new StringFormat()
-                        {
-                            Alignment = StringAlignment.Far,
-                            LineAlignment = StringAlignment.Far
-                        });
+                //var remoteReceiver = Owner as Param_RemoteReceiver;
 
-                    if (!IsCollapsed)
-                    {
-                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds,
-                            remoteReceiver.HideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                        {
-                            capsule.Render(graphics, Selected, Owner.Locked, false);
-                            graphics.DrawString(
-                                "Hide",
-                                GH_FontServer.StandardBold,
-                                Brushes.White,
-                                HideButtonBounds,
-                                new StringFormat()
-                                {
-                                    Alignment = StringAlignment.Center,
-                                    LineAlignment = StringAlignment.Center
-                                });
-                        }
-
-                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds,
-                            remoteReceiver.LockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                        {
-                            capsule.Render(graphics, Selected, Owner.Locked, false);
-                            graphics.DrawString(
-                                "Lock",
-                                GH_FontServer.StandardBold,
-                                Brushes.White,
-                                LockButtonBounds,
-                                new StringFormat()
-                                {
-                                    Alignment = StringAlignment.Center,
-                                    LineAlignment = StringAlignment.Center
-                                });
-                        }
-
-                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(DataButtonBounds, GH_Palette.Black))
-                        {
-                            capsule.Render(graphics, Selected, Owner.Locked, false);
-                            graphics.DrawString(
-                                "Data",
-                                GH_FontServer.StandardBold,
-                                Brushes.White,
-                                DataButtonBounds,
-                                new StringFormat()
-                                {
-                                    Alignment = StringAlignment.Center,
-                                    LineAlignment = StringAlignment.Center
-                                });
-                        }
-                    }
-                }
-
-                //string label = "";
-                //if (Owner is Param_RemoteLocation)
+                //if (mouseOver && remoteReceiver?.affectedObjects != null && remoteReceiver.affectedObjects.Any())
                 //{
-                //    label = "L";
-                //}
-                //else if (Owner is Param_RemoteTarget)
-                //{
-                //    label = "T";
+                //    Color boundaryColor;
+
+                //    Color orange = Color.Orange;
+                //    Color dodgerBlue = Color.DodgerBlue;
+                //    Color limeGreen = Color.LimeGreen;
+
+                //    Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
+                //    Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
+                //    Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
+
+                //    if (remoteReceiver.HideWhenEmpty && remoteReceiver.LockWhenEmpty)
+                //    {
+                //        boundaryColor = orangeWithLessAlpha;
+                //    }
+                //    else if (remoteReceiver.HideWhenEmpty)
+                //    {
+                //        boundaryColor = dodgerBlueWithLessAlpha;
+                //    }
+                //    else if (remoteReceiver.LockWhenEmpty)
+                //    {
+                //        boundaryColor = limeGreenWithLessAlpha;
+                //    }
+                //    else
+                //    {
+                //        boundaryColor = Color.Transparent;
+                //    }
+
+                //    foreach (var obj in remoteReceiver.affectedObjects)
+                //    {
+                //        if (obj?.Attributes != null)
+                //        {
+                //            var objBounds = obj.Attributes.Bounds;
+                //            objBounds.Inflate(5f, 5f);
+                //            DrawBoundary(graphics, objBounds, boundaryColor);
+                //        }
+                //    }
                 //}
 
-                //if (!string.IsNullOrEmpty(label))
+                //if (remoteReceiver != null)
                 //{
-                //    var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 7);
-                //    var labelBounds = new RectangleF(
-                //        Bounds.Left - 12,
-                //        Bounds.Top + (Bounds.Height - labelFont.Height) / 2,
-                //        15,
-                //        labelFont.Height
-                //    );
+                //    graphics.DrawString(
+                //        IsCollapsed ? "▾" : "▴",
+                //        GH_FontServer.Standard,
+                //        Brushes.LightSkyBlue,
+                //        CollapseButtonBounds,
+                //        new StringFormat()
+                //        {
+                //            Alignment = StringAlignment.Far,
+                //            LineAlignment = StringAlignment.Far
+                //        });
 
-                //    graphics.DrawString(label, labelFont, Brushes.DarkGray, labelBounds);
+                //    if (!IsCollapsed)
+                //    {
+                //        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds,
+                //            remoteReceiver.HideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                //        {
+                //            capsule.Render(graphics, Selected, Owner.Locked, false);
+                //            graphics.DrawString(
+                //                "Hide",
+                //                GH_FontServer.StandardBold,
+                //                Brushes.White,
+                //                HideButtonBounds,
+                //                new StringFormat()
+                //                {
+                //                    Alignment = StringAlignment.Center,
+                //                    LineAlignment = StringAlignment.Center
+                //                });
+                //        }
+
+                //        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds,
+                //            remoteReceiver.LockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                //        {
+                //            capsule.Render(graphics, Selected, Owner.Locked, false);
+                //            graphics.DrawString(
+                //                "Lock",
+                //                GH_FontServer.StandardBold,
+                //                Brushes.White,
+                //                LockButtonBounds,
+                //                new StringFormat()
+                //                {
+                //                    Alignment = StringAlignment.Center,
+                //                    LineAlignment = StringAlignment.Center
+                //                });
+                //        }
+
+                //        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(DataButtonBounds, GH_Palette.Black))
+                //        {
+                //            capsule.Render(graphics, Selected, Owner.Locked, false);
+                //            graphics.DrawString(
+                //                "Data",
+                //                GH_FontServer.StandardBold,
+                //                Brushes.White,
+                //                DataButtonBounds,
+                //                new StringFormat()
+                //                {
+                //                    Alignment = StringAlignment.Center,
+                //                    LineAlignment = StringAlignment.Center
+                //                });
+                //        }
+                //    }
+                //}
+
+                //    //string label = "";
+                //    //if (Owner is Param_RemoteLocation)
+                //    //{
+                //    //    label = "L";
+                //    //}
+                //    //else if (Owner is Param_RemoteTarget)
+                //    //{
+                //    //    label = "T";
+                //    //}
+
+                //    //if (!string.IsNullOrEmpty(label))
+                //    //{
+                //    //    var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 7);
+                //    //    var labelBounds = new RectangleF(
+                //    //        Bounds.Left - 12,
+                //    //        Bounds.Top + (Bounds.Height - labelFont.Height) / 2,
+                //    //        15,
+                //    //        labelFont.Height
+                //    //    );
+
+                //    //    graphics.DrawString(label, labelFont, Brushes.DarkGray, labelBounds);
+                //    //}
                 //}
             }
-        }
+            }
         private void RenderCapsuleAndArrow(GH_Canvas canvas, Graphics graphics, RectangleF bounds)
         {
             using (GH_Capsule capsule = GH_Capsule.CreateTextCapsule(bounds, m_textBounds, GH_Palette.Black, Owner.NickName))
@@ -308,17 +309,17 @@ namespace Motion.Motility
 
         private PointF GetArrowLocation(RectangleF bounds)
         {
-            if (Owner is Param_RemoteReceiver)
-            {
-                if (IsCollapsed)
-                {
-                    return new PointF(bounds.Left + 9, bounds.Bottom - 10);
-                }
-                else
-                {
-                    return new PointF(bounds.Left + 10, this.OutputGrip.Y - 30);
-                }
-            }
+            //if (Owner is Param_RemoteReceiver)
+            //{
+            //    if (IsCollapsed)
+            //    {
+            //        return new PointF(bounds.Left + 9, bounds.Bottom - 10);
+            //    }
+            //    else
+            //    {
+            //        return new PointF(bounds.Left + 10, this.OutputGrip.Y - 30);
+            //    }
+            //}
             if (Owner is Param_RemoteSender)
                 return new PointF(bounds.Right - 10, this.OutputGrip.Y + 2);
             return PointF.Empty;
@@ -346,11 +347,11 @@ namespace Motion.Motility
         {
             Color arrowColor = Color.LightSkyBlue;
 
-            if (Owner is Param_RemoteReceiver)
-            {
-                arrowColor = Color.Orange;
-            }
-            else if (Owner is Param_RemoteSender)
+            //if (Owner is Param_RemoteReceiver)
+            //{
+            //    arrowColor = Color.Orange;
+            //}
+            if (Owner is Param_RemoteSender)
             {
                 arrowColor = Color.LightSkyBlue;
             }

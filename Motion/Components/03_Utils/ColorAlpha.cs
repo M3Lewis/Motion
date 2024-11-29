@@ -2,14 +2,14 @@ using Grasshopper.Kernel;
 using System;
 using System.Drawing;
 
-namespace Motion.Animation
+namespace Motion.Utils
 {
     public class ColorAlpha : GH_Component
     {
         public ColorAlpha()
             : base("Color Alpha", "Alpha", 
                 "Modify the alpha (transparency) value of a color",
-                "Motion", "01_Animation")
+                "Motion", "03_Utils")
         {
         }
 

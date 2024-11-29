@@ -12,7 +12,7 @@ namespace Motion.Toolbar
     public class ScribbleControlButton : MotionToolbarButton
     {
         private ToolStripButton button;
-
+        protected override int ToolbarOrder => 90;
         public ScribbleControlButton()
         {
         }

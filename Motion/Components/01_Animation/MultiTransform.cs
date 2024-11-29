@@ -9,7 +9,7 @@ namespace Motion.Animation
 {
     public class MultiTransform : GH_Component
     {
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.tertiary;
 
         public override Guid ComponentGuid => new Guid("{a9f004f8-5bcb-4b12-9f42-4e96771b9290}");
 

@@ -24,15 +24,19 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <Compile Remove="NS\**" />
     <Compile Remove="Resources\**" />
     <Compile Remove="tele\**" />
     <Compile Remove="XForm\**" />
+    <EmbeddedResource Remove="NS\**" />
     <EmbeddedResource Remove="Resources\**" />
     <EmbeddedResource Remove="tele\**" />
     <EmbeddedResource Remove="XForm\**" />
+    <None Remove="NS\**" />
     <None Remove="Resources\**" />
     <None Remove="tele\**" />
     <None Remove="XForm\**" />
+    <Page Remove="NS\**" />
     <Page Remove="Resources\**" />
     <Page Remove="tele\**" />
     <Page Remove="XForm\**" />
@@ -45,7 +49,6 @@
     <Compile Remove="Components\01_Animation\SliderInterval.cs" />
     <Compile Remove="Components\01_Animation\SliderLocker.cs" />
     <Compile Remove="Components\03_Utils\AddScribble.cs" />
-    <Compile Remove="Components\04_Motility\Param_RemoteData.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
@@ -63,15 +66,19 @@
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
+    <Compile Remove="Components\OBSOLETE\MotionSliderControlButton2.cs" />
+    <Compile Remove="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
     <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
-    <Compile Remove="pod\pOd_Animation.L_TimeLine.pOd_TimeLineSlider.cs" />
-    <Compile Remove="pod\pOd_Animation.L_TimeLine.TimeLineSliderAttributes.cs" />
-    <Compile Remove="pod\pOd_Animation.L_TimeLine.TimeLineSliderMax.cs" />
-    <Compile Remove="pod\pOd_Animation.L_TimeLine.TimeLineSliderMaxAttributes.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
   </ItemGroup>
   
   <ItemGroup>
+    <None Include="Components\OBSOLETE\MotionSliderControlButton2.cs" />
+    <None Include="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
+    <None Include="Components\OBSOLETE\Param_RemoteLocation.cs" />
+    <None Include="Components\OBSOLETE\Param_RemoteTarget.cs" />
+    <None Include="Components\OBSOLETE\Param_RemoteReceiver.cs" />
+    <None Include="Components\OBSOLETE\RemoteComponentsUndoAction.cs" />
     <None Include="Components\OBSOLETE\AddScribble.cs" />
     <None Include="Components\OBSOLETE\GraphMapperChanger.cs" />
     <None Include="Components\OBSOLETE\MergeCameraBase.cs" />
@@ -98,10 +105,6 @@
     <None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
     <None Include="Components\OBSOLETE\TimelineRange.cs" />
     <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
-    <None Include="pod\pOd_Animation.L_TimeLine.pOd_TimeLineSlider.cs" />
-    <None Include="pod\pOd_Animation.L_TimeLine.TimeLineSliderAttributes.cs" />
-    <None Include="pod\pOd_Animation.L_TimeLine.TimeLineSliderMax.cs" />
-    <None Include="pod\pOd_Animation.L_TimeLine.TimeLineSliderMaxAttributes.cs" />
   </ItemGroup>
   
   <ItemGroup>

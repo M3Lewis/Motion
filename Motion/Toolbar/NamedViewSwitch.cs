@@ -11,6 +11,7 @@ namespace Motion.Toolbar
 {
     public class NamedViewSwitch : MotionToolbarButton
     {
+        protected override int ToolbarOrder => 80;
         private ToolStripButton button;
         private List<string> namedViews = new List<string>();
         private int currentViewIndex = 0;

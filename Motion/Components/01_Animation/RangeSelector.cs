@@ -38,7 +38,7 @@ namespace Motion.Animation
 
         }
         public override Guid ComponentGuid => new Guid("{956fc4f3-221a-4037-9b30-61167eee17a4}");
-        public override GH_Exposure Exposure => GH_Exposure.secondary;
+        public override GH_Exposure Exposure => GH_Exposure.tertiary;
         protected override Bitmap Icon => Properties.Resources.RangeSelector;
 
         public string DisplayName
@@ -174,7 +174,7 @@ namespace Motion.Animation
         private bool ShouldTrackSlider(GH_NumberSlider slider)
         {
             return slider.NickName != EXCLUDED_NICKNAME 
-                   && slider.GetType().Name == "pOd_TimeLineSlider";
+                   && slider.GetType().Name == "pOd_TimeLineSlider"|| slider.GetType().Name == "MotionSlider";
         }
 
         private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)

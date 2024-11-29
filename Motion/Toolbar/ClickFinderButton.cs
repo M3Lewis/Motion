@@ -18,6 +18,7 @@ namespace Motion.Toolbar
 {
     public class ClickFinderButton : MotionToolbarButton, IGH_PreviewObject
     {
+        protected override int ToolbarOrder => 60;
         private ToolStripButton button;
         private bool isActive = false;
         private List<IGH_DocumentObject> previewObjects;

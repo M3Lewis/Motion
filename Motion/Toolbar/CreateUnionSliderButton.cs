@@ -11,11 +11,12 @@ using System.Collections.Generic;
 
 namespace Motion.Toolbar
 {
-    public class MotionSliderControlButton : MotionToolbarButton
+    public class CreateUnionSliderButton : MotionToolbarButton
     {
         private ToolStripButton button;
+        protected override int ToolbarOrder => 20;
 
-        public MotionSliderControlButton()
+        public CreateUnionSliderButton()
         {
         }
 
@@ -43,10 +44,10 @@ namespace Motion.Toolbar
 
         private void Instantiate()
         {
-            button.Name = "Motion Slider Controller";
+            button.Name = "Create Union Slider";
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            button.Image = null;
+            button.Image = Properties.Resources.CreateUnionSlider;
             button.ToolTipText = "左键点击创建/更新主控滑块，右键点击取消控制";
             button.MouseDown += Button_MouseDown;
             button.CheckOnClick = false;
@@ -62,7 +63,7 @@ namespace Motion.Toolbar
             // 获取所有选中的 MotionSlider
             foreach (IGH_DocumentObject obj in canvas.Document.SelectedObjects())
             {
-                if (obj is MotionSlider slider)
+                if (obj is MotionSlider slider && !(obj is MotionUnionSlider))  // 确保不选中 MotionUnionSlider
                 {
                     selectedSliders.Add(slider);
                 }
@@ -76,19 +77,15 @@ namespace Motion.Toolbar
 
             if (e.Button == MouseButtons.Left)
             {
-                // 计算全局范围
-                decimal globalMin = decimal.MaxValue;
-                decimal globalMax = decimal.MinValue;
+                // 获取所有文档中的 MotionSlider（不包括 MotionUnionSlider）
+                var allSliders = canvas.Document.Objects
+                    .OfType<MotionSlider>()
+                    .Where(s => !(s is MotionUnionSlider))
+                    .ToList();
 
-                foreach (var slider in selectedSliders)
-                {
-                    globalMin = Math.Min(globalMin, slider.Slider.Minimum);
-                    globalMax = Math.Max(globalMax, slider.Slider.Maximum);
-                    // 添加调试输出
-                    Rhino.RhinoApp.WriteLine($"Selected slider range: {slider.Slider.Minimum}-{slider.Slider.Maximum}");
-                }
-                
-                Rhino.RhinoApp.WriteLine($"Calculated range: {globalMin}-{globalMax}");
+                // 计算全局范围（考虑所有滑块，而不仅仅是选中的）
+                decimal globalMin = allSliders.Min(s => s.Slider.Minimum);
+                decimal globalMax = allSliders.Max(s => s.Slider.Maximum);
 
                 var existingController = FindExistingController(selectedSliders);
 
@@ -97,7 +94,7 @@ namespace Motion.Toolbar
                     // 更新现有主控滑块的范围
                     existingController.SetRange(globalMin, globalMax);
                     existingController.IsMainController = true;
-                    
+
                     // 更新控制关系
                     foreach (var slider in selectedSliders)
                     {
@@ -106,18 +103,18 @@ namespace Motion.Toolbar
                             existingController.AddControlledSlider(slider);
                         }
                     }
-                    
+
                     // 强制更新
                     existingController.ExpireSolution(true);
                     canvas.Refresh();
-                    
+
                     ShowMessage($"已更新主控滑块 ({globalMin}-{globalMax})，控制 {selectedSliders.Count - 1} 个滑块");
                 }
                 else
                 {
-                    // 创建新的主控滑块
-                    var controller = new MotionSlider(globalMin, globalMax);
-                    
+                    // 创建新的联合滑块
+                    var controller = new MotionUnionSlider(globalMin, globalMax);
+
                     // 先创建属性
                     controller.CreateAttributes();
                     controller.IsMainController = true;
@@ -125,8 +122,8 @@ namespace Motion.Toolbar
                     // 计算新滑块位置和大小
                     float minY = selectedSliders.Min(s => s.Attributes.Bounds.Top);
                     float avgX = selectedSliders.Average(s => s.Attributes.Bounds.Left);
-                    float width = selectedSliders.Average(s => s.Attributes.Bounds.Width); // 使用平均宽度
-                    
+                    float width = selectedSliders.Average(s => s.Attributes.Bounds.Width);
+
                     // 设置滑块的位置和大小
                     RectangleF bounds = new RectangleF(avgX, minY - 50, width, controller.Attributes.Bounds.Height);
                     controller.Attributes.Bounds = bounds;
@@ -145,7 +142,7 @@ namespace Motion.Toolbar
                     controller.ExpireSolution(true);
                     canvas.Refresh();
 
-                    ShowMessage($"已创建主控滑块 ({globalMin}-{globalMax})，控制 {selectedSliders.Count} 个滑块");
+                    ShowMessage($"已创建联合滑块 ({globalMin}-{globalMax})，控制 {selectedSliders.Count} 个滑块");
                 }
 
                 canvas.Document.NewSolution(true);
@@ -244,8 +241,8 @@ namespace Motion.Toolbar
                 {
                     foreach (IGH_DocumentObject obj in Instances.ActiveCanvas.Document.Objects)
                     {
-                        if (obj is MotionSlider controller && 
-                            controller.IsMainController && 
+                        if (obj is MotionSlider controller &&
+                            controller.IsMainController &&
                             controller.GetControlledSliders().Contains(slider))
                         {
                             return controller;

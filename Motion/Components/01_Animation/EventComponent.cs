@@ -12,7 +12,7 @@ using Grasshopper.GUI.Canvas;
 using Grasshopper;
 using System.Drawing;
 
-namespace Motion.Motility
+namespace Motion.Animation
 {
     public class EventComponent : GH_Component
     {
@@ -130,7 +130,7 @@ namespace Motion.Motility
         public EventComponent()
             : base("Event", "Event",
                 "事件组件",
-                "Motion", "04_Motility")
+                "Motion", "01_Animation")
         {
             UpdateMessage();
         }
@@ -693,82 +693,101 @@ namespace Motion.Motility
                 var doc = OnPingDocument();
                 if (doc == null) return;
 
-                // 处理两种模式
-                if (UseEmptyValueMode)
+                // 使用 ScheduleSolution 来延迟更新状态
+                doc.ScheduleSolution(5, d =>
                 {
-                    // 检查第一个输入端是否为空
-                    bool isEmpty = this.Params.Input[0].VolatileData.IsEmpty;
-
-                    // 如果状态没有改变，不需要更新
-                    if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty)
-                        return;
-
-                    lastEmptyState = isEmpty;
-
-                    //RhinoApp.WriteLine($"Empty Value Mode - Is Empty: {isEmpty}");
-
-                    // 更新所有受影响对象的状态
-                    foreach (var obj in affectedObjects)
+                    try
                     {
-                        if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
+                        // 处理两种模式
+                        if (UseEmptyValueMode)
                         {
-                            previewObj.Hidden = isEmpty;
-                            //RhinoApp.WriteLine($"HIDE={isEmpty}: {obj.GetType().Name}|{obj.Name}");
-                        }
-                        if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
-                        {
-                            activeObj.Locked = isEmpty;
-                            if (isEmpty)
+                            bool isEmpty = this.Params.Input[0].VolatileData.IsEmpty;
+                            if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty)
+                                return;
+
+                            lastEmptyState = isEmpty;
+
+                            // 创建受影响对象的副本以避免集合修改问题
+                            var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
+                            
+                            foreach (var obj in objectsToUpdate)
                             {
-                                activeObj.ClearData();
-                            }
-                            //RhinoApp.WriteLine($"LOCK={isEmpty}: {obj.GetType().Name}|{obj.Name}");
-                        }
-                    }
+                                if (obj == null) continue;
 
-                    // 强制更新文档
-                    doc.ScheduleSolution(5);
-                }
-                else if (_timelineSlider != null)
-                {
-                    // Timeline 模式代码
-                    double currentValue = (double)_timelineSlider.CurrentValue;
-                    string[] parts = this.NickName.Split('-');
-                    if (parts.Length == 2 &&
-                        double.TryParse(parts[0], out double min) &&
-                        double.TryParse(parts[1], out double max))
-                    {
-                        bool shouldHideOrLock = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
-
-                        if (_lastHideOrLockState != shouldHideOrLock)
-                        {
-                            //RhinoApp.WriteLine($"Timeline Value: {currentValue}, Interval: [{min}-{max}]");
-
-                            foreach (var obj in affectedObjects)
-                            {
-                                if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
+                                // 使用 try-catch 来处理每个对象
+                                try
                                 {
-                                    previewObj.Hidden = shouldHideOrLock;
-                                    //RhinoApp.WriteLine($"HIDE={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
-                                }
-                                if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
-                                {
-                                    activeObj.Locked = shouldHideOrLock;
-                                    if (shouldHideOrLock)
+                                    if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                                     {
-                                        activeObj.ClearData();
+                                        d.ScheduleSolution(1, doc => previewObj.Hidden = isEmpty);
                                     }
-                                    //RhinoApp.WriteLine($"LOCK={shouldHideOrLock}: {obj.GetType().Name}|{obj.Name}");
+                                    if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
+                                    {
+                                        d.ScheduleSolution(1, doc =>
+                                        {
+                                            activeObj.Locked = isEmpty;
+                                            if (isEmpty)
+                                            {
+                                                activeObj.Phase = GH_SolutionPhase.Blank;
+                                            }
+                                        });
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                        else if (_timelineSlider != null)
+                        {
+                            double currentValue = (double)_timelineSlider.CurrentValue;
+                            string[] parts = this.NickName.Split('-');
+                            if (parts.Length == 2 &&
+                                double.TryParse(parts[0], out double min) &&
+                                double.TryParse(parts[1], out double max))
+                            {
+                                bool shouldHideOrLock = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+
+                                if (_lastHideOrLockState != shouldHideOrLock)
+                                {
+                                    // 创建受影响对象的副本
+                                    var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
+                                    
+                                    foreach (var obj in objectsToUpdate)
+                                    {
+                                        if (obj == null) continue;
+
+                                        try
+                                        {
+                                            if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
+                                            {
+                                                d.ScheduleSolution(1, doc => previewObj.Hidden = shouldHideOrLock);
+                                            }
+                                            if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
+                                            {
+                                                d.ScheduleSolution(1, doc =>
+                                                {
+                                                    activeObj.Locked = shouldHideOrLock;
+                                                    if (shouldHideOrLock)
+                                                    {
+                                                        activeObj.Phase = GH_SolutionPhase.Blank;
+                                                    }
+                                                });
+                                            }
+                                        }
+                                        catch { }
+                                    }
+
+                                    _lastHideOrLockState = shouldHideOrLock;
                                 }
                             }
-
-                            _lastHideOrLockState = shouldHideOrLock;
-                            doc.ScheduleSolution(5);
                         }
                     }
-                }
+                    finally
+                    {
+                        isUpdating = false;
+                    }
+                });
             }
-            finally
+            catch
             {
                 isUpdating = false;
             }

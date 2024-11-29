@@ -2,20 +2,20 @@ using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Special;
+using Motion.Animation;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using Motion.Motility;
-using Grasshopper.Kernel.Special;
 
 namespace Motion.Toolbar
 {
     public class CreateMultipleEventsButton : MotionToolbarButton
     {
         private ToolStripButton button;
-
+        protected override int ToolbarOrder => 40;
         public override GH_LoadingInstruction PriorityLoad()
         {
             Instances.CanvasCreated += Instances_CanvasCreated;
