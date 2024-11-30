@@ -683,15 +683,34 @@ namespace Motion.Animation
 
         public void UpdateGroupVisibilityAndLock()
         {
-            if (isUpdating) return;
-            isUpdating = true;
+            // 添加超时机制
+            if (isUpdating)
+            {
+                // 如果上次更新时间超过1秒，强制重置状态
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    doc.ScheduleSolution(1000, d => isUpdating = false);
+                }
+                return;
+            }
 
             try
             {
-                if (affectedObjects == null || !affectedObjects.Any()) return;
+                isUpdating = true;
+
+                if (affectedObjects == null || !affectedObjects.Any()) 
+                {
+                    isUpdating = false;
+                    return;
+                }
 
                 var doc = OnPingDocument();
-                if (doc == null) return;
+                if (doc == null)
+                {
+                    isUpdating = false;
+                    return;
+                }
 
                 // 使用 ScheduleSolution 来延迟更新状态
                 doc.ScheduleSolution(5, d =>
@@ -703,7 +722,10 @@ namespace Motion.Animation
                         {
                             bool isEmpty = this.Params.Input[0].VolatileData.IsEmpty;
                             if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty)
+                            {
+                                isUpdating = false;
                                 return;
+                            }
 
                             lastEmptyState = isEmpty;
 
@@ -714,12 +736,15 @@ namespace Motion.Animation
                             {
                                 if (obj == null) continue;
 
-                                // 使用 try-catch 来处理每个对象
                                 try
                                 {
                                     if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                                     {
-                                        d.ScheduleSolution(1, doc => previewObj.Hidden = isEmpty);
+                                        d.ScheduleSolution(1, doc => 
+                                        {
+                                            previewObj.Hidden = isEmpty;
+                                            doc.ExpireSolution();
+                                        });
                                     }
                                     if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
                                     {
@@ -730,6 +755,7 @@ namespace Motion.Animation
                                             {
                                                 activeObj.Phase = GH_SolutionPhase.Blank;
                                             }
+                                            doc.ExpireSolution();
                                         });
                                     }
                                 }
@@ -748,7 +774,6 @@ namespace Motion.Animation
 
                                 if (_lastHideOrLockState != shouldHideOrLock)
                                 {
-                                    // 创建受影响对象的副本
                                     var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
                                     
                                     foreach (var obj in objectsToUpdate)
@@ -759,7 +784,11 @@ namespace Motion.Animation
                                         {
                                             if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                                             {
-                                                d.ScheduleSolution(1, doc => previewObj.Hidden = shouldHideOrLock);
+                                                d.ScheduleSolution(1, doc => 
+                                                {
+                                                    previewObj.Hidden = shouldHideOrLock;
+                                                    doc.ExpireSolution();
+                                                });
                                             }
                                             if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
                                             {
@@ -770,6 +799,7 @@ namespace Motion.Animation
                                                     {
                                                         activeObj.Phase = GH_SolutionPhase.Blank;
                                                     }
+                                                    doc.ExpireSolution();
                                                 });
                                             }
                                         }
@@ -783,7 +813,8 @@ namespace Motion.Animation
                     }
                     finally
                     {
-                        isUpdating = false;
+                        // 确保在所有操作完成后重置状态
+                        d.ScheduleSolution(10, doc => isUpdating = false);
                     }
                 });
             }
