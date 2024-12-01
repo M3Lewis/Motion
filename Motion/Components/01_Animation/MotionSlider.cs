@@ -90,43 +90,27 @@ namespace Motion.Animation
 
             if (!_isPositionInitialized)
             {
-                // 获取当前鼠标位置作为放置位置
-                PointF mouseLoc = Instances.ActiveCanvas.CursorCanvasPosition;
-                if (mouseLoc.X != 0 || mouseLoc.Y != 0)  // 确保有有效的鼠标位置
+                // 只有在位置未初始化时才使用鼠标位置
+                if (this.Attributes.Bounds.IsEmpty)  // 检查是否已经设置了位置
                 {
-                    this.Attributes.Pivot = mouseLoc;
+                    // 获取当前鼠标位置作为放置位置
+                    PointF mouseLoc = Instances.ActiveCanvas.CursorCanvasPosition;
+                    if (mouseLoc.X != 0 || mouseLoc.Y != 0)  // 确保有有效的鼠标位置
+                    {
+                        this.Attributes.Pivot = mouseLoc;
 
-                    // 如果需要，也可以更新 Bounds
-                    RectangleF bounds = this.Attributes.Bounds;
-                    bounds.Location = mouseLoc;
-                    this.Attributes.Bounds = bounds;
+                        // 如果需要，也可以更新 Bounds
+                        RectangleF bounds = this.Attributes.Bounds;
+                        bounds.Location = mouseLoc;
+                        this.Attributes.Bounds = bounds;
+                    }
                 }
-
                 _isPositionInitialized = true;
             }
-
-            // 确保在添加到文档时立即更新区间
-            if (m_attributes is MotionSliderAttributes attributes)
-            {
-                attributes.UpdateSliderRange();
-            }
-
-            // 使用延迟更新确保所有连接都已建立
-            document.ScheduleSolution(5, doc =>
-            {
-                if (m_attributes is MotionSliderAttributes delayedAttributes)
-                {
-                    delayedAttributes.UpdateSliderRange();
-                    ExpireSolution(true);
-                }
-            });
-
-            //Rhino.RhinoApp.WriteLine($"\nMotionSlider {InstanceGuid} added to document");
 
             // 如果有保存的控制关系，尝试立即恢复
             if (_isControlled || _controlledSliderGuids.Count > 0)
             {
-                //Rhino.RhinoApp.WriteLine("Has saved relationships, scheduling restoration");
                 document.ScheduleSolution(50, doc =>
                 {
                     RestoreControlRelationships();
@@ -189,20 +173,29 @@ namespace Motion.Animation
         {
             if (sender == this) return; // 忽略自己的创建事件
 
-            // 更新范围
-            decimal newMin = Math.Min(Slider.Minimum, newSlider.Slider.Minimum);
-            decimal newMax = Math.Max(Slider.Maximum, newSlider.Slider.Maximum);
+            bool needsUpdate = false;
+            decimal currentMin = Slider.Minimum;
+            decimal currentMax = Slider.Maximum;
 
-            // 如果范围有变化，更新主控滑块
-            if (newMin != Slider.Minimum || newMax != Slider.Maximum)
+            // 分别检查最小值和最大值
+            decimal newMin = Math.Min(currentMin, newSlider.Slider.Minimum);
+            if (newMin != currentMin)
             {
-                SetRange(newMin, newMax);
+                Slider.Minimum = newMin;
+                needsUpdate = true;
+            }
 
-                // 请求重新计算解决方案
-                if (OnPingDocument() != null)
-                {
-                    OnPingDocument().NewSolution(false);
-                }
+            decimal newMax = Math.Max(currentMax, newSlider.Slider.Maximum);
+            if (newMax != currentMax)
+            {
+                Slider.Maximum = newMax;
+                needsUpdate = true;
+            }
+
+            // 只有在值真正发生变化时才更新解决方案
+            if (needsUpdate && OnPingDocument() != null)
+            {
+                OnPingDocument().NewSolution(false);
             }
         }
 
@@ -332,7 +325,7 @@ namespace Motion.Animation
             _controlledSliders.Clear();
         }
 
-        // 添加一个新的方法来更新区间范围
+        // 添加一个新的方来更新区间范围
 
         public override bool Write(GH_IWriter writer)
         {
@@ -507,7 +500,7 @@ namespace Motion.Animation
         {
             if (Slider.Minimum != minimum || Slider.Maximum != maximum)
             {
-                // 添加区间变化提示
+                // 加区间变化提示
                 Rhino.RhinoApp.WriteLine($"区间变化 (SetRange方法): {Slider.Minimum}-{Slider.Maximum} => {minimum}-{maximum}");
                 
                 Slider.Minimum = minimum;
@@ -536,6 +529,11 @@ namespace Motion.Animation
         protected override Size MaximumSize => new Size(5000, 20);
         protected override Padding SizingBorders => new Padding(6, 0, 6, 0);
 
+        // 修改文本框相关的字段
+        private RectangleF _rangeTextBox;  // 只保留一个文本框
+        public const float TEXT_BOX_WIDTH = 80;  // 增加宽度以容纳更多文本
+        public const float TEXT_BOX_HEIGHT = 20;
+
         public MotionSliderAttributes(MotionSlider owner) : base(owner)
         {
             Owner = owner;
@@ -552,13 +550,31 @@ namespace Motion.Animation
             SizeF sizeF = new SizeF(2, 20);
 
             // 设置整体边界
-            Bounds = new RectangleF(Pivot.X, Pivot.Y, Math.Max(Bounds.Width, sizeF.Width), MinimumSize.Height);
+            Bounds = new RectangleF(
+                Pivot.X, 
+                Pivot.Y, 
+                Math.Max(Bounds.Width, sizeF.Width), 
+                MinimumSize.Height  // 不再增加额外高度
+            );
             Bounds = GH_Convert.ToRectangle(Bounds);
 
-            // 设置名称区域
-            Rectangle boundsName = GH_Convert.ToRectangle(new RectangleF(Pivot.X, Pivot.Y, sizeF.Width, MinimumSize.Height));
+            // 设置文本框区域 - 放在最左侧
+            _rangeTextBox = new RectangleF(
+                Pivot.X,  // 从最左侧开始
+                Pivot.Y,  // 与滑块同高
+                TEXT_BOX_WIDTH,
+                MinimumSize.Height
+            );
 
-            // 设置滑块区域
+            // 设置名称区域 - 在文本框右侧
+            Rectangle boundsName = GH_Convert.ToRectangle(new RectangleF(
+                _rangeTextBox.Right + 5,  // 文本框右侧留点间距
+                Pivot.Y,
+                sizeF.Width, 
+                MinimumSize.Height
+            ));
+
+            // 设置滑块区域 - 在名称区域右侧
             Rectangle boundsSlider = Rectangle.FromLTRB(
                 boundsName.Right,
                 boundsName.Top,
@@ -604,16 +620,6 @@ namespace Motion.Animation
             if (!viewport.IsVisible(ref rec, 10f))
                 return;
 
-            //// 绘制名称区域
-            //int[] radii = new int[4] { 3, 0, 0, 3 };
-            //Rectangle textbox = Owner.Slider.Bounds;
-            //GH_Capsule nameCapsule = GH_Capsule.CreateTextCapsule(
-            //    textbox, textbox, GH_Palette.Hidden,
-            //    Owner.ImpliedNickName, radii, 5
-            //);
-            //nameCapsule.Render(graphics, Selected, Owner.Locked, true);
-            //nameCapsule.Dispose();
-
             // 绘制滑块区域
             int[] radii2 = new int[4] { 3, 3, 3, 3 };
 
@@ -630,85 +636,22 @@ namespace Motion.Animation
             // 绘制滑块
             Owner.Slider.Render(graphics);
 
-            // 绘制区间范围文本
-            string rangeText = $"{Owner.Slider.Minimum:F0}-{Owner.Slider.Maximum:F0}";
-            var font = GH_FontServer.Standard;
-            float fontHeight = GH_FontServer.StandardAdjusted.Height;
-
-            using (var brush = new SolidBrush(Color.LightSkyBlue))
+            // 渲染区间文本框
+            using (var capsule = GH_Capsule.CreateTextCapsule(
+                Rectangle.Round(_rangeTextBox),
+                Rectangle.Round(_rangeTextBox),
+                GH_Palette.Black,
+                $"{Owner.Slider.Minimum}-{Owner.Slider.Maximum}",  // 显示当前区间
+                6,  // 边框粗细
+                2))  // 文本对齐方式
             {
-                float textX = Owner.Slider.Bounds.Left - GH_FontServer.StringWidth(rangeText, font) - 5;
-                float textY = Owner.Slider.Bounds.Top + (Owner.Slider.Bounds.Height - fontHeight) / 2;
-                graphics.DrawString(rangeText, font, brush, new PointF(textX, textY));
+                capsule.Render(graphics, Selected, Owner.Locked, true);
             }
         }
 
         public override void ExpireLayout()
         {
             base.ExpireLayout();
-
-            if (!_isUpdating && Owner?.Slider != null && Bounds.Width > 0)
-            {
-                UpdateSliderRange();
-            }
-        }
-
-        public void UpdateSliderRange()
-        {
-            if (_isUpdating || _isDraggingSlider) return;
-
-            var currentBounds = Bounds;
-            if (!currentBounds.Equals(_lastBounds))
-            {
-                try
-                {
-                    _isUpdating = true;
-
-                    var sliderBounds = currentBounds;
-                    // 使用 Floor 和 Ceiling 来确保区间值为整数
-                    decimal newMin = Math.Floor(Math.Max(0, (decimal)sliderBounds.Left));
-                    decimal newMax = Math.Ceiling((decimal)sliderBounds.Right);
-
-                    // 添加区间变化提示
-                    if (Owner.Slider.Minimum != newMin || Owner.Slider.Maximum != newMax)
-                    {
-                        Rhino.RhinoApp.WriteLine($"区间变化 (UpdateSliderRange方法): {Owner.Slider.Minimum}-{Owner.Slider.Maximum} => {newMin}-{newMax}");
-                    }
-
-                    // 保存当前值在区间中的比例
-                    decimal oldMin = Owner.Slider.Minimum;
-                    decimal oldMax = Owner.Slider.Maximum;
-                    decimal oldValue = Owner.Slider.Value;
-                    decimal proportion = 0;
-
-                    if (oldMax != oldMin)
-                    {
-                        proportion = (oldValue - oldMin) / (oldMax - oldMin);
-                    }
-
-                    // 确保最小值小于最大值
-                    if (newMin < newMax)
-                    {
-                        Owner.Slider.Minimum = newMin;
-                        Owner.Slider.Maximum = newMax;
-
-                        // 根据比例计算新值，使用 Round 确保值为整数
-                        decimal newValue = Math.Round(
-                            Owner.Slider.Minimum + (Owner.Slider.Maximum - Owner.Slider.Minimum) * proportion,
-                            0
-                        );
-
-                        // 更新值
-                        Owner.SetSliderValue(newValue);
-                    }
-
-                    _lastBounds = currentBounds;
-                }
-                finally
-                {
-                    _isUpdating = false;
-                }
-            }
         }
 
         private void UpdateSliderBounds()
@@ -734,18 +677,6 @@ namespace Motion.Animation
         }
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            // 首先让基类处理大小调整
-            var response = base.RespondToMouseMove(sender, e);
-
-            //// 果基类处理了事件（说明正在调整大小），更新滑块
-            //if (response == GH_ObjectResponse.Handled)
-            //{
-            //    UpdateSliderBounds();
-            //    sender.Invalidate();
-            //    return GH_ObjectResponse.Handled;
-            //}
-
-            // 处理其他拖动模式
             switch (_dragMode)
             {
                 case 1: // 滑块拖动开始
@@ -760,28 +691,19 @@ namespace Motion.Animation
                         sender.Invalidate(region);
                     }
                     return GH_ObjectResponse.Handled;
-
-                    //case 3: // 左边界拖动
-                    //    float newMin = Math.Max(0, e.CanvasLocation.X);
-                    //    Owner.SetRange((decimal)newMin, Owner.Slider.Maximum);
-                    //    using (var region = new Region(Bounds))
-                    //    {
-                    //        sender.Invalidate(region);
-                    //    }
-                    //    return GH_ObjectResponse.Handled;
             }
 
-            return response;
+            // 只有在非拖动状态下才调用基类方法
+            if (_dragMode == 0)
+            {
+                return base.RespondToMouseMove(sender, e);
+            }
+
+            return GH_ObjectResponse.Ignore;
         }
 
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            // 忽略左侧的鼠标点击，防止创建连线
-            //if (e.CanvasLocation.X < Bounds.Left + 5)
-            //{
-            //    return GH_ObjectResponse.Ignore;
-            //}
-
             if (Owner.Slider.MouseDown(e.WinFormsEventArgs, e.CanvasLocation))
             {
                 _dragMode = 1;
@@ -796,21 +718,6 @@ namespace Motion.Animation
                 decimal snapDistance = (range / (railWidth * zoomFactor)) * 10m;
                 Owner.Slider.SnapDistance = snapDistance;
 
-                return GH_ObjectResponse.Capture;
-            }
-
-            // 检查边界拖动
-            RectangleF leftEdge = new RectangleF(Owner.Slider.Bounds.Left-10, Owner.Slider.Bounds.Top, 5, Owner.Slider.Bounds.Height);
-            RectangleF rightEdge = new RectangleF(Owner.Slider.Bounds.Right, Owner.Slider.Bounds.Top, 5, Owner.Slider.Bounds.Height);
-
-            if (leftEdge.Contains(e.CanvasLocation))
-            {
-                _dragMode = 3;
-                return GH_ObjectResponse.Capture;
-            }
-            else if (rightEdge.Contains(e.CanvasLocation))
-            {
-                _dragMode = 4;
                 return GH_ObjectResponse.Capture;
             }
 
@@ -837,20 +744,55 @@ namespace Motion.Animation
         {
             if (e.Button == MouseButtons.Left)
             {
+                PointF pt = e.CanvasLocation;
+
+                // 检查是否点击了区间文本框
+                if (_rangeTextBox.Contains(pt))
+                {
+                    string content = $"{Owner.Slider.Minimum}-{Owner.Slider.Maximum}";
+                    Owner.Slider.TextInputHandlerDelegate = (slider, text) =>
+                    {
+                        // 解析输入的区间文本
+                        string[] parts = text.Split('-');
+                        if (parts.Length == 2 && 
+                            decimal.TryParse(parts[0], out decimal min) && 
+                            decimal.TryParse(parts[1], out decimal max))
+                        {
+                            if (min < max)
+                            {
+                                Owner.Slider.Minimum = min;
+                                Owner.Slider.Maximum = max;
+                                Owner.ExpireSolution(true);
+                            }
+                        }
+                    };
+                    Owner.Slider.ShowTextInputBox(
+                        sender,
+                        true,
+                        sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl),
+                        content
+                    );
+                    return GH_ObjectResponse.Handled;
+                }
+
+                // 果不是文本框，检查是否点击了滑块
                 if ((double)sender.Viewport.Zoom >= 0.9 && Owner.Slider.Bounds.Contains(GH_Convert.ToPoint(e.CanvasLocation)))
                 {
                     string content = base.Owner.Slider.GripTextPure;
-                   
-
                     base.Owner.Slider.TextInputHandlerDelegate = TextInputHandler;
-                    base.Owner.Slider.ShowTextInputBox(sender, limitToBoundary: true, sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl), content);
+                    base.Owner.Slider.ShowTextInputBox(
+                        sender, 
+                        true, 
+                        sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl), 
+                        content
+                    );
+                    return GH_ObjectResponse.Handled;
                 }
                 else
                 {
                     base.Owner.PopupEditor();
+                    return GH_ObjectResponse.Handled;
                 }
-
-                return GH_ObjectResponse.Handled;
             }
 
             return GH_ObjectResponse.Ignore;
@@ -875,6 +817,26 @@ namespace Motion.Animation
             {
             }
         }
+
+        private void ShowTextEditor(GH_Canvas canvas, string content, Action<decimal> onAccept)
+        {
+            // 使用 GH_NumberSlider 自带的文本输入处理方法
+            Owner.Slider.TextInputHandlerDelegate = (slider, text) =>
+            {
+                if (decimal.TryParse(text, out decimal value))
+                {
+                    onAccept(value);
+                }
+            };
+            
+            // 使用正确的 ShowTextInputBox 重载
+            Owner.Slider.ShowTextInputBox(
+                canvas,
+                true,  // limitToBoundary
+                canvas.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl),
+                content
+            );
+        }
     }
 
     
@@ -885,7 +847,7 @@ namespace Motion.Animation
         public MotionSliderLockAttributes(MotionSlider owner) : base(owner)
         {
             Owner = owner;
-            // 保持原有的边界和位置信息
+            // 保持原有的边和位置信息
             this.Bounds = owner.Attributes.Bounds;
             _lockedPivot = owner.Attributes.Pivot;
         }

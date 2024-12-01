@@ -408,10 +408,9 @@ namespace Motion.Animation
 
         protected override void Layout()
         {
-            base.Layout();
+            base.Layout();  // 调用基类的 Layout 方法来设置基本布局和文本框
 
-            // 保持滑块的显示边界不变，即使区间值改变
-            // 这里不需要额外的实现，因为我们不希望边界随区间值变化
+            // 设置滑块的显示属性
             base.Owner.Slider.DrawControlBorder = true;
             base.Owner.Slider.ControlEdgeColour = Color.DeepSkyBlue;
             base.Owner.Slider.DrawControlShadows = true;
@@ -432,6 +431,9 @@ namespace Motion.Animation
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
+            if (channel != GH_CanvasChannel.Objects)
+                return;
+
             int[] radii2 = new int[4] { 0, 0, 0, 0 };
 
             using (GH_Capsule sliderCapsule = GH_Capsule.CreateCapsule(
@@ -458,6 +460,7 @@ namespace Motion.Animation
                 float textY = Owner.Slider.Bounds.Top + (Owner.Slider.Bounds.Height - fontHeight) / 2;
                 graphics.DrawString(rangeText, font, brush, new PointF(textX, textY));
             }
+
         }
     }
 

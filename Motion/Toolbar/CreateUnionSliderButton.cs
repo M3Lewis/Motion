@@ -120,12 +120,18 @@ namespace Motion.Toolbar
                     controller.IsMainController = true;
 
                     // 计算新滑块位置和大小
+                    float minX = selectedSliders.Min(s => s.Attributes.Bounds.Left);
+                    float maxX = selectedSliders.Max(s => s.Attributes.Bounds.Right);
                     float minY = selectedSliders.Min(s => s.Attributes.Bounds.Top);
-                    float avgX = selectedSliders.Average(s => s.Attributes.Bounds.Left);
-                    float width = selectedSliders.Average(s => s.Attributes.Bounds.Width);
+                    float width = maxX - minX;  // 使用实际的宽度范围
 
                     // 设置滑块的位置和大小
-                    RectangleF bounds = new RectangleF(avgX, minY - 50, width, controller.Attributes.Bounds.Height);
+                    RectangleF bounds = new RectangleF(
+                        minX,  // 使用最左侧的位置
+                        minY -50,  // 在最高的滑块上方50个单位
+                        width,  // 使用实际的宽度
+                        controller.Attributes.Bounds.Height
+                    );
                     controller.Attributes.Bounds = bounds;
                     controller.Attributes.Pivot = new PointF(bounds.X, bounds.Y);
 
