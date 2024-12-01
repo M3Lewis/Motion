@@ -68,6 +68,7 @@
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderControlButton2.cs" />
     <Compile Remove="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
+    <Compile Remove="Components\OBSOLETE\SliderLockButton.cs" />
     <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
   </ItemGroup>
@@ -85,6 +86,7 @@
     <None Include="Components\OBSOLETE\MergeCameraLocation.cs" />
     <None Include="Components\OBSOLETE\MergeCameraTarget.cs" />
     <None Include="Components\OBSOLETE\SliderInterval.cs" />
+    <None Include="Components\OBSOLETE\SliderLockButton.cs" />
     <None Include="Components\OBSOLETE\SliderLocker.cs" />
     <None Include="Components\OBSOLETE\MergeCameraData.cs" />
     <None Include="Components\OBSOLETE\Param_RemoteData.cs" />

@@ -280,8 +280,8 @@ namespace Motion.Animation
                 }
                 
                 // 添加调试输出
-                Rhino.RhinoApp.WriteLine($"Added controlled slider: {slider.InstanceGuid}");
-                Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
+                //Rhino.RhinoApp.WriteLine($"Added controlled slider: {slider.InstanceGuid}");
+                //Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
             }
         }
 
@@ -296,8 +296,8 @@ namespace Motion.Animation
             slider._controllerGuid = Guid.Empty;
             
             // 添加调试输出
-            Rhino.RhinoApp.WriteLine($"Removed controlled slider: {slider.InstanceGuid}");
-            Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
+            //Rhino.RhinoApp.WriteLine($"Removed controlled slider: {slider.InstanceGuid}");
+            //Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
         }
 
         /// <summary>
@@ -334,7 +334,7 @@ namespace Motion.Animation
             try
             {
                 // 添加调试输出
-                Rhino.RhinoApp.WriteLine($"Writing controlled sliders. Count: {_controlledSliderGuids.Count}");
+                //Rhino.RhinoApp.WriteLine($"Writing controlled sliders. Count: {_controlledSliderGuids.Count}");
                 
                 writer.SetDrawingPoint("CanvasPosition", new Point(
                     (int)Attributes.Pivot.X,
@@ -353,14 +353,14 @@ namespace Motion.Animation
                 {
                     writer.SetString($"ControlledSlider_{i}", _controlledSliderGuids[i].ToString());
                     // 添加调试输出
-                    Rhino.RhinoApp.WriteLine($"Writing controlled slider {i}: {_controlledSliderGuids[i]}");
+                    //Rhino.RhinoApp.WriteLine($"Writing controlled slider {i}: {_controlledSliderGuids[i]}");
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                Rhino.RhinoApp.WriteLine($"Error writing slider data: {ex.Message}");
+                //Rhino.RhinoApp.WriteLine($"Error writing slider data: {ex.Message}");
                 return false;
             }
         }
@@ -501,7 +501,7 @@ namespace Motion.Animation
             if (Slider.Minimum != minimum || Slider.Maximum != maximum)
             {
                 // 加区间变化提示
-                Rhino.RhinoApp.WriteLine($"区间变化 (SetRange方法): {Slider.Minimum}-{Slider.Maximum} => {minimum}-{maximum}");
+                //Rhino.RhinoApp.WriteLine($"区间变化 (SetRange方法): {Slider.Minimum}-{Slider.Maximum} => {minimum}-{maximum}");
                 
                 Slider.Minimum = minimum;
                 Slider.Maximum = maximum;
@@ -525,7 +525,10 @@ namespace Motion.Animation
         private bool _isUpdating = false;
         private bool _isDraggingSlider = false;
         private int _dragMode = 0;
-        protected override Size MinimumSize => new Size(2, 20);
+        protected override Size MinimumSize => new Size(
+            (int)(TEXT_BOX_WIDTH + 100),  // 文本框宽度 + 最小滑块宽度
+            20
+        );
         protected override Size MaximumSize => new Size(5000, 20);
         protected override Padding SizingBorders => new Padding(6, 0, 6, 0);
 
@@ -549,36 +552,37 @@ namespace Motion.Animation
             // 计算名称区域大小
             SizeF sizeF = new SizeF(2, 20);
 
-            // 设置整体边界
+            // 设置整体边界，确保最小宽度
+            float minWidth = TEXT_BOX_WIDTH + 100;  // 文本框宽度 + 最小滑块宽度
             Bounds = new RectangleF(
                 Pivot.X, 
                 Pivot.Y, 
-                Math.Max(Bounds.Width, sizeF.Width), 
-                MinimumSize.Height  // 不再增加额外高度
+                Math.Max(Math.Max(Bounds.Width, sizeF.Width), minWidth), 
+                MinimumSize.Height
             );
             Bounds = GH_Convert.ToRectangle(Bounds);
 
             // 设置文本框区域 - 放在最左侧
             _rangeTextBox = new RectangleF(
-                Pivot.X,  // 从最左侧开始
-                Pivot.Y,  // 与滑块同高
+                Pivot.X,
+                Pivot.Y,
                 TEXT_BOX_WIDTH,
                 MinimumSize.Height
             );
 
             // 设置名称区域 - 在文本框右侧
             Rectangle boundsName = GH_Convert.ToRectangle(new RectangleF(
-                _rangeTextBox.Right + 5,  // 文本框右侧留点间距
+                _rangeTextBox.Right + 5,
                 Pivot.Y,
                 sizeF.Width, 
                 MinimumSize.Height
             ));
 
-            // 设置滑块区域 - 在名称区域右侧
+            // 设置滑块区域 - 在名称区域右侧，确保最小宽度
             Rectangle boundsSlider = Rectangle.FromLTRB(
                 boundsName.Right,
                 boundsName.Top,
-                Convert.ToInt32(Bounds.Right),
+                Math.Max(Convert.ToInt32(Bounds.Right), boundsName.Right + 50),  // 确保滑块最小宽度为50
                 boundsName.Bottom
             );
 

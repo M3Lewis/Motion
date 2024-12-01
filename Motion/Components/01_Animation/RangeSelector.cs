@@ -179,6 +179,7 @@ namespace Motion.Animation
 
         private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
         {
+            bool needUpdate = false;
             foreach (var obj in e.Objects)
             {
                 if (obj is GH_NumberSlider slider && ShouldTrackSlider(slider))
@@ -187,7 +188,23 @@ namespace Motion.Animation
                     {
                         _trackedSliders.Add(slider);
                         SubscribeToSlider(slider);
-                        UpdateRangeItems();
+                        needUpdate = true;
+                    }
+                }
+            }
+            if (needUpdate)
+            {
+                UpdateRangeItems();
+                // 通知所有 UnionSlider 更新区间
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    foreach (var obj in doc.Objects)
+                    {
+                        if (obj is MotionUnionSlider unionSlider)
+                        {
+                            unionSlider.UpdateUnionRange();
+                        }
                     }
                 }
             }
@@ -208,6 +225,18 @@ namespace Motion.Animation
             if (needUpdate)
             {
                 UpdateRangeItems();
+                // 通知所有 UnionSlider 更新区间
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    foreach (var obj in doc.Objects)
+                    {
+                        if (obj is MotionUnionSlider unionSlider)
+                        {
+                            unionSlider.UpdateUnionRange();
+                        }
+                    }
+                }
             }
         }
 
