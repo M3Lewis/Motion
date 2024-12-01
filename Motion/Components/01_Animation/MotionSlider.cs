@@ -507,6 +507,9 @@ namespace Motion.Animation
         {
             if (Slider.Minimum != minimum || Slider.Maximum != maximum)
             {
+                // 添加区间变化提示
+                Rhino.RhinoApp.WriteLine($"区间变化 (SetRange方法): {Slider.Minimum}-{Slider.Maximum} => {minimum}-{maximum}");
+                
                 Slider.Minimum = minimum;
                 Slider.Maximum = maximum;
 
@@ -527,6 +530,7 @@ namespace Motion.Animation
         private readonly new MotionSlider Owner;
         private bool _initialized = false;
         private bool _isUpdating = false;
+        private bool _isDraggingSlider = false;
         private int _dragMode = 0;
         protected override Size MinimumSize => new Size(2, 20);
         protected override Size MaximumSize => new Size(5000, 20);
@@ -651,7 +655,7 @@ namespace Motion.Animation
 
         public void UpdateSliderRange()
         {
-            if (_isUpdating) return;
+            if (_isUpdating || _isDraggingSlider) return;
 
             var currentBounds = Bounds;
             if (!currentBounds.Equals(_lastBounds))
@@ -660,10 +664,16 @@ namespace Motion.Animation
                 {
                     _isUpdating = true;
 
-                    // 使用 Owner.Slider.Bounds 获取实际滑块区域
                     var sliderBounds = currentBounds;
-                    decimal newMin = Math.Max(0, (decimal)sliderBounds.Left);
-                    decimal newMax = (decimal)sliderBounds.Right;
+                    // 使用 Floor 和 Ceiling 来确保区间值为整数
+                    decimal newMin = Math.Floor(Math.Max(0, (decimal)sliderBounds.Left));
+                    decimal newMax = Math.Ceiling((decimal)sliderBounds.Right);
+
+                    // 添加区间变化提示
+                    if (Owner.Slider.Minimum != newMin || Owner.Slider.Maximum != newMax)
+                    {
+                        Rhino.RhinoApp.WriteLine($"区间变化 (UpdateSliderRange方法): {Owner.Slider.Minimum}-{Owner.Slider.Maximum} => {newMin}-{newMax}");
+                    }
 
                     // 保存当前值在区间中的比例
                     decimal oldMin = Owner.Slider.Minimum;
@@ -682,9 +692,11 @@ namespace Motion.Animation
                         Owner.Slider.Minimum = newMin;
                         Owner.Slider.Maximum = newMax;
 
-                        // 根据比例计算新值
-                        decimal newValue = Owner.Slider.Minimum +
-                            (Owner.Slider.Maximum - Owner.Slider.Minimum) * proportion;
+                        // 根据比例计算新值，使用 Round 确保值为整数
+                        decimal newValue = Math.Round(
+                            Owner.Slider.Minimum + (Owner.Slider.Maximum - Owner.Slider.Minimum) * proportion,
+                            0
+                        );
 
                         // 更新值
                         Owner.SetSliderValue(newValue);
@@ -773,6 +785,7 @@ namespace Motion.Animation
             if (Owner.Slider.MouseDown(e.WinFormsEventArgs, e.CanvasLocation))
             {
                 _dragMode = 1;
+                _isDraggingSlider = true;
                 sender.Invalidate();
 
                 // 计算滑块的捕捉距离
@@ -787,7 +800,7 @@ namespace Motion.Animation
             }
 
             // 检查边界拖动
-            RectangleF leftEdge = new RectangleF(Owner.Slider.Bounds.Left, Owner.Slider.Bounds.Top, 5, Owner.Slider.Bounds.Height);
+            RectangleF leftEdge = new RectangleF(Owner.Slider.Bounds.Left-10, Owner.Slider.Bounds.Top, 5, Owner.Slider.Bounds.Height);
             RectangleF rightEdge = new RectangleF(Owner.Slider.Bounds.Right, Owner.Slider.Bounds.Top, 5, Owner.Slider.Bounds.Height);
 
             if (leftEdge.Contains(e.CanvasLocation))
@@ -813,6 +826,7 @@ namespace Motion.Animation
                     Owner.Slider.MouseUp(e.WinFormsEventArgs, e.CanvasLocation);
                 }
                 _dragMode = 0;
+                _isDraggingSlider = false;
                 sender.Invalidate();
                 return GH_ObjectResponse.Release;
             }
@@ -908,7 +922,7 @@ namespace Motion.Animation
             {
                 // 绘制锁定状态的边框
                 RectangleF bounds = Owner.Slider.Bounds;
-                bounds.Inflate(2, 2); // 扩大边框范围
+                bounds.Inflate(2, 2); // 扩大框范围
 
                 // 创建虚线画笔
                 using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))
