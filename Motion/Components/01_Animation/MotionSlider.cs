@@ -627,7 +627,7 @@ namespace Motion.Animation
             Owner.Slider.Render(graphics);
 
             // 绘制区间范围文本
-            string rangeText = $"{Owner.Slider.Minimum}-{Owner.Slider.Maximum}";
+            string rangeText = $"{Owner.Slider.Minimum:F0}-{Owner.Slider.Maximum:F0}";
             var font = GH_FontServer.Standard;
             float fontHeight = GH_FontServer.StandardAdjusted.Height;
 

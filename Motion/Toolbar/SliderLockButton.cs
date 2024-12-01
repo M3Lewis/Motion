@@ -65,7 +65,6 @@ namespace Motion.Toolbar
                 button.BackColor = Color.FromArgb(255, 255, 255);
             }
 
-
             var doc = Instances.ActiveCanvas?.Document;
             if (doc == null) return;
 
@@ -81,11 +80,10 @@ namespace Motion.Toolbar
                     // 保存原有的位置和边界信息
                     var oldBounds = slider.Attributes.Bounds;
                     var oldPivot = slider.Attributes.Pivot;
+
                     if (isLocked)
                     {
-                        
-
-                        // 根据类型分配不同的锁定属性
+                        // 锁定逻辑保持不变
                         if (slider is MotionUnionSlider unionSlider)
                         {
                             var lockAttrs = new MotionUnionSliderLockAttributes(unionSlider);
@@ -104,9 +102,12 @@ namespace Motion.Toolbar
                     else
                     {
                         // 恢复正常的 Attributes
-                        slider.CreateAttributes();
+                            slider.CreateAttributes();
                         slider.Attributes.Bounds = oldBounds;
                         slider.Attributes.Pivot = oldPivot;
+                        
+                        // 强制更新布局
+                        slider.Attributes.ExpireLayout();
                     }
                 }
                 catch (Exception ex)
@@ -115,7 +116,8 @@ namespace Motion.Toolbar
                 }
             }
 
-
+            
+            
             // 刷新画布以更新视觉效果
             Instances.ActiveCanvas.Refresh();
         }
