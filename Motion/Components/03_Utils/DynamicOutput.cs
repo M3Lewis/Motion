@@ -6,6 +6,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Forms;
+using GH_IO.Serialization;
 
 namespace Motion.Utils
 {
@@ -17,6 +19,17 @@ namespace Motion.Utils
         // 记录上一次的状态
         private int lastOutputCount = 0;
         private int lastPathCount = 0;
+
+        // 保存现有连接的状态
+        private List<ConnectionState> savedConnections = new List<ConnectionState>();
+
+        // 添加 ConnectionState 类的定义
+        private class ConnectionState
+        {
+            public int OutputIndex { get; set; }
+            public Guid RecipientId { get; set; }
+            public int RecipientParameterIndex { get; set; }
+        }
 
         public DynamicOutput() : base(
             "Dynamic Output", 
@@ -78,9 +91,15 @@ namespace Motion.Utils
                 needsUpdate = true;
             }
 
-            // 如果需要更新，则更新输出端
+            // 如果需要更新，则记录撤销事件并更新输出端
             if (needsUpdate)
             {
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    RecordUndoEvent("Dynamic Output Update");
+                }
+
                 lastOutputCount = requiredOutputs;
                 lastPathCount = structure.PathCount;
                 UpdateOutputParams(structure);
@@ -172,6 +191,22 @@ namespace Motion.Utils
         /// </summary>
         private void UpdateOutputParams(GH_Structure<IGH_Goo> structure)
         {
+            // 保存现有连接
+            savedConnections.Clear();
+            foreach (var output in Params.Output)
+            {
+                var outputIndex = Params.Output.IndexOf(output);
+                foreach (var recipient in output.Recipients)
+                {
+                    savedConnections.Add(new ConnectionState
+                    {
+                        OutputIndex = outputIndex,
+                        RecipientId = recipient.InstanceGuid,
+                        RecipientParameterIndex = output.Recipients.IndexOf(recipient)
+                    });
+                }
+            }
+
             // 移除所有现有输出端
             while (Params.Output.Count > 0)
             {
@@ -187,7 +222,33 @@ namespace Motion.Utils
                 CreateMultiplePathOutputs(structure);
             }
 
-            // 确保更新UI
+            // 尝试恢复连接
+            foreach (var connection in savedConnections.ToList())
+            {
+                if (connection.OutputIndex < Params.Output.Count)
+                {
+                    var output = Params.Output[connection.OutputIndex];
+                    var doc = OnPingDocument();
+                    if (doc != null)
+                    {
+                        var recipient = doc.FindObject(connection.RecipientId, true) as IGH_Param;
+                        if (recipient != null)
+                        {
+                            // 确保先断开现有连接
+                            if (recipient.Sources.Contains(output))
+                                recipient.RemoveSource(output);
+                            
+                            // 重新建立连接
+                            recipient.AddSource(output);
+                            
+                            // 强制更新接收端
+                            recipient.ExpireSolution(false);
+                        }
+                    }
+                }
+            }
+
+            // 确保更新UI和重新计算
             Params.OnParametersChanged();
             ExpireSolution(true);
         }
@@ -274,5 +335,85 @@ namespace Motion.Utils
         protected override System.Drawing.Bitmap Icon => Properties.Resources.DynamicOutput;
         public override Guid ComponentGuid => new Guid("058F4109-93F9-4FBB-94D9-B4FF6C5B33CA");
         public override GH_Exposure Exposure => GH_Exposure.secondary;
+
+        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+        {
+            base.AppendAdditionalMenuItems(menu);
+            Menu_AppendSeparator(menu);
+            Menu_AppendItem(menu, "清除所有连接", (s, e) =>
+            {
+                var doc = Grasshopper.Instances.ActiveCanvas.Document;
+                if (doc != null)
+                {
+                    RecordUndoEvent("Clear Dynamic Output Connections");
+                }
+
+                savedConnections.Clear();
+                foreach (var output in Params.Output)
+                {
+                    while (output.Recipients.Count > 0)
+                    {
+                        var recipient = output.Recipients[0];
+                        recipient.RemoveSource(output);
+                    }
+                }
+                ExpireSolution(true);
+            });
+        }
+
+        // 添加新的方法来处理组件复制/粘贴和删除/恢复
+        public override bool Write(GH_IWriter writer)
+        {
+            // 保存当前状态
+            writer.SetInt32("LastOutputCount", lastOutputCount);
+            writer.SetInt32("LastPathCount", lastPathCount);
+
+            // 保存连接信息
+            GH_IWriter connectionWriter = writer.CreateChunk("Connections");
+            connectionWriter.SetInt32("Count", savedConnections.Count);
+            for (int i = 0; i < savedConnections.Count; i++)
+            {
+                var connection = savedConnections[i];
+                GH_IWriter connWriter = connectionWriter.CreateChunk("C" + i);
+                connWriter.SetInt32("OutputIndex", connection.OutputIndex);
+                connWriter.SetString("RecipientId", connection.RecipientId.ToString());
+                connWriter.SetInt32("ParameterIndex", connection.RecipientParameterIndex);
+            }
+
+            return base.Write(writer);
+        }
+
+        public override bool Read(GH_IReader reader)
+        {
+            // 恢复状态
+            if (reader.ItemExists("LastOutputCount"))
+                lastOutputCount = reader.GetInt32("LastOutputCount");
+            if (reader.ItemExists("LastPathCount"))
+                lastPathCount = reader.GetInt32("LastPathCount");
+
+            // 恢复连接信息
+            savedConnections.Clear();
+            if (reader.ChunkExists("Connections"))
+            {
+                GH_IReader connectionReader = reader.FindChunk("Connections");
+                int count = connectionReader.GetInt32("Count");
+                for (int i = 0; i < count; i++)
+                {
+                    if (connectionReader.ChunkExists("C" + i))
+                    {
+                        GH_IReader connReader = connectionReader.FindChunk("C" + i);
+                        var connection = new ConnectionState
+                        {
+                            OutputIndex = connReader.GetInt32("OutputIndex"),
+                            RecipientId = new Guid(connReader.GetString("RecipientId")),
+                            RecipientParameterIndex = connReader.GetInt32("ParameterIndex")
+                        };
+                        savedConnections.Add(connection);
+                    }
+                }
+            }
+
+            return base.Read(reader);
+        }
     }
 }

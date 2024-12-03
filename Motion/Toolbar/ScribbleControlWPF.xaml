@@ -10,9 +10,13 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
         
         <!-- 选项区域 -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="True">
+        <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="True" Grid.ColumnSpan="2">
             <Label Content="Scribble Type:" DockPanel.Dock="Left"/>
             <ComboBox x:Name="ScribbleTypeComboBox" Width="150" HorizontalAlignment="Right" SelectionChanged="ScribbleTypeComboBox_SelectionChanged">
                 <ComboBoxItem Content="Custom Text" Tag="text"/>
@@ -21,7 +25,7 @@
         </DockPanel>
 
         <!-- 文本设置区域 -->
-        <GroupBox Grid.Row="1" Header="Text Settings" Margin="0,0,0,10">
+        <GroupBox Grid.Row="1" Header="Text Settings" Margin="0,0,0,10" Grid.ColumnSpan="2">
             <StackPanel>
                 <TextBox x:Name="TextContentBox" Text="Hello!" Margin="0,5" Height="30" BorderBrush="LightSkyBlue" BorderThickness="0.5"/>
                 
@@ -54,16 +58,15 @@
         </GroupBox>
 
         <!-- 预览区域 -->
-        <GroupBox Grid.Row="2" Header="Text Preivew" Margin="0,0,0,10">
+        <GroupBox Grid.Row="2" Header="Text Preivew" Margin="0,0,0,10" Grid.ColumnSpan="2">
             <Border BorderBrush="Gray" BorderThickness="1" Margin="0,0,0,10">
                 <TextBlock x:Name="PreviewText" Margin="5" TextWrapping="Wrap"/>
             </Border>
         </GroupBox>
 
-        <!-- 按钮区域 -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Clear" Width="75" Height="23" Click="ClearButton_Click" HorizontalAlignment="Left"/>
-            <Button Content="Create" Width="75" Height="23" Margin="0,0,10,0" Click="CreateButton_Click" HorizontalAlignment="Right"/>
-        </StackPanel>
+
+        <Button Content="Clear" Width="75" Height="23" Click="ClearButton_Click" Grid.Column="0" Grid.Row="3" HorizontalAlignment="Left"/>
+        <Button Content="Create" Width="75" Height="23" Margin="0,0,10,0" Click="CreateButton_Click" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Right"/>
+
     </Grid>
 </Window> 

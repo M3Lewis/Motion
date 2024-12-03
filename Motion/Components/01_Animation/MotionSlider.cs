@@ -1,19 +1,16 @@
+using GH_IO.Serialization;
+using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Base;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Special;
 using System;
-using System.Drawing;
-using System.Windows.Forms;
 using System.Collections.Generic;
-using GH_IO.Serialization;
-using System.Windows.Controls.Primitives;
-using Grasshopper.Kernel.Attributes;
+using System.Drawing;
 using System.Linq;
-using Grasshopper.Kernel.Expressions;
-using static Grasshopper.GUI.Base.GH_SliderBase;
-using Grasshopper;
+using System.Windows.Forms;
 
 namespace Motion.Animation
 {

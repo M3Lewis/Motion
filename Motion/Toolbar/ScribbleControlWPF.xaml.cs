@@ -19,6 +19,8 @@ namespace Motion.Windows
     {
         private GH_Document _document;
         private string _savedTextContent = "Hello!";
+        private const string REGISTRY_KEY = @"Software\MotionGH\Settings\ScribbleControl";
+        private const string FONT_NAME_VALUE = "LastUsedFont";
         
         public ScribbleControlWPF(GH_Document document)
         {
@@ -30,7 +32,17 @@ namespace Motion.Windows
             {
                 FontComboBox.Items.Add(font.Name);
             }
-            FontComboBox.SelectedItem = "Arial";
+
+            // 从注册表读取上次使用的字体
+            string lastUsedFont = GetLastUsedFont();
+            if (!string.IsNullOrEmpty(lastUsedFont) && FontComboBox.Items.Contains(lastUsedFont))
+            {
+                FontComboBox.SelectedItem = lastUsedFont;
+            }
+            else
+            {
+                FontComboBox.SelectedItem = "Arial"; // 默认字体
+            }
             
             // 初始化字体样式和Scribble类型
             FontStyleComboBox.SelectedIndex = 0;
@@ -40,6 +52,67 @@ namespace Motion.Windows
             TextContentBox.TextChanged += UpdatePreview;
             MaxCharsBox.TextChanged += UpdatePreview;
             ScribbleTypeComboBox.SelectionChanged += UpdatePreview;
+
+            // 添加字体选择变化事件处理
+            FontComboBox.SelectionChanged += FontComboBox_SelectionChanged;
+        }
+
+        private void FontComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (FontComboBox.SelectedItem != null)
+            {
+                SaveLastUsedFont(FontComboBox.SelectedItem.ToString());
+            }
+        }
+
+        private void SaveLastUsedFont(string fontName)
+        {
+            try
+            {
+                // 确保父级路径存在
+                using (var softwareKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("Software", true))
+                {
+                    if (softwareKey != null)
+                    {
+                        // 创建 MotionGH 主键
+                        using (var motionKey = softwareKey.CreateSubKey("MotionGH"))
+                        {
+                            // 创建 Settings 子键
+                            using (var settingsKey = motionKey.CreateSubKey("Settings"))
+                            {
+                                // 创建 ScribbleControl 子键
+                                using (var controlKey = settingsKey.CreateSubKey("ScribbleControl"))
+                                {
+                                    controlKey.SetValue(FONT_NAME_VALUE, fontName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // 如果无法写入注册表，静默失败
+            }
+        }
+
+        private string GetLastUsedFont()
+        {
+            try
+            {
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(REGISTRY_KEY))
+                {
+                    if (key != null)
+                    {
+                        return key.GetValue(FONT_NAME_VALUE) as string;
+                    }
+                }
+            }
+            catch
+            {
+                // 如果无法读取注册表，静默失败
+            }
+            return null;
         }
 
         private void ScribbleTypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
