@@ -127,6 +127,68 @@
 
 
 
+## 工具栏按钮
+
+#### SliderControlWPFButton
+
+* 控制`UnionSlider`，双向更新
+* 支持输入数值，按`Enter`确定
+* 点击`+` /`-` 增减值
+  * 按住按钮`0.75S`后，可连续增加/减少值
+* 点击`MIN` / `MAX` 跳转到最小值
+
+
+
+#### UpdateSenderButton
+
+* 为所有`Motion Slider`添加`Motion Sender`
+
+
+
+#### CreateUnionSliderButton
+
+* 先选择`MotionSlider`，点击左键，可创建一个`Union Slider`
+* 之后只需要将`Motion Slider`和`Motion Sender`一起复制，即可自动联动`Union Slider`与`Motion Slider`的值和区间
+* 右键可解除联动关系
+
+
+
+#### ConnectToMultipleEventOperationButton
+
+* 选择多个`Graph Mapper`，点击按钮，新建`Event Operation`并自动连好连线
+* 新建的`Event Operation`会自动和`Union Slider`连接
+* 如果同时选中了已存在的`Event Operation`和`Graph Mapper`，点击左键也会多对一连接
+
+
+
+#### ClickFinderButton
+
+* 点击左键，显示闪烁状态的boundingbox
+* 点击Rhino视窗内的GH物件，会自动选择该物件并跳转到其在GH画布的位置
+
+
+
+#### AddScribbleWPFButton
+
+* 创建Scribble，突破字体大小限制，设置5种字体样式
+* 直接点击下拉列表选择字体
+* 可按单行最大字符数来分行，预览显示
+
+
+
+#### RangeSelectorWPFButton
+
+* 选择已存在区间的所有值，作为区间的最小值和最大值，并组成区间
+* 区间Param会自动创建到画布中央
+
+
+
+#### NamedViewSwitchButton
+
+* 切换状态，默认开启
+* 开启时，如果当前Grasshopper文档已经有Named View，按下CTRL+ `+`/ `-`键，进行`Named View`的循环切换
+* 如果没有创建`Named View`，按键后会进行提示
+
 
 
 
