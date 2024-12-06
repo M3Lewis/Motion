@@ -71,7 +71,7 @@ namespace Motion.Toolbar
 
             if (selectedSliders.Count == 0)
             {
-                ShowMessage("Please select the sliders to be controlled first");
+                ShowMessage("请先选择需要控制的Slider");
                 return;
             }
 
@@ -108,7 +108,7 @@ namespace Motion.Toolbar
                     existingController.ExpireSolution(true);
                     canvas.Refresh();
 
-                    ShowMessage($"Already updated union slider ({globalMin}-{globalMax})，controlled {selectedSliders.Count - 1} slider(s)");
+                    ShowMessage($"已更新Union Slider ({globalMin}-{globalMax})，控制 {selectedSliders.Count - 1} 个滑块");
                 }
                 else
                 {
@@ -148,7 +148,7 @@ namespace Motion.Toolbar
                     controller.ExpireSolution(true);
                     canvas.Refresh();
 
-                    ShowMessage($"Already created union slider ({globalMin}-{globalMax})，controlled {selectedSliders.Count} slider(s)");
+                    ShowMessage($"已创建Union Slider ({globalMin}-{globalMax})，控制 {selectedSliders.Count} 个滑块");
                 }
 
                 canvas.Document.NewSolution(true);
