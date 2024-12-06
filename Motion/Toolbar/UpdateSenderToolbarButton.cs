@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Windows.Controls;
 using System.Windows.Forms;
 
 namespace Motion.Toolbar
@@ -52,7 +53,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.UpdateSender; // 确保有对应的图标资源
-            button.ToolTipText = "Place Sender besides all TimelineSliders";
+            button.ToolTipText = "在多个Motion Slider输出端旁创建Motion Sender";
             button.Click += UpdateSender_Click;
         }
 
@@ -120,7 +121,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法完成操作: " + ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowTemporaryMessage(Instances.ActiveCanvas, $"Error: {ex.Message}");
             }
         }
 
@@ -147,6 +148,10 @@ namespace Motion.Toolbar
                 if (sliders != null && sliders.Any())
                 {
                     allTimelineSliders.AddRange(sliders);
+                }
+                else
+                {
+                    ShowTemporaryMessage(Instances.ActiveCanvas, "Please create a Motion Slider!");
                 }
             }
             catch (Exception ex)

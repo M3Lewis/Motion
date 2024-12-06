@@ -263,10 +263,11 @@ namespace Motion.Toolbar
             if (_buttonRepeatTimer == null)
             {
                 _buttonRepeatTimer = new System.Windows.Threading.DispatcherTimer();
-                _buttonRepeatTimer.Interval = TimeSpan.FromMilliseconds(50); // 调整重复速率
                 _buttonRepeatTimer.Tick += ButtonRepeatTimer_Tick;
             }
             
+            // 每次按下时都重新设置为初始延迟
+            _buttonRepeatTimer.Interval = TimeSpan.FromMilliseconds(750);
             _buttonRepeatTimer.Start();
         }
 
@@ -278,6 +279,9 @@ namespace Motion.Toolbar
 
         private void ButtonRepeatTimer_Tick(object sender, EventArgs e)
         {
+            // 第一次触发后改为快速重复
+            _buttonRepeatTimer.Interval = TimeSpan.FromMilliseconds(50);
+            
             if (_currentButton == plusButton)
             {
                 Value = Math.Min(Max, Value + 1);

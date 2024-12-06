@@ -67,7 +67,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.ClickFinder;
-            button.ToolTipText = "Click GH object displayed in rhino viewport to find component";
+            button.ToolTipText = "单击Rhino视口中显示的GH物件以查找组件";
             button.Click += OpenControlWindow;
             button.CheckOnClick = true;
         }
@@ -174,7 +174,7 @@ namespace Motion.Toolbar
                     // 从顶点创建边界框
                     var box = vertices.Count > 0 
                         ? new BoundingBox(vertices) 
-                        : previewObj.ClippingBox;  // 如果无法获取顶点，回退到ClippingBox
+                        : previewObj.ClippingBox;  // 如无法获取顶点，回退到ClippingBox
                         
                     if (box.Volume < 0.1) box.Inflate(1);
                     boundingBoxes.Add(box);
@@ -251,17 +251,116 @@ namespace Motion.Toolbar
         {
             int nearestIndex = -1;
             double minDistance = double.MaxValue;
+            var candidateIndices = new List<(int index, double distance)>();
 
+            // 首先收集所有与射线相交的boundingbox
             for (int i = 0; i < boundingBoxes.Count; i++)
             {
                 if (Intersection.LineBox(clickRay, boundingBoxes[i], 0.01, out Interval collision) &&
-                    collision.T0 > 0 && collision.T0 < minDistance)
+                    collision.T0 > 0 && collision.T0 < double.MaxValue)
                 {
-                    minDistance = collision.T0;
-                    nearestIndex = i;
+                    candidateIndices.Add((i, collision.T0));
                 }
             }
+
+            // 如果有多个候选对象
+            if (candidateIndices.Count > 1)
+            {
+                // 获取点击点在屏幕上的位置
+                var screenPoint = Cursor.Position;
+                var view = RhinoDoc.ActiveDoc.Views.ActiveView;
+                var viewport = view.ActiveViewport;
+                var viewRect = view.ScreenRectangle;
+
+                minDistance = double.MaxValue;
+                foreach (var candidate in candidateIndices)
+                {
+                    var box = boundingBoxes[candidate.index];
+                    var edges = GetBoxEdges(box);
+                    
+                    // 计算每条边到鼠标的最短距离
+                    foreach (var edge in edges)
+                    {
+                        // 将边的端点转换为屏幕坐标
+                        Point2d screenPt1 = viewport.WorldToClient(edge.From);
+                        Point2d screenPt2 = viewport.WorldToClient(edge.To);
+                        
+                        // 计算鼠标点到线段的距离
+                        double dist = DistanceToLineSegment(
+                            new Point2d(screenPoint.X - viewRect.Left, screenPoint.Y - viewRect.Top),
+                            screenPt1,
+                            screenPt2
+                        );
+
+                        if (dist < minDistance)
+                        {
+                            minDistance = dist;
+                            nearestIndex = candidate.index;
+                        }
+                    }
+                }
+            }
+            // 如果只有一个候选对象，直接返回
+            else if (candidateIndices.Count == 1)
+            {
+                nearestIndex = candidateIndices[0].index;
+            }
+
             return nearestIndex;
+        }
+
+        private Line[] GetBoxEdges(BoundingBox box)
+        {
+            var corners = box.GetCorners();
+            return new Line[]
+            {
+                // 底部四边
+                new Line(corners[0], corners[1]),
+                new Line(corners[1], corners[2]),
+                new Line(corners[2], corners[3]),
+                new Line(corners[3], corners[0]),
+                // 顶部四边
+                new Line(corners[4], corners[5]),
+                new Line(corners[5], corners[6]),
+                new Line(corners[6], corners[7]),
+                new Line(corners[7], corners[4]),
+                // 竖直四边
+                new Line(corners[0], corners[4]),
+                new Line(corners[1], corners[5]),
+                new Line(corners[2], corners[6]),
+                new Line(corners[3], corners[7])
+            };
+        }
+
+        private double DistanceToLineSegment(Point2d pt, Point2d lineStart, Point2d lineEnd)
+        {
+            double dx = lineEnd.X - lineStart.X;
+            double dy = lineEnd.Y - lineStart.Y;
+            
+            if (dx == 0 && dy == 0) // 线段实际上是一个点
+            {
+                return pt.DistanceTo(lineStart);
+            }
+
+            // 计算投影点参数
+            double t = ((pt.X - lineStart.X) * dx + (pt.Y - lineStart.Y) * dy) / (dx * dx + dy * dy);
+
+            if (t < 0) // 最近点在线段起点之前
+            {
+                return pt.DistanceTo(lineStart);
+            }
+            else if (t > 1) // 最近点在线段终点之后
+            {
+                return pt.DistanceTo(lineEnd);
+            }
+            else // 最近点在线段上
+            {
+                Point2d projection = new Point2d(
+                    lineStart.X + t * dx,
+                    lineStart.Y + t * dy
+                );
+                return pt.DistanceTo(projection);
+            }
         }
 
         private void FocusOnComponent(IGH_DocumentObject obj)

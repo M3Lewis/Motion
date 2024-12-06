@@ -93,31 +93,57 @@ namespace Motion.Animation
             var doc = OnPingDocument();
             if (doc == null) return;
 
-            //RhinoApp.WriteLine("InitializeAfterLoad: Starting initialization");
+            // 查找或等待 Timeline Slider
+            FindAndConnectTimelineSlider();
 
+            // 添加文档事件监听，以便在后续添加 Timeline Slider 时能够检测到
+            doc.ObjectsAdded += Doc_ObjectsAdded;
+
+            _isInitialized = true;
+            UpdateGroupVisibilityAndLock();
+        }
+
+        private void Doc_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
+        {
+            // 检查是否添加了 Union Slider
+            var addedUnionSlider = e.Objects
+                .FirstOrDefault(obj => obj is MotionUnionSlider && 
+                                     obj.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+
+            if (addedUnionSlider != null)
+            {
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    // 延迟执行以确保 Union Slider 完全初始化
+                    doc.ScheduleSolution(5, d => 
+                    {
+                        FindAndConnectTimelineSlider();
+                        ExpireSolution(true);
+                    });
+                }
+            }
+        }
+
+        private void FindAndConnectTimelineSlider()
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            // 查找 Timeline Slider
             _timelineSlider = doc.Objects
                 .OfType<GH_NumberSlider>()
                 .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
 
             if (_timelineSlider != null)
             {
-                //RhinoApp.WriteLine($"Found Timeline Slider: {_timelineSlider.InstanceGuid}");
-
                 var numberSlider = _timelineSlider as GH_NumberSlider;
                 if (numberSlider?.Slider != null)
                 {
                     numberSlider.Slider.ValueChanged -= OnSliderValueChanged;
                     numberSlider.Slider.ValueChanged += OnSliderValueChanged;
-                    //RhinoApp.WriteLine("Timeline Slider ValueChanged event subscribed");
                 }
             }
-            else
-            {
-                //RhinoApp.WriteLine("WARNING: Timeline Slider not found!");
-            }
-
-            _isInitialized = true;
-            UpdateGroupVisibilityAndLock();
         }
 
         // 修正事件处理器的参数类型
@@ -129,7 +155,7 @@ namespace Motion.Animation
 
         public EventComponent()
             : base("Event", "Event",
-                "事件组件",
+                "控制值变化的事件",
                 "Motion", "01_Animation")
         {
             UpdateMessage();
@@ -233,7 +259,7 @@ namespace Motion.Animation
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddNumberParameter("Value", "V", "当前时间在区间内的比例值", GH_ParamAccess.item);
-            pManager.AddIntervalParameter("Domain", "D", "区间参数", GH_ParamAccess.item);
+            //pManager.AddIntervalParameter("Domain", "D", "区间参数", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -264,7 +290,7 @@ namespace Motion.Animation
             // 获取输入数据
             if (!DA.GetData(0, ref time)) return;
             if (!DA.GetData(1, ref domain)) return;
-            DA.SetData(1, domain);
+            //DA.SetData(1, domain);
             // 从NickName解析区间
             string[] parts = this.NickName.Split('-');
             if (parts.Length == 2 &&
@@ -433,6 +459,11 @@ namespace Motion.Animation
         public override void RemovedFromDocument(GH_Document document)
         {
             // 清理事件订阅
+            if (document != null)
+            {
+                document.ObjectsAdded -= Doc_ObjectsAdded;
+            }
+
             if (this.Params.Input.Count > 0)
             {
                 this.Params.Input[0].ObjectChanged -= Input_ObjectChanged;

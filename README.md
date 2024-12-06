@@ -1,23 +1,96 @@
 # Motion
 
-> 基于pOd_GH_Animation和Telepathy修改的一个GH Slider动画出图插件
+`Motion`是一个GH动画插件，参考了多种动画插件以及烟灰动画课程中的核心思路，旨在更方便地进行GH动画的制作。
 
 
 
-* `ExportSliderAnimation`
-  * 支持导出`.png`格式图片，透明背景
-  * 支持`Raytraced(光线追踪)`显示模式导出
-  * 根据`pOd_TimelineSlider`范围自动调整对应导出的帧
+## 组件
 
-* `GraphMapperChanger`
-  * 修改`Graph Mapper`的Y值范围，同时将X值范围与`pOd_Timeline Slider`同步
+### 01_Animation
 
-* 自动根据`pOd_GH_Animation`插件的`pOd_Timeline Slider`的最大值/最小值范围来修改`Graph Mapper`/`Sender`/`Receiver`的取值范围
-* 当`Sender`/`Receiver`连接的`Slider`处于锁定状态时，与`Receiver`在同一个`GH_Group`内的所有`Component`也会保持`锁定`/`隐藏`状态
-  * 双击`Receiver`弹出`RemoteData`，将摄像机数据与其连接，并使用`MergeMotionData`(右键菜单选择是Location还是Target)
-  * 双击`RemoteData`可以选择连接至Location还是Target
-  * `MergeMotionData`和`RemoteData`的`Nickname`与slider区间保持同步
+#### Motion Slider
 
-* 工具栏中提供了一个按钮，打开时可以做到按`+`/`-`来切换已有的`Grasshopper Named View`
-* `Timeline Range`用于读取当前所有slider的区间，`Range Selector`用于选择区间
+* 点击区间文本框直接修改Slider区间
+* 配合工具栏上的`CreateUnionSliderButton`，创建`Motion Union Slider`，之后可以复制粘贴`Motion Slider`，`Motion Union Slider`的区间会自动进行更新
+* `Motion Union Slider`的值与`Motion Slider`的值是联动的
+* `Union Slider`点击右键菜单可以连接到所有`EventOperation`和`Interval Lock`的时间输入端，避免特殊情况下断开连接
+
+#### Motion Sender
+
+* 将`Motion Sender`放在`Motion Slider`的输出端旁边，会自动连接它的输出端，并显示其区间范围
+* 双击`Motion Sender`可以快速创建`Event`以及后接的`Graph Mapper`，`Graph Mapper`的默认模式为`Bezier`
+
+#### Event
+
+* 输入端`Time`接收`Motion Sender`传来的值
+* 输入端`Domain`确定想改变的数值范围
+* 选择某个组件，点击`HIDE`可以在这个Event的时间范围之外隐藏组件显示，点击`LOCK`可以在这个Event的时间范围之外锁定组件
+* 鼠标移动到按钮范围内，会自动绘制指示线，来显示哪些组件被这个Event隐藏/锁定
+* 右键菜单
+  * 使用空值模式时，只有在组件接收不到值时才会进行对指定组件的隐藏/锁定操作
+  * 点击`跳转至EventOperation`，可跳转到该`Event`对应的`EventOperation`
+
+#### EventOperation
+
+* 选中多个位于`Event`后面的`Graph Mapper` ，点击工具栏按钮`ConnectToEventOprationButton`，将创建一个`EventOperation`，并自动与选中的所有`Graph Mapper`相连。如果之前已经正确创建了`Union Slider`，那么其第二个输入端`Time`也会自动和`Union Slider`相连。
+* 输入端`Event`前会显示当前事件的值【0-1】
+* 输出端`Remapped Value`会显示当前事件输出的值，也就是在`Event`的第二个输入端的区间中所对应的值
+* 放大组件可以点击`+`按钮，增加两个输出端
+  * 输出当前事件在所有事件中的序号
+  * 输出当前事件的值域区间
+* 双击组件可以弹出菜单，菜单中会显示所有区间的值，点击指定区间会跳转至对应的`Event`
+
+* `Interval Lock`
+  * 指定区间，并将这个组件与指定组件放在一个`Group`内，时间在区间外时会对组内的所有组件进行锁定
+
+
+
+### 02_Export
+
+#### ExportSliderAnimation
+
+* 导出`.png`格式图片，透明背景
+* `Raytraced(光线追踪)`显示模式导出帧，可设置采样数
+* 自定义区间导出帧
+* 导出完毕后点击`Open`按钮直接跳转至导出文件夹
+
+
+
+### 03_Utils
+
+#### AdjustSearchCount
+
+* 调整最大组件搜索数量，最大值为30个
+
+
+
+#### FilletEdgeIndex
+
+* 根据Brep和输入的点确定边的序号，配合`FilletEdge`进行倒角
+
+
+
+#### ZDepth
+
+* 开启深度图显示模式，类似Rhino中的`ShowZBuffer`命令
+* 导出深度图
+* 自定义导出深度图的比例，基础分辨率基于当前工作视窗。
+
+
+
+#### Arrange Tab Components
+
+* 指定插件`Tab`名称，分组列出所有该插件的电池放置在画布上
+
+
+
+#### Dynamic Output
+
+* 自动根据输入端的数据生成对应数量的输出端
+  * 如果是一个`list`，则每个输出端都会输出list中的1个数据，并显示Out+序号
+  * 如果是一个`tree`，则每个输出端都会输出一个路径下的所有数据，并显示路径号
+
+
+
+
 

@@ -49,7 +49,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.ConnectToEventOperation; // 需要添加对应的图标资源
-            button.ToolTipText = "Connect selected Graph Mappers to new Event Operation";
+            button.ToolTipText = "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接";
             button.Click += ConnectToEventOperation;
         }
 
@@ -120,63 +120,6 @@ namespace Motion.Toolbar
             }
         }
 
-        private void ShowTemporaryMessage(GH_Canvas canvas, string message)
-        {
-            GH_Canvas.CanvasPostPaintObjectsEventHandler canvasRepaint = null;
-            canvasRepaint = (sender) =>
-            {
-                Graphics g = canvas.Graphics;
-                if (g == null) return;
-
-                // 保存当前的变换矩阵
-                var originalTransform = g.Transform;
-                
-                // 重置变换，确保文字大小不受画布缩放影响
-                g.ResetTransform();
-
-                // 计算文本大小
-                SizeF textSize = new SizeF(30, 30);
-                
-                // 设置消息位置在画布顶部居中
-                float padding = 20;
-                float x = textSize.Width + 300;
-                float y = padding + 30;
-
-                RectangleF textBounds = new RectangleF(x, y, textSize.Width + 300, textSize.Height + 30);
-                textBounds.Inflate(6, 3);  // 添加一些内边距
-
-                // 绘制消息
-                GH_Capsule capsule = GH_Capsule.CreateTextCapsule(
-                    textBounds,
-                    textBounds,
-                    GH_Palette.Pink,
-                    message);
-
-                capsule.Render(g, Color.LightSkyBlue);
-                capsule.Dispose();
-
-                // 恢复原始变换
-                g.Transform = originalTransform;
-            };
-
-            // 添加临时事件处理器
-            canvas.CanvasPostPaintObjects += canvasRepaint;
-            
-            // 立即刷新画布以显示消息
-            canvas.Refresh();
-
-            // 设置定时器移除事件处理器
-            Timer timer = new Timer();
-            timer.Interval = 1500;
-            timer.Tick += (sender, e) =>
-            {
-                canvas.CanvasPostPaintObjects -= canvasRepaint;
-                canvas.Refresh();
-                timer.Stop();
-                timer.Dispose();
-            };
-            timer.Start();
-        }
 
         // 新增辅助方法：检查是否所有 Graph Mapper 都连接到同一个 EventOperation
         private EventOperation GetCommonConnectedEventOperation(List<GH_GraphMapper> mappers)

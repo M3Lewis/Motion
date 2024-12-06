@@ -1,21 +1,20 @@
-﻿using Grasshopper.Kernel;
+﻿using GH_IO.Serialization;
+using Grasshopper.GUI.Canvas;
+using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
+using Rhino.Geometry;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Collections.Generic;
-using Rhino.Geometry;
-using GH_IO.Serialization;
 using System.Windows.Forms;
-using Grasshopper.GUI.Canvas;
-using Grasshopper.Kernel.Undo;
-using Motion.Components.OBSOLETE;
 
 namespace Motion.Animation
 {
     public class Param_RemoteSender : RemoteParam
     {
-        private bool _autoRename = true;
+        private readonly bool _autoRename = true;
         
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
         public event NickNameChangedEventHandler NickNameChanged;
@@ -33,6 +32,20 @@ namespace Motion.Animation
 
         public override void AddedToDocument(GH_Document document)
         {
+            // 检查是否存在同名的 Sender
+            var existingSender = document.Objects
+                .OfType<Param_RemoteSender>()
+                .FirstOrDefault(s => s != this && s.NickName == this.NickName);
+
+            if (existingSender != null)
+            {
+                var canvas = Grasshopper.Instances.ActiveCanvas;
+                if (canvas != null)
+                {
+                    ShowTemporaryMessage(canvas, 
+                        $"已存在相同标识({this.NickName})的 Sender!");
+                }
+            }
 
             base.AddedToDocument(document);
             
@@ -129,7 +142,7 @@ namespace Motion.Animation
         protected override void OnVolatileDataCollected()
         {
             base.OnVolatileDataCollected();
-            
+
             if (_autoRename && this.Sources.Count == 1)
             {
                 var source = this.Sources[0];
@@ -140,7 +153,27 @@ namespace Motion.Animation
                     slider.NickName = this.NickName;
                 }
             }
+
+            var doc = OnPingDocument();
+            if (doc != null)
+            {
+                // 检查是否存在同名的 Sender
+                var existingSender = doc.Objects
+                    .OfType<Param_RemoteSender>()
+                    .FirstOrDefault(s => s != this && s.NickName == this.NickName);
+
+                if (existingSender != null)
+                {
+                    var canvas = Grasshopper.Instances.ActiveCanvas;
+                    if (canvas != null)
+                    {
+                        ShowTemporaryMessage(canvas,
+                            $"已存在相同标识({this.NickName})的 Sender!");
+                    }
+                }
+            }
         }
+
 
         public override void RemovedFromDocument(GH_Document document)
         {
@@ -167,31 +200,8 @@ namespace Motion.Animation
 
         public override void AppendAdditionalMenuItems(System.Windows.Forms.ToolStripDropDown menu)
         {
-            Menu_AppendItem(menu, "Auto Rename From Slider", AutoRename_Clicked, true, _autoRename);
-            Menu_AppendSeparator(menu);
-
-            ToolStripMenuItem recentKeyMenu = GH_DocumentObject.Menu_AppendItem(menu, "Keys");
-            foreach (string key in MotilityUtils.GetAllKeys(Grasshopper.Instances.ActiveCanvas.Document).OrderBy(s => s))
-            {
-                if (!string.IsNullOrEmpty(key))
-                {
-                    Menu_AppendItem(recentKeyMenu.DropDown, key, new EventHandler(Menu_KeyClicked));
-                }
-            }
-        }
-
-        private void AutoRename_Clicked(object sender, EventArgs e)
-        {
-            _autoRename = !_autoRename;
-            if (_autoRename && this.Sources.Count > 0)
-            {
-                var source = this.Sources[0];
-                if (source is GH_NumberSlider slider)
-                {
-                    UpdateNicknameFromSlider(slider);
-                    slider.NickName = this.NickName;
-                }
-            }
+            // 完全移除右键菜单选项
+            base.AppendAdditionalMenuItems(menu);
         }
 
         private void ShowTemporaryMessage(GH_Canvas canvas, string message)
@@ -255,7 +265,6 @@ namespace Motion.Animation
         //        }
         //    }
         //}
-
         public override string NickName
         {
             get
@@ -328,7 +337,6 @@ namespace Motion.Animation
             
             try
             {
-                writer.SetBoolean("AutoRename", _autoRename);
                 writer.SetString("NicknameKey", nicknameKey);
                 writer.SetString("ConnectedSliderGuid", _connectedSliderGuid.ToString());
             }
@@ -346,8 +354,6 @@ namespace Motion.Animation
             
             try
             {
-                if (reader.ItemExists("AutoRename"))
-                    _autoRename = reader.GetBoolean("AutoRename");
                 if (reader.ItemExists("NicknameKey"))
                     nicknameKey = reader.GetString("NicknameKey");
                 if (reader.ItemExists("ConnectedSliderGuid"))
@@ -360,7 +366,5 @@ namespace Motion.Animation
             
             return true;
         }
-
-        
     }
 }

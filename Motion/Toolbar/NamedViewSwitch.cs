@@ -11,11 +11,11 @@ namespace Motion.Toolbar
 {
     public class NamedViewSwitch : MotionToolbarButton
     {
-        protected override int ToolbarOrder => 80;
+        protected override int ToolbarOrder => 100;
         private ToolStripButton button;
         private List<string> namedViews = new List<string>();
         private int currentViewIndex = 0;
-        private bool isActive = true;
+        private bool isActive = false;
 
         public NamedViewSwitch()
         {
@@ -27,7 +27,9 @@ namespace Motion.Toolbar
             button = new ToolStripButton();
             Instantiate();
             LoadNamedViews();
-            AddButtonToGroup(button); // 使用基类方法添加按钮
+            AddButtonToGroup(button);
+            
+            ClickedButton(null, EventArgs.Empty);
         }
 
         public override GH_LoadingInstruction PriorityLoad()
@@ -54,7 +56,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.NamedViewSwitch2;
-            button.ToolTipText = "Switch between named views using +/- keys";
+            button.ToolTipText = "打开状态下，可按 Ctrl + [+]/[-] 键在Named View之间切换";
             button.Click += ClickedButton;
         }
 
@@ -77,14 +79,12 @@ namespace Motion.Toolbar
 
             if (isActive)
             {
-                //button.Image = Properties.Resources.YourActiveIcon; // 激活状态图标
-                button.BackColor = Color.Orange; // 激活状态背景色
+                button.BackColor = Color.Orange;
                 Instances.DocumentEditor.KeyDown += KeyDownEventHandler;
             }
             else
             {
-                //button.Image = Properties.Resources.YourIcon; // 默认图标
-                button.BackColor = Color.FromArgb(255, 255, 255); // 默认背景色
+                button.BackColor = Color.FromArgb(255, 255, 255);
                 Instances.DocumentEditor.KeyDown -= KeyDownEventHandler;
             }
         }
@@ -97,24 +97,27 @@ namespace Motion.Toolbar
             {
                 var doc = Grasshopper.Instances.ActiveCanvas.Document;
                 var canvas = Grasshopper.Instances.ActiveCanvas;
-                bool isPressed = e.KeyCode == Keys.Oemplus || e.KeyCode == Keys.Oemplus;
-                if (canvas != null&& isPressed)
+                bool isPressed = e.Control && (e.KeyCode == Keys.Oemplus || e.KeyCode == Keys.Add);
+                if (canvas != null && isPressed)
                 {
                     ShowTemporaryMessage(canvas,
-                        $"请创建一个Named View!");
+                        $"Please create a Named View!");
                 }
                 return;
             }
 
-            if (e.KeyCode == Keys.Oemplus)
+            if (e.Control)
             {
-                currentViewIndex = (currentViewIndex + 1) % namedViews.Count;
-                SwitchToView(currentViewIndex);
-            }
-            else if (e.KeyCode == Keys.OemMinus)
-            {
-                currentViewIndex = (currentViewIndex - 1 + namedViews.Count) % namedViews.Count;
-                SwitchToView(currentViewIndex);
+                if (e.KeyCode == Keys.Oemplus || e.KeyCode == Keys.Add)
+                {
+                    currentViewIndex = (currentViewIndex + 1) % namedViews.Count;
+                    SwitchToView(currentViewIndex);
+                }
+                else if (e.KeyCode == Keys.OemMinus || e.KeyCode == Keys.Subtract)
+                {
+                    currentViewIndex = (currentViewIndex - 1 + namedViews.Count) % namedViews.Count;
+                    SwitchToView(currentViewIndex);
+                }
             }
         }
 

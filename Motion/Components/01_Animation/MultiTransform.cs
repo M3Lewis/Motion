@@ -18,14 +18,14 @@ namespace Motion.Animation
         public override bool IsPreviewCapable => false;
 
         public MultiTransform()
-            : base("Multi Transform", "Multi Transform", "Apply multiple transforms to geometry in sequence", "Transform", "Util")
+            : base("Multi Transform", "Multi Transform", "对几何体应用多重变换", "Transform", "Util")
         {
         }
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddGeometryParameter("Geometry", "G", "Base geometry", GH_ParamAccess.item);
-            pManager.AddTransformParameter("Transforms", "T", "Transformations to compound and apply", GH_ParamAccess.list);
+            pManager.AddGeometryParameter("Geometry", "G", "几何体", GH_ParamAccess.item);
+            pManager.AddTransformParameter("Transforms", "T", "变换", GH_ParamAccess.list);
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)

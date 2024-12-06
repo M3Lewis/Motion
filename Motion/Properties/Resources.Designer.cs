@@ -253,6 +253,16 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap MotionImagePreview {
+            get {
+                object obj = ResourceManager.GetObject("MotionImagePreview", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap MotionSlider {
             get {
                 object obj = ResourceManager.GetObject("MotionSlider", resourceCulture);
@@ -296,6 +306,16 @@ namespace Motion.Properties {
         public static System.Drawing.Bitmap NamedViewSwitch2 {
             get {
                 object obj = ResourceManager.GetObject("NamedViewSwitch2", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap PointOnView {
+            get {
+                object obj = ResourceManager.GetObject("PointOnView", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

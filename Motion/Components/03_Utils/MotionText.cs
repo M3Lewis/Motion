@@ -41,7 +41,7 @@ namespace Motion.Utils
             pManager.AddIntegerParameter("FontWeight", "FW", "字体粗细", GH_ParamAccess.item, 4);
             pManager.AddIntegerParameter("FontStyle", "FS", "字体样式", GH_ParamAccess.item, 1);
             pManager.AddIntegerParameter("HAlignment", "HA", "水平对齐", GH_ParamAccess.item, 1);
-            pManager.AddIntegerParameter("VAlignment", "VA", "垂直对齐", GH_ParamAccess.item, 0x40000);
+            pManager.AddIntegerParameter("VAlignment", "VA", "垂直对齐", GH_ParamAccess.item, 3);
             pManager.AddColourParameter("Color", "C", "文字颜色（可输入多种颜色）", GH_ParamAccess.list, Color.White);
             pManager.AddNumberParameter("Spacing", "SP", "字符间距", GH_ParamAccess.item, 0.0);
 
@@ -243,7 +243,7 @@ namespace Motion.Utils
             return justification;
         }
 
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.quarternary;
 
         protected override System.Drawing.Bitmap Icon => Properties.Resources.MotionText;
 

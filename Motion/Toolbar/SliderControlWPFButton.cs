@@ -14,7 +14,7 @@ namespace Motion.Toolbar
     public class SliderControlWPFButton : MotionToolbarButton
     {
         private ToolStripButton button;
-        protected override int ToolbarOrder => 30;
+        protected override int ToolbarOrder => 1;
         public SliderControlWPFButton()
         {
             
@@ -51,7 +51,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.SliderControlWPF2;
-            button.ToolTipText = "Add a topmost slider control WPF Window";
+            button.ToolTipText = "创建一个控制Union Slider的置顶窗口";
             button.Click += OpenControlWindow;
         }
 

@@ -48,7 +48,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.CreateUnionSlider;
-            button.ToolTipText = "左键点击创建/更新主控滑块，右键点击取消控制";
+            button.ToolTipText = "LMB：创建/更新Motion Union Slider，以控制选定的Motion Slider \nRMB：移除对Motion Slider的控制";
             button.MouseDown += Button_MouseDown;
             button.CheckOnClick = false;
         }
@@ -71,7 +71,7 @@ namespace Motion.Toolbar
 
             if (selectedSliders.Count == 0)
             {
-                ShowMessage("请先选择需要控制的滑块");
+                ShowMessage("Please select the sliders to be controlled first");
                 return;
             }
 
@@ -108,7 +108,7 @@ namespace Motion.Toolbar
                     existingController.ExpireSolution(true);
                     canvas.Refresh();
 
-                    ShowMessage($"已更新主控滑块 ({globalMin}-{globalMax})，控制 {selectedSliders.Count - 1} 个滑块");
+                    ShowMessage($"Already updated union slider ({globalMin}-{globalMax})，controlled {selectedSliders.Count - 1} slider(s)");
                 }
                 else
                 {
@@ -148,7 +148,7 @@ namespace Motion.Toolbar
                     controller.ExpireSolution(true);
                     canvas.Refresh();
 
-                    ShowMessage($"已创建联合滑块 ({globalMin}-{globalMax})，控制 {selectedSliders.Count} 个滑块");
+                    ShowMessage($"Already created union slider ({globalMin}-{globalMax})，controlled {selectedSliders.Count} slider(s)");
                 }
 
                 canvas.Document.NewSolution(true);
@@ -174,7 +174,7 @@ namespace Motion.Toolbar
                         }
                     }
                 }
-                ShowMessage($"已移除 {selectedSliders.Count} 个滑块的控制关系");
+                ShowMessage($"Removed {selectedSliders.Count} slider control relationship");
             }
 
             canvas.Document.NewSolution(true);
@@ -258,11 +258,6 @@ namespace Motion.Toolbar
             }
 
             return null;
-        }
-
-        private void HighlightMotionSliders(bool highlight)
-        {
-            // 高亮显示或隐藏滑块
         }
     }
 }

@@ -137,7 +137,7 @@ namespace Motion.Export
                     }
                     else if (isCycles&&!isRaytracedMode)
                     {
-                        RhinoApp.WriteLine($"请打开光线跟踪模式！");
+                        RhinoApp.WriteLine($"Please open the raytraced display mode！");
                         wasAborted = true;
                         break;
                     }

@@ -26,7 +26,7 @@ namespace Motion
         public override Bitmap Icon => Properties.Resources.Motion_Logo;
 
         //Return a short string describing the purpose of this GHA library.
-        public override string Description => "Make Animation Great Again!";
+        public override string Description => "Making GH Animation much easier";
 
         public override Guid Id => new Guid("06d887a9-24f8-4b07-9095-d77986aaaedd");
 
@@ -34,11 +34,11 @@ namespace Motion
         public override string AuthorName => "M3_Lewis";
 
         //Return a string representing your preferred contact details.
-        public override string AuthorContact => "";
+        public override string AuthorContact => "997629445@qq.com";
+
+        public override string Version => "0.7.1";
 
         //Return a string representing the version.  This returns the same version as the assembly.
         public override string AssemblyVersion => GetType().Assembly.GetName().Version.ToString();
-
-        
     }
 }

@@ -172,6 +172,9 @@
   <data name="MergeCameraTarget" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\MergeCameraTarget.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="MotionImagePreview" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\MotionImagePreview.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="MotionSlider" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\MotionSlider.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -189,6 +192,9 @@
   </data>
   <data name="NamedViewSwitch2" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\NamedViewSwitch2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="PointOnView" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\PointOnView.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="RangeSelector" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\RangeSelector.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

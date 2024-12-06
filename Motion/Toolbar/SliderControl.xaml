@@ -42,17 +42,17 @@
 
         <Button x:Name="minusButton" 
                 Content="-" 
-                Click="MinusButton_Click"
                 PreviewMouseDown="Button_PreviewMouseDown"
                 PreviewMouseUp="Button_PreviewMouseUp"
+                Click="MinusButton_Click"
                 Margin="5" 
                 Grid.Row="2" 
                 Grid.Column="0"/>
         <Button x:Name="plusButton" 
                 Content="+" 
-                Click="PlusButton_Click"
                 PreviewMouseDown="Button_PreviewMouseDown"
                 PreviewMouseUp="Button_PreviewMouseUp"
+                Click="PlusButton_Click"
                 Margin="5" 
                 Grid.Row="2" 
                 Grid.Column="1"/>

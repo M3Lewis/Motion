@@ -1,18 +1,22 @@
-﻿using Grasshopper.Kernel.Parameters;
-using Grasshopper.Kernel.Special;
+﻿using GH_IO.Serialization;
+using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Parameters;
+using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
+using Motion.Animation;
+using Rhino.Geometry;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using System;
-using GH_IO.Serialization;
-using System.Collections.Generic;
-using Motion.Components.OBSOLETE;
 
 namespace Motion.Animation
 {
     public abstract class RemoteParam : Param_GenericObject, IGH_InitCodeAware
     {
-        // 添加新的字段来控制模式F
+        // 添加新的字段来控制模式
         public bool UseEmptyValueMode { get; set; } = false;  // 是否使用空值模式
 
         private bool _hideWhenEmpty;
@@ -49,7 +53,6 @@ namespace Motion.Animation
             {
             }
         }
-
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
@@ -92,26 +95,26 @@ namespace Motion.Animation
             }
         }
 
-        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
-        {
-            Menu_AppendSeparator(menu);
+        //public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+        //{
+        //    Menu_AppendSeparator(menu);
 
-            ToolStripMenuItem recentKeyMenu = GH_DocumentObject.Menu_AppendItem(menu, "Keys");
-            foreach (string key in MotilityUtils.GetAllKeys(Grasshopper.Instances.ActiveCanvas.Document).OrderBy(s => s))
-            {
-                if (!string.IsNullOrEmpty(key))
-                {
-                    ToolStripMenuItem keyitem = Menu_AppendItem(recentKeyMenu.DropDown, key, new EventHandler(Menu_KeyClicked));
-                }
-            }
-        }
+        //    ToolStripMenuItem recentKeyMenu = GH_DocumentObject.Menu_AppendItem(menu, "Keys");
+        //    foreach (string key in MotilityUtils.GetAllKeys(Grasshopper.Instances.ActiveCanvas.Document).OrderBy(s => s))
+        //    {
+        //        if (!string.IsNullOrEmpty(key))
+        //        {
+        //            ToolStripMenuItem keyitem = Menu_AppendItem(recentKeyMenu.DropDown, key, new EventHandler(Menu_KeyClicked));
+        //        }
+        //    }
+        //}
 
-        protected void Menu_KeyClicked(object sender, EventArgs e)
-        {
-            System.Windows.Forms.ToolStripMenuItem keyItem = (System.Windows.Forms.ToolStripMenuItem)sender;
-            this.NickName = keyItem.Text;
-            this.Attributes.ExpireLayout();
-        }
+        //protected void Menu_KeyClicked(object sender, EventArgs e)
+        //{
+        //    System.Windows.Forms.ToolStripMenuItem keyItem = (System.Windows.Forms.ToolStripMenuItem)sender;
+        //    this.NickName = keyItem.Text;
+        //    this.Attributes.ExpireLayout();
+        //}
 
 
 
@@ -253,7 +256,5 @@ namespace Motion.Animation
             // 刷新文档
             doc.ScheduleSolution(5);
         }
-
-        
     }
 }

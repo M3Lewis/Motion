@@ -45,7 +45,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.CreateMultipleEvents; // 需要添加对应的图标资源
-            button.ToolTipText = "Create events for selected Senders";
+            button.ToolTipText = "为选定的多个Motion Sender创建Event";
             button.Click += CreateEventsForSelectedSenders;
         }
 
@@ -63,10 +63,7 @@ namespace Motion.Toolbar
 
                 if (!selectedSenders.Any())
                 {
-                    MessageBox.Show("请选择至少一个 Sender 参数。",
-                        "未选择 Sender",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                    ShowTemporaryMessage(canvas, "Please select at least one Motion Sender!");
                     return;
                 }
 
@@ -117,14 +114,14 @@ namespace Motion.Toolbar
                             {
                                 if (comp is EventComponent eventComp)
                                 {
-                                    eventComp.Attributes.Pivot = targetPos;
+                                    eventComp.Attributes.Pivot = new PointF(targetPos.X,targetPos.Y+10f);
                                     eventComp.Attributes.Selected = false;
                                 }
                                 else if (comp is GH_GraphMapper mapper)
                                 {
                                     mapper.Attributes.Pivot = new PointF(
                                         targetPos.X + EVENT_WIDTH + 50f,
-                                        targetPos.Y - 85f
+                                        targetPos.Y - 65f
                                     );
                                     mapper.Attributes.Selected = false;
                                 }
@@ -137,10 +134,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"创建事件时发生错误: {ex.Message}",
-                    "错误",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                ShowTemporaryMessage(Instances.ActiveCanvas, $"Error: {ex.Message}");
             }
         }
     }

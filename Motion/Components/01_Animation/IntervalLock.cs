@@ -10,9 +10,11 @@ namespace Motion.Animation
 {
     public class IntervalLock : GH_Component
     {
+        private bool _previousState = false;
+
         public IntervalLock()
             : base("Interval Lock", "Lock",
-                "检测时间是否在指定区间内，不在区间内时锁定同组内的组件",
+                "检测时间是否在指定区间内，不在区间内时锁定同组内的组件.",
                 "Motion", "01_Animation")
         {
             this.Params.Input[0].WireDisplay = GH_ParamWireDisplay.hidden;
@@ -20,13 +22,13 @@ namespace Motion.Animation
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddNumberParameter("Time", "T", "当前时间", GH_ParamAccess.item);
-            pManager.AddIntervalParameter("Domains", "D", "检测区间列表", GH_ParamAccess.list);
+            pManager.AddNumberParameter("Time", "T", "时间", GH_ParamAccess.item);
+            pManager.AddIntervalParameter("Domains", "D", "区间（可输入多个）", GH_ParamAccess.list);
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddBooleanParameter("Include?", "I", "时间是否在区间内", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Include?", "I", "Whether the time is within the interval", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -51,7 +53,11 @@ namespace Motion.Animation
 
                 DA.SetData(0, isIncludedInAny);
 
-                OnPingDocument()?.ScheduleSolution(1, d => SetGroupComponentsLock(!isIncludedInAny));
+                if (isIncludedInAny != _previousState)
+                {
+                    _previousState = isIncludedInAny;
+                    OnPingDocument()?.ScheduleSolution(1, d => SetGroupComponentsLock(!isIncludedInAny));
+                }
             }
             catch (Exception ex)
             {

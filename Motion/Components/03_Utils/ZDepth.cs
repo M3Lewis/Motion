@@ -28,12 +28,12 @@ namespace Motion.Utils
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddBooleanParameter("Show Buffer?", "Show?", "Show Z Buffer", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Save Buffer?", "Save?", "Save Z Buffer image", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Show Buffer?", "Show?", "显示ZDepth模式？", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Save Buffer?", "Save?", "保存ZDepth图片?", GH_ParamAccess.item);
             pManager.AddTextParameter("File path", "Path", "File path", GH_ParamAccess.item, Environment.ExpandEnvironmentVariables("%userprofile%\\Desktop"));
-            pManager.AddNumberParameter("Scale", "S", "输出图片的放大倍数", GH_ParamAccess.item, 2.0);
+            pManager.AddNumberParameter("Scale", "S", "输出图片的放大倍数(默认分辨率为视图分辨率)", GH_ParamAccess.item, 2.0);
             pManager.AddTextParameter("View Name", "V", "视图名称，默认使用当前视图", GH_ParamAccess.item, "Perspective");
-            pManager.AddIntegerParameter("Index", "I", "导出文件的序号", GH_ParamAccess.item, 0);
+            pManager.AddIntegerParameter("Index", "I", "导出文件名的序号", GH_ParamAccess.item, 0);
             pManager[1].Optional = true;
             pManager[2].Optional = true;
             pManager[3].Optional = true;

@@ -45,7 +45,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.AddScribble;
-            button.ToolTipText = "Add a scribble with WPF dialog";
+            button.ToolTipText = "添加Scribble（超越字体大小限制，多行输入）";
             button.Click += OpenScribbleDialog;
         }
 

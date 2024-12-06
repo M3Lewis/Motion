@@ -8,19 +8,19 @@ namespace Motion.Utils
     {
         public ColorAlpha()
             : base("Color Alpha", "Alpha", 
-                "Modify the alpha (transparency) value of a color",
+                "修改颜色的 alpha（透明度）值",
                 "Motion", "03_Utils")
         {
         }
 
         public override Guid ComponentGuid => new Guid("47a71f9a-30c5-42ad-bd2e-1de680ca6b2f");
         protected override System.Drawing.Bitmap Icon => Properties.Resources.ColorAlpha;
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.quarternary;
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddColourParameter("Color", "C", "Input color", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Alpha", "A", "Alpha value between 0-255", GH_ParamAccess.item);
+            pManager.AddColourParameter("Color", "C", "颜色", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Alpha", "A", "透明度值(0-255)", GH_ParamAccess.item);
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)

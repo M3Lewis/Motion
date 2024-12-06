@@ -55,6 +55,8 @@
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
+    <Compile Remove="Components\OBSOLETE\FFmpegExceptions.cs" />
+    <Compile Remove="Components\OBSOLETE\FFmpegUtil.cs" />
     <Compile Remove="Components\OBSOLETE\GraphMapperChanger.cs" />
     <Compile Remove="Components\OBSOLETE\MergeByCount.cs" />
     <Compile Remove="Components\OBSOLETE\MergeBySliderCount.cs" />
@@ -67,18 +69,27 @@
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
     <Compile Remove="Components\OBSOLETE\MotionSliderControlButton2.cs" />
+    <Compile Remove="Components\OBSOLETE\Motion_ValueListAttributes.cs" />
+    <Compile Remove="Components\OBSOLETE\Motion_ValueListItem.cs" />
     <Compile Remove="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
+    <Compile Remove="Components\OBSOLETE\RangeSelector.cs" />
     <Compile Remove="Components\OBSOLETE\SliderLockButton.cs" />
     <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
   </ItemGroup>
   
   <ItemGroup>
+    <None Include="Components\01_Animation\MotilityUtils.cs" />
+    <None Include="Components\OBSOLETE\FFmpegExceptions.cs" />
+    <None Include="Components\OBSOLETE\FFmpegUtil.cs" />
     <None Include="Components\OBSOLETE\MotionSliderControlButton2.cs" />
+    <None Include="Components\OBSOLETE\Motion_ValueListAttributes.cs" />
+    <None Include="Components\OBSOLETE\Motion_ValueListItem.cs" />
     <None Include="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
     <None Include="Components\OBSOLETE\Param_RemoteLocation.cs" />
     <None Include="Components\OBSOLETE\Param_RemoteTarget.cs" />
     <None Include="Components\OBSOLETE\Param_RemoteReceiver.cs" />
+    <None Include="Components\OBSOLETE\RangeSelector.cs" />
     <None Include="Components\OBSOLETE\RemoteComponentsUndoAction.cs" />
     <None Include="Components\OBSOLETE\AddScribble.cs" />
     <None Include="Components\OBSOLETE\GraphMapperChanger.cs" />

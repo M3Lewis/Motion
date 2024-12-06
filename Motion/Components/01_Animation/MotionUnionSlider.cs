@@ -425,6 +425,7 @@ namespace Motion.Animation
                 if (timeParam != null && timeParam.SourceCount == 0)
                 {
                     timeParam.AddSource(this);
+                    timeParam.WireDisplay = GH_ParamWireDisplay.hidden;  // 设置连线为隐藏
                     connectionCount++;
                 }
             }
@@ -436,6 +437,7 @@ namespace Motion.Animation
                 if (firstInput != null && firstInput.SourceCount == 0)
                 {
                     firstInput.AddSource(this);
+                    firstInput.WireDisplay = GH_ParamWireDisplay.hidden;  // 设置连线为隐藏
                     connectionCount++;
                 }
             }
@@ -443,7 +445,6 @@ namespace Motion.Animation
             if (connectionCount > 0)
             {
                 doc.NewSolution(true);
-                //Rhino.RhinoApp.WriteLine($"已创建 {connectionCount} 个连接");
             }
         }
     }
@@ -463,22 +464,22 @@ namespace Motion.Animation
             base.Layout();  // 调用基类的 Layout 方法来设置基本布局和文本框
 
             // 设置滑块的显示属性
-            base.Owner.Slider.DrawControlBorder = true;
-            base.Owner.Slider.ControlEdgeColour = Color.DeepSkyBlue;
-            base.Owner.Slider.DrawControlShadows = true;
-            base.Owner.Slider.DrawControlBackground = false;
-            base.Owner.Slider.GripEdgeColour = Color.DeepSkyBlue;
-            base.Owner.Slider.GripDisplay = GH_SliderGripDisplay.Numeric;
-            base.Owner.Slider.GripTopColour = Color.DeepSkyBlue;
-            base.Owner.Slider.GripBottomColour = Color.DeepSkyBlue;
-            base.Owner.Slider.RailBrightColour = Color.CadetBlue;
-            base.Owner.Slider.RailDisplay = GH_SliderRailDisplay.Etched;
-            base.Owner.Slider.RailDarkColour = Color.FromArgb(255, 40,40,40);
-            base.Owner.Slider.RailEmptyColour = Color.FromArgb(255, 40, 40, 40);
-            base.Owner.Slider.RailBrightColour = Color.FromArgb(255, 40, 40, 40);
-            base.Owner.Slider.RailFullColour = Color.FromArgb(255, 230,230,230);
+            Owner.Slider.DrawControlBorder = true;
+            Owner.Slider.ControlEdgeColour = Color.DeepSkyBlue;
+            Owner.Slider.DrawControlShadows = true;
+            Owner.Slider.DrawControlBackground = false;
+            Owner.Slider.GripEdgeColour = Color.DeepSkyBlue;
+            Owner.Slider.GripDisplay = GH_SliderGripDisplay.Numeric;
+            Owner.Slider.GripTopColour = Color.DeepSkyBlue;
+            Owner.Slider.GripBottomColour = Color.DeepSkyBlue;
+            Owner.Slider.RailBrightColour = Color.CadetBlue;
+            Owner.Slider.RailDisplay = GH_SliderRailDisplay.Etched;
+            Owner.Slider.RailDarkColour = Color.FromArgb(255, 40,40,40);
+            Owner.Slider.RailEmptyColour = Color.FromArgb(255, 40, 40, 40);
+            Owner.Slider.RailBrightColour = Color.FromArgb(255, 40, 40, 40);
+            Owner.Slider.RailFullColour = Color.FromArgb(255, 230,230,230);
             
-            base.Owner.Slider.Padding = new Padding(0,0,0,0);
+            Owner.Slider.Padding = new Padding(0,0,0,0);
         }
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
@@ -516,74 +517,74 @@ namespace Motion.Animation
         }
     }
 
-    public class MotionUnionSliderLockAttributes : MotionUnionSliderAttributes
-    {
-        public MotionUnionSlider Owner;
-        private readonly PointF _lockedPivot;
-        public MotionUnionSliderLockAttributes(MotionUnionSlider owner) : base(owner)
-        {
-            Owner = owner;
-            // 保持原有的边界和位置信息
-            this.Bounds = owner.Attributes.Bounds;
-            _lockedPivot = owner.Attributes.Pivot;
-        }
+    //public class MotionUnionSliderLockAttributes : MotionUnionSliderAttributes
+    //{
+    //    public MotionUnionSlider Owner;
+    //    private readonly PointF _lockedPivot;
+    //    public MotionUnionSliderLockAttributes(MotionUnionSlider owner) : base(owner)
+    //    {
+    //        Owner = owner;
+    //        // 保持原有的边界和位置信息
+    //        this.Bounds = owner.Attributes.Bounds;
+    //        _lockedPivot = owner.Attributes.Pivot;
+    //    }
 
-        // 禁止选择
-        public override bool Selected
-        {
-            get { return false; }
-            set { /* 不做任何事 */ }
-        }
-        protected override Padding SizingBorders => new Padding(0, 0, 0, 0);
+    //    // 禁止选择
+    //    public override bool Selected
+    //    {
+    //        get { return false; }
+    //        set { /* 不做任何事 */ }
+    //    }
+    //    protected override Padding SizingBorders => new Padding(0, 0, 0, 0);
 
-        // 锁定 Pivot - 只返回固定位置，忽略所有设置
-        public override PointF Pivot
-        {
-            get => _lockedPivot;
-        }
-        public override bool IsPickRegion(PointF pt)
-        {
-            return false;
-        }
+    //    // 锁定 Pivot - 只返回固定位置，忽略所有设置
+    //    public override PointF Pivot
+    //    {
+    //        get => _lockedPivot;
+    //    }
+    //    public override bool IsPickRegion(PointF pt)
+    //    {
+    //        return false;
+    //    }
 
-        protected override void Layout()
-        {
-            base.Layout();
-            base.Owner.Slider.DrawControlBorder = true;
-            base.Owner.Slider.ControlEdgeColour = Color.DeepSkyBlue;
-            base.Owner.Slider.DrawControlShadows = true;
-            base.Owner.Slider.DrawControlBackground = false;
-            base.Owner.Slider.GripEdgeColour = Color.DeepSkyBlue;
-            base.Owner.Slider.GripDisplay = GH_SliderGripDisplay.Numeric;
-            base.Owner.Slider.GripTopColour = Color.DeepSkyBlue;
-            base.Owner.Slider.GripBottomColour = Color.DeepSkyBlue;
-            base.Owner.Slider.RailBrightColour = Color.CadetBlue;
-            base.Owner.Slider.RailDisplay = GH_SliderRailDisplay.Etched;
-            base.Owner.Slider.RailDarkColour = Color.FromArgb(255, 40, 40, 40);
-            base.Owner.Slider.RailEmptyColour = Color.FromArgb(255, 40, 40, 40);
-            base.Owner.Slider.RailBrightColour = Color.FromArgb(255, 40, 40, 40);
-            base.Owner.Slider.RailFullColour = Color.FromArgb(255, 230, 230, 230);
+    //    protected override void Layout()
+    //    {
+    //        base.Layout();
+    //        base.Owner.Slider.DrawControlBorder = true;
+    //        base.Owner.Slider.ControlEdgeColour = Color.DeepSkyBlue;
+    //        base.Owner.Slider.DrawControlShadows = true;
+    //        base.Owner.Slider.DrawControlBackground = false;
+    //        base.Owner.Slider.GripEdgeColour = Color.DeepSkyBlue;
+    //        base.Owner.Slider.GripDisplay = GH_SliderGripDisplay.Numeric;
+    //        base.Owner.Slider.GripTopColour = Color.DeepSkyBlue;
+    //        base.Owner.Slider.GripBottomColour = Color.DeepSkyBlue;
+    //        base.Owner.Slider.RailBrightColour = Color.CadetBlue;
+    //        base.Owner.Slider.RailDisplay = GH_SliderRailDisplay.Etched;
+    //        base.Owner.Slider.RailDarkColour = Color.FromArgb(255, 40, 40, 40);
+    //        base.Owner.Slider.RailEmptyColour = Color.FromArgb(255, 40, 40, 40);
+    //        base.Owner.Slider.RailBrightColour = Color.FromArgb(255, 40, 40, 40);
+    //        base.Owner.Slider.RailFullColour = Color.FromArgb(255, 230, 230, 230);
 
-            base.Owner.Slider.Padding = new Padding(0, 0, 0, 0);
-        }
-        protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
-        {
-            // 首先调用基类的渲染
-            base.Render(canvas, graphics, channel);
+    //        base.Owner.Slider.Padding = new Padding(0, 0, 0, 0);
+    //    }
+    //    protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
+    //    {
+    //        // 首先调用基类的渲染
+    //        base.Render(canvas, graphics, channel);
 
-            if (channel == GH_CanvasChannel.Objects)
-            {
-                // 绘制锁定状态的边框
-                RectangleF bounds = Owner.Slider.Bounds;
-                bounds.Inflate(2, 2); // 扩大边框范围
+    //        if (channel == GH_CanvasChannel.Objects)
+    //        {
+    //            // 绘制锁定状态的边框
+    //            RectangleF bounds = Owner.Slider.Bounds;
+    //            bounds.Inflate(2, 2); // 扩大边框范围
 
-                // 创建虚线画笔
-                using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))
-                {
-                    lockPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
-                    graphics.DrawRectangle(lockPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
-                }
-            }
-        }
-    }
+    //            // 创建虚线画笔
+    //            using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))
+    //            {
+    //                lockPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
+    //                graphics.DrawRectangle(lockPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+    //            }
+    //        }
+    //    }
+    //}
 } 

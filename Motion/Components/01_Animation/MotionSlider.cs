@@ -41,7 +41,7 @@ namespace Motion.Animation
         {
             NickName = "Slider";
             Name = "Motion Slider";
-            Description = "可调节区间的动画滑块";
+            Description = "基础Slider，可被Union Slider控制。请先选择该Slider，然后使用工具栏按钮创建一个Union Slider。";
             Category = "Motion";
             SubCategory = "01_Animation";
 
@@ -58,7 +58,7 @@ namespace Motion.Animation
         {
             NickName = "MotionSlider";
             Name = "Motion Slider";
-            Description = "可调节区间的动画滑块";
+            Description = "基础Slider，可被Union Slider控制。请先选择该Slider，然后使用工具栏按钮创建一个Union Slider。";
             Category = "Motion";
             SubCategory = "01_Animation";
 
@@ -413,7 +413,7 @@ namespace Motion.Animation
             }
             
         }
-        // 修改恢复方法，不再使用事件参数
+        
         private void RestoreControlRelationships()
         {
             // 确保只执行一次
@@ -841,59 +841,59 @@ namespace Motion.Animation
     }
 
     
-    public class MotionSliderLockAttributes : MotionSliderAttributes
-    {
-        public MotionSlider Owner;
-        private readonly PointF _lockedPivot;
-        public MotionSliderLockAttributes(MotionSlider owner) : base(owner)
-        {
-            Owner = owner;
-            // 保持原有的边和位置信息
-            this.Bounds = owner.Attributes.Bounds;
-            _lockedPivot = owner.Attributes.Pivot;
-        }
+    //public class MotionSliderLockAttributes : MotionSliderAttributes
+    //{
+    //    public MotionSlider Owner;
+    //    private readonly PointF _lockedPivot;
+    //    public MotionSliderLockAttributes(MotionSlider owner) : base(owner)
+    //    {
+    //        Owner = owner;
+    //        // 保持原有的边和位置信息
+    //        this.Bounds = owner.Attributes.Bounds;
+    //        _lockedPivot = owner.Attributes.Pivot;
+    //    }
 
-        // 禁止选择
-        public override bool Selected
-        {
-            get { return false; }
-            set { /* 不做任何事 */ }
-        }
+    //    // 禁止选择
+    //    public override bool Selected
+    //    {
+    //        get { return false; }
+    //        set { /* 不做任何事 */ }
+    //    }
 
-        protected override Padding SizingBorders => new Padding(0, 0, 0, 0);
-        // 禁止拾取
-        public override bool IsPickRegion(PointF pt)
-        {
-            return false;
-        }
+    //    protected override Padding SizingBorders => new Padding(0, 0, 0, 0);
+    //    // 禁止拾取
+    //    public override bool IsPickRegion(PointF pt)
+    //    {
+    //        return false;
+    //    }
 
-        // 锁定 Pivot - 只返回固定位置，忽略所有设置
-        public override PointF Pivot
-        {
-            get => _lockedPivot;
-        }
-        // 禁止拖动
+    //    // 锁定 Pivot - 只返回固定位置，忽略所有设置
+    //    public override PointF Pivot
+    //    {
+    //        get => _lockedPivot;
+    //    }
+    //    // 禁止拖动
 
 
 
-        protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
-        {
-            // 首先调用基类的渲染
-            base.Render(canvas, graphics, channel);
+    //    protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
+    //    {
+    //        // 首先调用基类的渲染
+    //        base.Render(canvas, graphics, channel);
 
-            if (channel == GH_CanvasChannel.Objects)
-            {
-                // 绘制锁定状态的边框
-                RectangleF bounds = Owner.Slider.Bounds;
-                bounds.Inflate(2, 2); // 扩大框范围
+    //        if (channel == GH_CanvasChannel.Objects)
+    //        {
+    //            // 绘制锁定状态的边框
+    //            RectangleF bounds = Owner.Slider.Bounds;
+    //            bounds.Inflate(2, 2); // 扩大框范围
 
-                // 创建虚线画笔
-                using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))
-                {
-                    lockPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
-                    graphics.DrawRectangle(lockPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
-                }
-            }
-        }
-    }
+    //            // 创建虚线画笔
+    //            using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))
+    //            {
+    //                lockPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
+    //                graphics.DrawRectangle(lockPen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+    //            }
+    //        }
+    //    }
+    //}
 }
