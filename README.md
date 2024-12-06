@@ -113,7 +113,7 @@
 * 支持输入`Diffuse/Transparency/Environment/Bump`贴图
   * `Diffuse`贴图可以输入图片所在文件夹的路径，可根据`Index`切换图片
   * 可输入图片的路径
-  * 也可直接输入**Javid** / **Bitmap+**插件输出的`System.Drawing.Bitmap`格式作为贴图
+  * 也可直接输入 **Javid** 和  **Bitmap+** 插件输出的`System.Drawing.Bitmap`格式作为贴图
 * 修改图片基础色
 * 整体透明度修改
 
