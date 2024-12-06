@@ -39,7 +39,7 @@ namespace Motion.Utils
         }
 
         public MotionImagePreview()
-            : base("MotionImagePreview", "MotionImagePreview",
+            : base("Motion Image Preview", "Motion Image Preview",
                 "图片预览(支持输入路径和System.Drawing.Bitmap，可配合Javid/Bitmap+插件使用)",
                 "Motion", "03_Utils")
         {
