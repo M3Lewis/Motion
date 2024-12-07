@@ -1,5 +1,10 @@
+using GH_IO.Types;
+using Grasshopper;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Components;
+using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Types;
+using Microsoft.VisualBasic;
 using Rhino.Display;
 using Rhino.DocObjects;
 using Rhino.FileIO;
@@ -21,12 +26,7 @@ namespace Motion.Utils
         private readonly string _transparencyTempFile;
         private readonly string _environmentTempFile;
 
-        private struct GH_CustomPreviewItem
-        {
-            public IGH_PreviewData m_obj;
-            public DisplayMaterial m_mat;
-            public int lineWeight;
-        }
+        
 
         public string ImageFolder
         {
@@ -80,26 +80,23 @@ namespace Motion.Utils
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddGeometryParameter("Geometry", "G", "几何体", GH_ParamAccess.item);
-            pManager.AddGenericParameter("Diffuse Map", "DM", "Diffuse贴图文件的路径或Bitmap", GH_ParamAccess.item);
-            pManager.AddGenericParameter("Transparency Map", "TM", "Transparency贴图文件的路径或Bitmap", GH_ParamAccess.item);
-            pManager.AddGenericParameter("Environment Map", "EM", "Environment贴图文件的路径或Bitmap", GH_ParamAccess.item);
-            pManager.AddGenericParameter("Bump Map", "BM", "Bump贴图文件的路径或Bitmap", GH_ParamAccess.item);
-            pManager.AddColourParameter("Diffuse Color", "DC", "贴图基础色", GH_ParamAccess.item, Color.White);
-            pManager.AddNumberParameter("Transparency", "T", "透明度(0-1)", GH_ParamAccess.item, 0);
+            pManager.AddGenericParameter("Diffuse Map", "DM", "Diffuse贴图文件的路径或System.Drawing.Bitmap", GH_ParamAccess.item);
+            pManager.AddGenericParameter("Environment Map", "EM", "环境贴图", GH_ParamAccess.item);
+            Param_OGLShader param_OGLShader = new Param_OGLShader();
+            param_OGLShader.SetPersistentData(new GH_Material(Color.Plum));
+            pManager.AddParameter(param_OGLShader, "Material", "M", "The material override", GH_ParamAccess.item);
             pManager.AddIntegerParameter("Image Index", "I", "如果Diffuse文件路径为文件夹路径，则读取指定序号的图片", GH_ParamAccess.item, 0);
-
-            // 设置可选参数
+            
+            pManager[1].Optional = true;
             pManager[2].Optional = true;
             pManager[3].Optional = true;
             pManager[4].Optional = true;
-            pManager[5].Optional = true;
-            pManager[6].Optional = true;
-            pManager[7].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Current Image Path", "P", "当前使用的Diffuse贴图文件的路径", GH_ParamAccess.item);
+            pManager.AddGenericParameter("Material", "M", "渲染材质", GH_ParamAccess.item);
         }
 
         private void UpdateImageFiles()
@@ -148,32 +145,77 @@ namespace Motion.Utils
                 m_clipbox = BoundingBox.Empty;
             }
 
-            // 声明变量
             IGH_GeometricGoo geometry = null;
             object diffuseMap = null;
-            object transparencyMap = null;
             object environmentMap = null;
-            object bumpMap = null;
-            Color diffuseColor = Color.White;
-            double transparency = 0.0;
-            int imageIndex = 0;  // 移到最后
+            object materialObj = null;
+            int imageIndex = 0;
 
-            // 获取输入数据
             if (!DA.GetData(0, ref geometry)) return;
-            if (!DA.GetData(1, ref diffuseMap)) return;
-            DA.GetData(2, ref transparencyMap);
-            DA.GetData(3, ref environmentMap);
-            DA.GetData(4, ref bumpMap);
-            DA.GetData(5, ref diffuseColor);
-            DA.GetData(6, ref transparency);
-            DA.GetData(7, ref imageIndex);  // 更新索引位置
+            DA.GetData(1, ref diffuseMap);
+            DA.GetData(2, ref environmentMap);
+            DA.GetData(3, ref materialObj);
+            DA.GetData(4, ref imageIndex);
+
+            GH_Material ghMaterialObj = materialObj as GH_Material;
+
+            // 处理 DiffuseMap（保持原有的处理逻辑）
+            if (diffuseMap != null)
+            {
+                if (diffuseMap is string diffusePath && File.Exists(diffusePath))
+                {
+                    if (IsImageFile(diffusePath))
+                    {
+                        _ImageFolder = Path.GetDirectoryName(diffusePath);
+                        _ImageFiles = new string[] { diffusePath };
+                    }
+                    else if (Directory.Exists(diffusePath))
+                    {
+                        _ImageFolder = diffusePath;
+                        UpdateImageFiles();
+                    }
+                }
+                else if (diffuseMap is Bitmap diffuseBitmap)
+                {
+                    // 如果是Bitmap，保存到临时文件
+                    string tempPath = Path.Combine(Path.GetTempPath(), "MotionDiffuseTex.png");
+                    diffuseBitmap.Save(tempPath, System.Drawing.Imaging.ImageFormat.Png);
+                    _ImageFolder = Path.GetDirectoryName(tempPath);
+                    _ImageFiles = new string[] { tempPath };
+                }
+                else if (diffuseMap is GH_String diffuseGhString)
+                {
+                    string path = diffuseGhString.Value;
+                    if (File.Exists(path) && IsImageFile(path))
+                    {
+                        _ImageFolder = Path.GetDirectoryName(path);
+                        _ImageFiles = new string[] { path };
+                    }
+                    else if (Directory.Exists(path))
+                    {
+                        _ImageFolder = path;
+                        UpdateImageFiles();
+                    }
+                }
+                else if (diffuseMap is IGH_Goo)
+                {
+                    var goo = diffuseMap as IGH_Goo;
+                    if (goo.CastTo<Bitmap>(out Bitmap bmp))
+                    {
+                        string tempPath = Path.Combine(Path.GetTempPath(), "MotionDiffuseTex.png");
+                        bmp.Save(tempPath, System.Drawing.Imaging.ImageFormat.Png);
+                        _ImageFolder = Path.GetDirectoryName(tempPath);
+                        _ImageFiles = new string[] { tempPath };
+                    }
+                }
+            }
 
             // 处理漫反射贴图
             if (diffuseMap != null)
             {
                 if (diffuseMap is string diffusePath && File.Exists(diffusePath))
                 {
-                    // 如果��文件路径
+                    // 如果文件路径
                     if (IsImageFile(diffusePath))
                     {
                         _ImageFolder = Path.GetDirectoryName(diffusePath);
@@ -219,13 +261,6 @@ namespace Motion.Utils
                     }
                 }
             }
-
-            DisplayMaterial material = new DisplayMaterial();
-
-            // 设置基本材质属性
-            material.Diffuse = diffuseColor;
-            material.Transparency = transparency;
-
             // 设置漫反射贴图
             if (_ImageFiles != null && _ImageFiles.Length > 0)
             {
@@ -237,64 +272,13 @@ namespace Motion.Utils
                 // 使用取模运算确保索引在有效范围内
                 int actualIndex = imageIndex % _ImageFiles.Length;
                 string imagePath = _ImageFiles[actualIndex];
-                material.SetBitmapTexture(imagePath, true);
-                
+                ghMaterialObj.Value.SetBitmapTexture(imagePath, true);
+
                 // 添加输出
                 DA.SetData(0, imagePath);
             }
 
-            // 设置透明度贴图
-            if (transparencyMap != null)
-            {
-                if (transparencyMap is string transPath && File.Exists(transPath))
-                {
-                    var fileRef = new FileReference(
-                        transPath,          // absolutePath
-                        transPath,          // relativePath
-                        ContentHash.CreateFromFile(transPath),  // 直接使用构造函数
-                        FileReferenceStatus.FullPathValid
-                    );
-                    var texture = new Texture { FileReference = fileRef };
-                    material.SetTransparencyTexture(texture, true);
-                }
-                else if (transparencyMap is Bitmap transBitmap)
-                {
-                    var texture = BitmapToTexture(transBitmap, true);
-                    if (texture != null)
-                    {
-                        material.SetTransparencyTexture(texture, true);
-                    }
-                }
-                else if (transparencyMap is GH_String transGhString)
-                {
-                    string path = transGhString.Value;
-                    if (File.Exists(path))
-                    {
-                        var fileRef = new FileReference(
-                            path,            // absolutePath
-                            path,            // relativePath
-                            ContentHash.CreateFromFile(path),  // 直接使用构造函数
-                            FileReferenceStatus.FullPathValid
-                        );
-                        var texture = new Texture { FileReference = fileRef };
-                        material.SetTransparencyTexture(texture, true);
-                    }
-                }
-                else if (transparencyMap is IGH_Goo)
-                {
-                    var goo = transparencyMap as IGH_Goo;
-                    if (goo.CastTo<Bitmap>(out Bitmap bmp))
-                    {
-                        var texture = BitmapToTexture(bmp, true);
-                        if (texture != null)
-                        {
-                            material.SetTransparencyTexture(texture, true);
-                        }
-                    }
-                }
-            }
-
-            // 设置环境贴图
+            // 处理环境贴图
             if (environmentMap != null)
             {
                 if (environmentMap is string envPath && File.Exists(envPath))
@@ -304,22 +288,21 @@ namespace Motion.Utils
                     {
                         // 对于 HDR 文件使用特殊的处理
                         var fileRef = new FileReference(
-                            envPath,            // absolutePath
-                            envPath,            // relativePath
+                            envPath,
+                            envPath,
                             ContentHash.CreateFromFile(envPath),
                             FileReferenceStatus.FullPathValid
                         );
-                        var texture = new Texture 
-                        { 
+                        var texture = new Texture
+                        {
                             FileReference = fileRef,
                             Enabled = true,
-                            TextureType = TextureType.Emap  // 确保正确处理 HDR 格式
+                            TextureType = TextureType.Emap
                         };
-                        material.SetEnvironmentTexture(texture, true);
+                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
                     }
                     else
                     {
-                        // 对于普通图片文件的处理保持不变
                         var fileRef = new FileReference(
                             envPath,
                             envPath,
@@ -327,15 +310,15 @@ namespace Motion.Utils
                             FileReferenceStatus.FullPathValid
                         );
                         var texture = new Texture { FileReference = fileRef };
-                        material.SetEnvironmentTexture(texture, true);
+                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
                     }
                 }
                 else if (environmentMap is Bitmap envBitmap)
                 {
-                    var texture = BitmapToTexture(envBitmap, false);
+                    var texture = BitmapToTexture(envBitmap, true);
                     if (texture != null)
                     {
-                        material.SetEnvironmentTexture(texture, true);
+                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
                     }
                 }
                 else if (environmentMap is GH_String envGhString)
@@ -344,13 +327,13 @@ namespace Motion.Utils
                     if (File.Exists(path))
                     {
                         var fileRef = new FileReference(
-                            path,            // absolutePath
-                            path,            // relativePath
-                            ContentHash.CreateFromFile(path),  // 直接使用构造函数
+                            path,
+                            path,
+                            ContentHash.CreateFromFile(path),
                             FileReferenceStatus.FullPathValid
                         );
                         var texture = new Texture { FileReference = fileRef };
-                        material.SetEnvironmentTexture(texture, true);
+                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
                     }
                 }
                 else if (environmentMap is IGH_Goo)
@@ -358,58 +341,10 @@ namespace Motion.Utils
                     var goo = environmentMap as IGH_Goo;
                     if (goo.CastTo<Bitmap>(out Bitmap bmp))
                     {
-                        var texture = BitmapToTexture(bmp, false);
+                        var texture = BitmapToTexture(bmp, true);
                         if (texture != null)
                         {
-                            material.SetEnvironmentTexture(texture, true);
-                        }
-                    }
-                }
-            }
-
-            // 设置凹凸贴图
-            if (bumpMap != null)
-            {
-                if (bumpMap is string bumpPath && File.Exists(bumpPath))
-                {
-                    var fileRef = new FileReference(
-                        bumpPath,            // absolutePath
-                        bumpPath,            // relativePath
-                        ContentHash.CreateFromFile(bumpPath),  // 直接使用构造函数
-                        FileReferenceStatus.FullPathValid
-                    );
-                    var texture = new Texture { FileReference = fileRef };
-                    material.SetBumpTexture(texture, true);
-                }
-                else if (bumpMap is Bitmap bumpBitmap)
-                {
-                    var texture = BitmapToTexture(bumpBitmap, false);
-                    if (texture != null)
-                    {
-                        material.SetBumpTexture(texture, true);
-                    }
-                }
-                else if (bumpMap is GH_String bumpGhString)
-                {
-                    string path = bumpGhString.Value;
-                    var fileRef = new FileReference(
-                        path,            // absolutePath
-                        path,            // relativePath
-                        ContentHash.CreateFromFile(path),  // 直接使用构造函数
-                        FileReferenceStatus.FullPathValid
-                    );
-                    var texture = new Texture { FileReference = fileRef };
-                    material.SetBumpTexture(texture, true);
-                }
-                else if (bumpMap is IGH_Goo)
-                {
-                    var goo = bumpMap as IGH_Goo;
-                    if (goo.CastTo<Bitmap>(out Bitmap bmp))
-                    {
-                        var texture = BitmapToTexture(bmp, false);
-                        if (texture != null)
-                        {
-                            material.SetBumpTexture(texture, true);
+                            ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
                         }
                     }
                 }
@@ -424,38 +359,74 @@ namespace Motion.Utils
                     return;
                 }
 
-                GH_CustomPreviewItem item = new GH_CustomPreviewItem
-                {
-                    m_obj = (IGH_PreviewData)geometry,
-                    m_mat = material,
-                    lineWeight = -1
-                };
+
+                GH_CustomPreviewItem item = new GH_CustomPreviewItem();
+                item.Geometry = (IGH_PreviewData)geometry;
+                
+                item.Shader = ghMaterialObj.Value;
+                item.Colour = ghMaterialObj.Value.Diffuse;
+                item.Material = ghMaterialObj;
+                m_items.Add(item);
+                m_clipbox.Union(geometry.Boundingbox);
+
 
                 m_items.Add(item);
                 m_clipbox.Union(geometry.Boundingbox);
+            }
+            DA.SetData(1, ghMaterialObj);
+        }
+
+        public override void DrawViewportWires(IGH_PreviewArgs args)
+        {
+            if (m_items == null || args.Document.IsRenderMeshPipelineViewport(args.Display))
+            {
+                return;
+            }
+            if (base.Attributes.Selected)
+            {
+                GH_PreviewWireArgs args2 = new GH_PreviewWireArgs(args.Viewport, args.Display, args.WireColour_Selected, args.DefaultCurveThickness);
+                {
+                    foreach (GH_CustomPreviewItem item in m_items)
+                    {
+                        if (!(item.Geometry is GH_Mesh) || CentralSettings.PreviewMeshEdges)
+                        {
+                            item.Geometry.DrawViewportWires(args2);
+                        }
+                    }
+                    return;
+                }
+            }
+            foreach (GH_CustomPreviewItem item2 in m_items)
+            {
+                if (!(item2.Geometry is GH_Mesh) || CentralSettings.PreviewMeshEdges)
+                {
+                    GH_PreviewWireArgs args3 = new GH_PreviewWireArgs(args.Viewport, args.Display, item2.Colour, args.DefaultCurveThickness);
+                    item2.Geometry.DrawViewportWires(args3);
+                }
             }
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
         {
-
-            if (Attributes.Selected)
+            if (m_items == null || args.Document.IsRenderMeshPipelineViewport(args.Display))
             {
-                foreach (var item in m_items)
+                return;
+            }
+            if (base.Attributes.Selected)
+            {
+                GH_PreviewMeshArgs args2 = new GH_PreviewMeshArgs(args.Viewport, args.Display, args.ShadeMaterial_Selected, args.MeshingParameters);
                 {
-                    var meshArgs = new GH_PreviewMeshArgs(args.Viewport, args.Display,
-                        args.ShadeMaterial_Selected, args.MeshingParameters);
-                    item.m_obj.DrawViewportMeshes(meshArgs);
+                    foreach (GH_CustomPreviewItem item in m_items)
+                    {
+                        item.Geometry.DrawViewportMeshes(args2);
+                    }
+                    return;
                 }
             }
-            else
+            foreach (GH_CustomPreviewItem item2 in m_items)
             {
-                foreach (var item in m_items)
-                {
-                    var meshArgs = new GH_PreviewMeshArgs(args.Viewport, args.Display,
-                        item.m_mat, args.MeshingParameters);
-                    item.m_obj.DrawViewportMeshes(meshArgs);
-                }
+                GH_PreviewMeshArgs args3 = new GH_PreviewMeshArgs(args.Viewport, args.Display, item2.Shader, args.MeshingParameters);
+                item2.Geometry.DrawViewportMeshes(args3);
             }
         }
 
