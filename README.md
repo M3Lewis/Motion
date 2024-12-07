@@ -111,12 +111,29 @@
 
 #### Motion Image Preview
 
+* 读取`Motion Material`提供的材质
+
+
+
+#### Motion Material
+
+* 支持所有材质相关参数修改
+
 * 支持输入`Diffuse/Transparency/Environment/Bump`贴图
-  * `Diffuse`贴图可以输入图片所在文件夹的路径，可根据`Index`切换图片
   * 可输入图片的路径
   * 也可直接输入 **Javid** 和  **Bitmap+** 插件输出的`System.Drawing.Bitmap`格式作为贴图
-* 修改图片基础色
-* 整体透明度修改
+
+
+
+#### Motion Image Selector
+
+* 读取指定文件夹路径，可根据`Index`输出对应序号的图片
+
+
+
+#### Image Transform Settings
+
+* 修改`Diffuse` / `Transparency` / `Bump(暂时有问题) `贴图的Transform
 
 
 
