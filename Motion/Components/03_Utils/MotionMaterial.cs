@@ -59,7 +59,7 @@ namespace Motion.Utils
             pManager.AddGenericParameter("Transparency Map", "TM", "透明度贴图文件的路径或System.Drawing.Bitmap", GH_ParamAccess.item);
             pManager.AddGenericParameter("Environment Map", "EM", "环境贴图文件的路径或System.Drawing.Bitmap", GH_ParamAccess.item);
             pManager.AddGenericParameter("Bump Map", "BM", "凹凸贴图文件的路径或System.Drawing.Bitmap", GH_ParamAccess.item);
-            pManager.AddTransformParameter("Transform Settings", "TS", "贴图变换设置列表", GH_ParamAccess.list);
+            pManager.AddTransformParameter("Transform Settings", "TS", "贴图变换设置", GH_ParamAccess.list);
 
             // 设置可选参数
             for (int i = 1; i < pManager.ParamCount; i++)
