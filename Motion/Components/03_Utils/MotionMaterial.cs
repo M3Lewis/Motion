@@ -30,7 +30,7 @@ namespace Motion.Utils
         }
         public MotionMaterial()
             : base("Motion Material", "Motion Material",
-                "创建渲染材质",
+                "创建渲染材质,贴图支持输入路径和System.Drawing.Bitmap，可配合Javid/Bitmap+插件使用",
                 "Motion", "03_Utils")
         {
             _transparencyTempFile = Path.Combine(Path.GetTempPath(), "MotionTransparencyTex.png");

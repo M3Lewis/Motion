@@ -39,6 +39,6 @@ namespace Motion
         public override string Version => "0.7.1";
 
         //Return a string representing the version.  This returns the same version as the assembly.
-        public override string AssemblyVersion => GetType().Assembly.GetName().Version.ToString();
+        public override string AssemblyVersion => "0.7.1";
     }
 }

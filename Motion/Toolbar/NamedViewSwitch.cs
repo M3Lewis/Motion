@@ -101,7 +101,7 @@ namespace Motion.Toolbar
                 if (canvas != null && isPressed)
                 {
                     ShowTemporaryMessage(canvas,
-                        $"Please create a Named View!");
+                        $"请创建一个Grasshopper Named View");
                 }
                 return;
             }

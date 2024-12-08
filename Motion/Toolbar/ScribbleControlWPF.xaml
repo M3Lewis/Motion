@@ -27,7 +27,7 @@
         <!-- 文本设置区域 -->
         <GroupBox Grid.Row="1" Header="Text Settings" Margin="0,0,0,10" Grid.ColumnSpan="2">
             <StackPanel>
-                <TextBox x:Name="TextContentBox" Text="Hello!" Margin="0,5" Height="30" BorderBrush="LightSkyBlue" BorderThickness="0.5"/>
+                <TextBox x:Name="TextContentBox" Text="Hello!" Margin="0,5" Height="70" BorderBrush="DeepSkyBlue" BorderThickness="2"/>
                 
                 <DockPanel Margin="0,5" LastChildFill="True">
                     <Label Content="Text Size:" DockPanel.Dock="Left"/>
@@ -58,12 +58,11 @@
         </GroupBox>
 
         <!-- 预览区域 -->
-        <GroupBox Grid.Row="2" Header="Text Preivew" Margin="0,0,0,10" Grid.ColumnSpan="2">
+        <GroupBox Grid.Row="2" Header="Text Preview" Margin="0,0,0,10" Grid.ColumnSpan="2">
             <Border BorderBrush="Gray" BorderThickness="1" Margin="0,0,0,10">
                 <TextBlock x:Name="PreviewText" Margin="5" TextWrapping="Wrap"/>
             </Border>
         </GroupBox>
-
 
         <Button Content="Clear" Width="75" Height="23" Click="ClearButton_Click" Grid.Column="0" Grid.Row="3" HorizontalAlignment="Left"/>
         <Button Content="Create" Width="75" Height="23" Margin="0,0,10,0" Click="CreateButton_Click" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Right"/>

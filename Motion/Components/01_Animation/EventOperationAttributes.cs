@@ -97,7 +97,7 @@ namespace Motion.Animation
                     var currentMappedEventValueBounds = new RectangleF(
                         Bounds.Right + 5,
                         Bounds.Top -5,
-                        30,
+                        100,
                         labelFont.Height
                     );
 

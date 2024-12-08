@@ -1,4 +1,5 @@
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Parameters;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,7 +20,7 @@ namespace Motion.Utils
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("Path", "P", "图片文件路径或文件夹路径", GH_ParamAccess.item);
+            pManager.AddParameter(new Param_FilePath(), "Path", "P", "图片文件路径或文件夹路径", GH_ParamAccess.item);
             pManager.AddIntegerParameter("Index", "I", "如果输入为文件夹路径，则选择指定序号的图片", GH_ParamAccess.item, 0);
             pManager[1].Optional = true;
         }

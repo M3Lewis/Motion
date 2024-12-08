@@ -63,7 +63,7 @@ namespace Motion.Toolbar
 
                 if (!selectedSenders.Any())
                 {
-                    ShowTemporaryMessage(canvas, "Please select at least one Motion Sender!");
+                    ShowTemporaryMessage(canvas, "请至少选择一个Motion Sender");
                     return;
                 }
 

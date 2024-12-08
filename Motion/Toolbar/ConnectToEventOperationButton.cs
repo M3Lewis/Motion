@@ -67,7 +67,7 @@ namespace Motion.Toolbar
 
                 if (selectedMappers.Count == 0)
                 {
-                    ShowTemporaryMessage(canvas, "Please select at least one Graph Mapper!");
+                    ShowTemporaryMessage(canvas, "请选择至少一个Graph Mapper");
                     return;
                 }
 
@@ -76,7 +76,7 @@ namespace Motion.Toolbar
                 
                 if (connectedEventOp != null)
                 {
-                    ShowTemporaryMessage(canvas, "Already connected to an Event Operation!");
+                    ShowTemporaryMessage(canvas, "Graph Mapper已连接至Event Operation");
                     return;
                 }
 

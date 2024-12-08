@@ -151,7 +151,7 @@ namespace Motion.Toolbar
                 }
                 else
                 {
-                    ShowTemporaryMessage(Instances.ActiveCanvas, "Please create a Motion Slider!");
+                    ShowTemporaryMessage(Instances.ActiveCanvas, "请创建一个Motion Slider");
                 }
             }
             catch (Exception ex)

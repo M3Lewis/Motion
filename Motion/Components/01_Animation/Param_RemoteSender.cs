@@ -32,21 +32,6 @@ namespace Motion.Animation
 
         public override void AddedToDocument(GH_Document document)
         {
-            // 检查是否存在同名的 Sender
-            var existingSender = document.Objects
-                .OfType<Param_RemoteSender>()
-                .FirstOrDefault(s => s != this && s.NickName == this.NickName);
-
-            if (existingSender != null)
-            {
-                var canvas = Grasshopper.Instances.ActiveCanvas;
-                if (canvas != null)
-                {
-                    ShowTemporaryMessage(canvas, 
-                        $"已存在相同标识({this.NickName})的 Sender!");
-                }
-            }
-
             base.AddedToDocument(document);
             
             if (this.Sources.Count > 0) return;
@@ -70,10 +55,27 @@ namespace Motion.Animation
                     {
                         UpdateNicknameFromSlider(closestSlider);
                         closestSlider.NickName = this.NickName;
+
+                        // 延迟执行重名检查
+                        doc.ScheduleSolution(10, (doc) =>
+                        {
+                            var existingSender = doc.Objects
+                                .OfType<Param_RemoteSender>()
+                                .FirstOrDefault(s => s != this && s.NickName == this.NickName);
+
+                            if (existingSender != null)
+                            {
+                                var canvas = Grasshopper.Instances.ActiveCanvas;
+                                if (canvas != null)
+                                {
+                                    ShowTemporaryMessage(canvas, 
+                                        $"已存在相同标识({this.NickName})的 Sender!");
+                                }
+                            }
+                        });
                     }
                 }
             }
-            
         }
 
         private GH_NumberSlider FindClosestSlider(List<GH_NumberSlider> sliders)

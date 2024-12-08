@@ -28,7 +28,7 @@ namespace Motion.Utils
 
         public MotionImagePreview()
             : base("Motion Image Preview", "Motion Image Preview",
-                "图片预览(支持输入路径和System.Drawing.Bitmap，可配合Javid/Bitmap+插件使用)",
+                "图片预览(输入Motion Material)",
                 "Motion", "03_Utils")
         {
             // 在构造函数中初始化临时文件路径
@@ -77,7 +77,6 @@ namespace Motion.Utils
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Material", "M", "渲染材质", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -119,7 +118,6 @@ namespace Motion.Utils
                 m_items.Add(item);
                 m_clipbox.Union(geometry.Boundingbox);
             }
-            DA.SetData(0, ghMaterialObj);
         }
 
         public override void DrawViewportWires(IGH_PreviewArgs args)
