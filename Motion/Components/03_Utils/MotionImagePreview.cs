@@ -1,11 +1,8 @@
-using GH_IO.Types;
 using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Components;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Types;
-using Microsoft.VisualBasic;
-using Rhino.Display;
 using Rhino.DocObjects;
 using Rhino.FileIO;
 using Rhino.Geometry;
@@ -13,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 
 namespace Motion.Utils
 {
@@ -188,7 +184,7 @@ namespace Motion.Utils
 
         public override BoundingBox ClippingBox => m_clipbox;
         protected override Bitmap Icon => Properties.Resources.MotionImagePreview;
-        public override GH_Exposure Exposure => GH_Exposure.quarternary;
+        public override GH_Exposure Exposure => GH_Exposure.tertiary;
         public override Guid ComponentGuid => new Guid("63210FC2-D925-4BCB-B0E6-3E8D0C0A21E7");
     }
 } 

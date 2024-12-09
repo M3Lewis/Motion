@@ -465,7 +465,7 @@ namespace Motion.Utils
                 }
             }
         }
-        protected override System.Drawing.Bitmap Icon => null; //Properties.Resources.MotionMaterial;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.MotionMaterial;
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
         public override Guid ComponentGuid => new Guid("096EFA10-33CE-462A-B0D1-C4BBF52DCAE7");
     }

@@ -65,7 +65,7 @@ namespace Motion.Utils
             DA.SetDataList(0, transformSettings);
         }
 
-        protected override System.Drawing.Bitmap Icon => null;//Properties.Resources.ImageTransformSettings;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.ImageTransformSettings;
         public override Guid ComponentGuid => new Guid("30B96D80-4B9D-4B95-B529-9A60053AE5EC");
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
     }

@@ -439,6 +439,9 @@ namespace Motion.Animation
                     TryConnectToMatchingSender();
                 }
             });
+
+            // 添加对象删除事件监听
+            document.ObjectsDeleted += Document_ObjectsDeleted;
         }
 
         private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
@@ -511,6 +514,7 @@ namespace Motion.Animation
             if (document != null)
             {
                 document.ObjectsAdded -= Document_ObjectsAdded;
+                document.ObjectsDeleted -= Document_ObjectsDeleted;
             }
 
             if (this.Params.Input.Count > 0)
@@ -961,6 +965,32 @@ namespace Motion.Animation
             }
             com.Attributes.Selected = true;
             gH_NamedView.SetToViewport(Instances.ActiveCanvas, 300);
+        }
+
+        // 添加删除事件处理方法
+        private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
+        {
+            bool needUpdate = false;
+            
+            // 检查是否有受控制的对象被删除
+            foreach (var deletedObj in e.Objects)
+            {
+                if (affectedObjects.Contains(deletedObj))
+                {
+                    affectedObjects.Remove(deletedObj);
+                    needUpdate = true;
+                }
+            }
+            
+            // 如果没有任何受控制的对象，关闭 HIDE/LOCK 开关
+            if (needUpdate && !affectedObjects.Any())
+            {
+                HideWhenEmpty = false;
+                LockWhenEmpty = false;
+                
+                // 更新UI
+                ExpireSolution(true);
+            }
         }
     }
 }

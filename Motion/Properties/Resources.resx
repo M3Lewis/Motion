@@ -160,6 +160,9 @@
   <data name="GraphMapperChanger" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\GraphMapperChanger.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="ImageTransformSettings" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\ImageTransformSettings.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="IntervalLock" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\IntervalLock.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -180,6 +183,9 @@
   </data>
   <data name="MotionImageSelector" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\MotionImageSelector.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="MotionMaterial" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\MotionMaterial.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="MotionSlider" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\MotionSlider.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
