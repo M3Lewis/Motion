@@ -7,8 +7,8 @@
         Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
         Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
     -->
-	<!--<TargetFrameworks>net7.0-windows;net48</TargetFrameworks>-->
-    <TargetFrameworks>net7.0-windows</TargetFrameworks>
+	  <!--注意：RHINO 8 .NET CORE模式下，将net48删除再运行-->
+    <TargetFrameworks>net7.0-windows;net48</TargetFrameworks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TargetExt>.gha</TargetExt>
     <NoWarn>NU1701</NoWarn>
@@ -186,6 +186,10 @@
       <YakPackageToMove Include="$(BaseOutputPath)$(Configuration)\net48\*.yak" />
     </ItemGroup>
     <Move SourceFiles="@(YakPackageToMove)" DestinationFolder="$(BaseOutputPath)$(Configuration)\" Condition="$(BuildYakPackage) == 'True'" />
+  </Target>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="Copy &quot;C:\Users\M3\Nutstore\1\我的坚果云\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;&#xA;Copy &quot;C:\Users\M3\Nutstore\1\我的坚果云\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />
   </Target>
 
 </Project>
