@@ -173,21 +173,18 @@ namespace Motion.Animation
             var hasEventOperation = false;
             IGH_DocumentObject targetOperation = null;
 
-            if (Params.Output[0].Recipients.Count > 0)
+            if (Params.Output[0].Recipients.Count == 0) return;
+
+            foreach (var recipient in Params.Output[0].Recipients)
             {
-                foreach (var recipient in Params.Output[0].Recipients)
-                {
-                    var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                    if (graphMapper?.Recipients.Count > 0)
-                    {
-                        targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
-                        if (targetOperation != null)
-                        {
-                            hasEventOperation = true;
-                            break;
-                        }
-                    }
-                }
+                var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
+                if (graphMapper?.Recipients.Count == 0) continue;
+
+                targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                if (targetOperation == null) continue;
+
+                hasEventOperation = true;
+                break;
             }
 
             // 添加跳转菜单项
@@ -223,16 +220,14 @@ namespace Motion.Animation
             foreach (var recipient in Params.Output[0].Recipients)
             {
                 var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                if (graphMapper?.Recipients.Count > 0)
-                {
-                    var eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
-                    if (eventOperation != null)
-                    {
-                        // 跳转到 EventOperation
-                        GoComponent(eventOperation);
-                        break;
-                    }
-                }
+                if (graphMapper?.Recipients.Count == 0) continue;
+
+                var eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                if (eventOperation == null) continue;
+
+                // 跳转到 EventOperation
+                GoComponent(eventOperation);
+                break;
             }
         }
         private void UpdateMessage()

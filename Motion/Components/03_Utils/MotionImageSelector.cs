@@ -102,7 +102,7 @@ namespace Motion.Utils
             DA.SetDataList(1, _imageFiles);
         }
 
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.MotionImageSelector;
         public override Guid ComponentGuid => new Guid("B6C3D245-8E6F-4A47-9F9A-123456789ABC");
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
     }
