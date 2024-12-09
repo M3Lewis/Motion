@@ -88,7 +88,7 @@ namespace Motion.Toolbar
                     var potentialNickname = string.Join("-", splitStr);
 
                     var existingSender = doc.Objects
-                        .OfType<Param_RemoteSender>()
+                        .OfType<MotionSender>()
                         .FirstOrDefault(s => s.NickName == potentialNickname);
 
                     if (existingSender != null)
@@ -98,7 +98,7 @@ namespace Motion.Toolbar
 
                     foreach (var recipient in timelineSlider.Recipients)
                     {
-                        if (recipient is Param_RemoteSender)
+                        if (recipient is MotionSender)
                         {
                             isConnectedToSender = true;
                             break;
@@ -107,7 +107,7 @@ namespace Motion.Toolbar
 
                     if (isConnectedToSender || isUnionSlider) continue;
 
-                    Param_RemoteSender remoteSender = new Param_RemoteSender();
+                    MotionSender remoteSender = new MotionSender();
                     doc.AddObject(remoteSender, false);
 
                     PointF sliderPivot = timelineSlider.Attributes.Pivot;

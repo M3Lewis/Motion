@@ -57,8 +57,8 @@ namespace Motion.Toolbar
                 if (canvas?.Document == null) return;
 
                 var selectedSenders = canvas.Document.SelectedObjects()
-                    .Where(obj => obj is Param_RemoteSender)
-                    .Cast<Param_RemoteSender>()
+                    .Where(obj => obj is MotionSender)
+                    .Cast<MotionSender>()
                     .ToList();
 
                 if (!selectedSenders.Any())

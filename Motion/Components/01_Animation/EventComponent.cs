@@ -17,7 +17,7 @@ namespace Motion.Animation
     public class EventComponent : GH_Component
     {
         
-        private Param_RemoteSender _linkedSender;
+        private MotionSender _linkedSender;
         // 添加一个临时存储GUID的列表
         private List<Guid> _pendingGuids = new List<Guid>();
 
@@ -342,7 +342,7 @@ namespace Motion.Animation
             }
         }
 
-        public void LinkToSender(Param_RemoteSender sender)
+        public void LinkToSender(MotionSender sender)
         {
             if (_linkedSender == sender) return;
 
@@ -387,7 +387,7 @@ namespace Motion.Animation
             doc.ScheduleSolution(5, d =>
             {
                 var matchingSenders = d.Objects
-                    .OfType<Param_RemoteSender>()
+                    .OfType<MotionSender>()
                     .Where(s => s.NickName == base.NickName)
                     .ToList();
 
@@ -414,6 +414,9 @@ namespace Motion.Animation
         {
             base.AddedToDocument(document);
 
+            // 监听文档的对象添加事件
+            document.ObjectsAdded += Document_ObjectsAdded;
+
             // 延迟执行以确保所有组件都已加载
             document.ScheduleSolution(5, doc =>
             {
@@ -425,12 +428,62 @@ namespace Motion.Animation
                 if (timeInput.SourceCount > 0)
                 {
                     var source = timeInput.Sources[0].Attributes.GetTopLevel.DocObject;
-                    if (source is Param_RemoteSender remoteSender)
+                    if (source is MotionSender remoteSender)
                     {
                         LinkToSender(remoteSender);
                     }
                 }
+                else
+                {
+                    // 如果没有连接，尝试查找匹配的 Sender
+                    TryConnectToMatchingSender();
+                }
             });
+        }
+
+        private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
+        {
+            // 检查是否添加了匹配的 MotionSender
+            var addedSender = e.Objects
+                .OfType<MotionSender>()
+                .FirstOrDefault(s => s.NickName == this.NickName);
+
+            if (addedSender != null)
+            {
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    // 延迟执行以确保 Sender 完全初始化
+                    doc.ScheduleSolution(5, d => 
+                    {
+                        var timeInput = this.Params.Input[0];
+                        if (timeInput.SourceCount == 0)  // 只在没有连接时尝试连接
+                        {
+                            timeInput.AddSource(addedSender);
+                            timeInput.WireDisplay = GH_ParamWireDisplay.hidden;
+                            LinkToSender(addedSender);
+                        }
+                    });
+                }
+            }
+        }
+
+        private void TryConnectToMatchingSender()
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            var matchingSender = doc.Objects
+                .OfType<MotionSender>()
+                .FirstOrDefault(s => s.NickName == this.NickName);
+
+            if (matchingSender != null)
+            {
+                var timeInput = this.Params.Input[0];
+                timeInput.AddSource(matchingSender);
+                timeInput.WireDisplay = GH_ParamWireDisplay.hidden;
+                LinkToSender(matchingSender);
+            }
         }
 
         private void Input_ObjectChanged(IGH_DocumentObject sender, GH_ObjectChangedEventArgs e)
@@ -439,7 +492,7 @@ namespace Motion.Animation
             if (timeInput.SourceCount > 0)
             {
                 var source = timeInput.Sources[0].Attributes.GetTopLevel.DocObject;
-                if (source is Param_RemoteSender remoteSender)
+                if (source is MotionSender remoteSender)
                 {
                     LinkToSender(remoteSender);
                 }
@@ -457,7 +510,7 @@ namespace Motion.Animation
             // 清理事件订阅
             if (document != null)
             {
-                document.ObjectsAdded -= Doc_ObjectsAdded;
+                document.ObjectsAdded -= Document_ObjectsAdded;
             }
 
             if (this.Params.Input.Count > 0)

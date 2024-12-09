@@ -65,7 +65,7 @@ namespace Motion.Button
                         var potentialNickname = string.Join("-", splitStr);
 
                         var existingSender = doc.Objects
-                            .OfType<Param_RemoteSender>()
+                            .OfType<MotionSender>()
                             .FirstOrDefault(s => s.NickName == potentialNickname);
 
                         if (existingSender != null)
@@ -75,7 +75,7 @@ namespace Motion.Button
 
                         foreach (var recipient in timelineSlider.Recipients)
                         {
-                            if (recipient is Param_RemoteSender)
+                            if (recipient is MotionSender)
                             {
                                 isConnectedToSender = true;
                                 break;
@@ -85,8 +85,8 @@ namespace Motion.Button
                         // 如果已经连接到 sender 或是 union slider，跳过这个 slider
                         if (isConnectedToSender || isUnionSlider) continue;
 
-                        // 创建新的 Param_RemoteSender
-                        Param_RemoteSender remoteSender = new Param_RemoteSender();
+                        // 创建新的 MotionSender
+                        MotionSender remoteSender = new MotionSender();
                         doc.AddObject(remoteSender, false);
 
                         // 设置位置 - 使用统一的x坐标，y坐标保持不变

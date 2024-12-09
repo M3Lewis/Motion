@@ -12,14 +12,14 @@ using System.Windows.Forms;
 
 namespace Motion.Animation
 {
-    public class Param_RemoteSender : RemoteParam
+    public class MotionSender : RemoteParam
     {
         private readonly bool _autoRename = true;
         
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
         public event NickNameChangedEventHandler NickNameChanged;
 
-        public Param_RemoteSender()
+        public MotionSender()
             : base()
         {
             nicknameKey = "";
@@ -60,7 +60,7 @@ namespace Motion.Animation
                         doc.ScheduleSolution(10, (doc) =>
                         {
                             var existingSender = doc.Objects
-                                .OfType<Param_RemoteSender>()
+                                .OfType<MotionSender>()
                                 .FirstOrDefault(s => s != this && s.NickName == this.NickName);
 
                             if (existingSender != null)
@@ -161,7 +161,7 @@ namespace Motion.Animation
             {
                 // 检查是否存在同名的 Sender
                 var existingSender = doc.Objects
-                    .OfType<Param_RemoteSender>()
+                    .OfType<MotionSender>()
                     .FirstOrDefault(s => s != this && s.NickName == this.NickName);
 
                 if (existingSender != null)
@@ -285,7 +285,7 @@ namespace Motion.Animation
                     if (doc != null) 
                     {
                         var existingSender = doc.Objects
-                            .OfType<Param_RemoteSender>()
+                            .OfType<MotionSender>()
                             .FirstOrDefault(s => s != this && s.NickName == nicknameKey);
 
                         if (existingSender != null)

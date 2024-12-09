@@ -90,7 +90,7 @@ namespace Motion.Animation
             }
 
             // make space for the arrow
-            if (Owner is Param_RemoteSender)
+            if (Owner is MotionSender)
             {
                 RectangleF arrowRect = new RectangleF(this.Bounds.Right, this.Bounds.Bottom, 10, 1);
                 this.Bounds = RectangleF.Union(this.Bounds, arrowRect);
@@ -321,7 +321,7 @@ namespace Motion.Animation
             //        return new PointF(bounds.Left + 10, this.OutputGrip.Y - 30);
             //    }
             //}
-            if (Owner is Param_RemoteSender)
+            if (Owner is MotionSender)
                 return new PointF(bounds.Right - 10, this.OutputGrip.Y + 2);
             return PointF.Empty;
         }
@@ -352,7 +352,7 @@ namespace Motion.Animation
             //{
             //    arrowColor = Color.Orange;
             //}
-            if (Owner is Param_RemoteSender)
+            if (Owner is MotionSender)
             {
                 arrowColor = Color.LightSkyBlue;
             }
@@ -389,7 +389,7 @@ namespace Motion.Animation
             var ghDoc = Owner.OnPingDocument();
             if (ghDoc == null) return GH_ObjectResponse.Ignore;
 
-            if (Owner is Param_RemoteSender senderParam)
+            if (Owner is MotionSender senderParam)
             {
                 var eventComp = new EventComponent();
                 eventComp.CreateAttributes();

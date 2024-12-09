@@ -55,7 +55,7 @@ namespace Motion.Animation
                     (IGH_DocumentObject o) =>
                         Grasshopper.Utility.LikeOperator(
                             o.GetType().ToString(),
-                            "Motion.Param_RemoteSender"
+                            "Motion.MotionSender"
                         )
                 )
                 .ToList();
@@ -158,7 +158,7 @@ namespace Motion.Animation
                 sliderObject.NickName = string.Join("-", splitStr);
                 IGH_DocumentObject senderObject = this.Params.Input[1].Sources[0];
 
-                if (senderObject.GetType().ToString() == "Motion.Param_RemoteSender")
+                if (senderObject.GetType().ToString() == "Motion.MotionSender")
                 {
                     senderObject.NickName = sliderObject.NickName;
                     Param_GenericObject senderParam = (Param_GenericObject)senderObject;

@@ -67,8 +67,8 @@ namespace Motion.Animation
         //            .ToList();
 
         //        var allSenders = activeObjects
-        //            .Where(x => x is Param_RemoteSender)
-        //            .Cast<Param_RemoteSender>()
+        //            .Where(x => x is MotionSender)
+        //            .Cast<MotionSender>()
         //            .ToList();
 
         //        // 如果没有接收器，直接返回
@@ -82,7 +82,7 @@ namespace Motion.Animation
         //        {
         //            if (receiver != null)
         //            {
-        //                ProcessReceiver(allSenders ?? new List<Param_RemoteSender>(), receiver);
+        //                ProcessReceiver(allSenders ?? new List<MotionSender>(), receiver);
         //            }
         //        }
         //    }
@@ -95,7 +95,7 @@ namespace Motion.Animation
 
 
         // this method wires up a receiver to all matching senders. 
-        //public static void ProcessReceiver(List<Param_RemoteSender> allSenders, Param_RemoteReceiver receiver)
+        //public static void ProcessReceiver(List<MotionSender> allSenders, Param_RemoteReceiver receiver)
         //{
         //    //get the key
         //    string key = receiver.NickName;
@@ -123,7 +123,7 @@ namespace Motion.Animation
         //    var matchingSenders = allSenders.Where(s => LikeOperator.LikeString(s.NickName,key,Microsoft.VisualBasic.CompareMethod.Binary));
 
         //    //for all the matching senders
-        //    foreach (Param_RemoteSender sender in matchingSenders)
+        //    foreach (MotionSender sender in matchingSenders)
         //    {
         //        //if the matching sender is not currently a source, add it
         //        if (!receiver.Sources.Contains(sender))
