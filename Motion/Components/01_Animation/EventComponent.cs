@@ -165,18 +165,6 @@ namespace Motion.Animation
         public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
         {
             base.AppendAdditionalMenuItems(menu);
-            Menu_AppendSeparator(menu);
-
-            // 添加模式切换选项
-            var modeItem = Menu_AppendItem(menu, "Use Empty Value Mode", OnModeToggle, true, UseEmptyValueMode);
-            modeItem.ToolTipText = "切换是否使用空值模式进行Hide/Lock控制";
-
-            if (UseEmptyValueMode)
-            {
-                // 只在空值模式下显示这些选项
-                Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, HideWhenEmpty);
-                Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, LockWhenEmpty);
-            }
 
             // 添加分隔线和跳转选项
             Menu_AppendSeparator(menu);
@@ -212,6 +200,19 @@ namespace Motion.Animation
             else
             {
                 jumpItem.ToolTipText = "没有找到关联的 EventOperation 组件";
+            }
+
+            Menu_AppendSeparator(menu);
+            Menu_AppendSeparator(menu);
+            // 添加模式切换选项
+            var modeItem = Menu_AppendItem(menu, "空值模式", OnModeToggle, true, UseEmptyValueMode);
+            modeItem.ToolTipText = "切换是否使用空值模式进行Hide/Lock控制";
+
+            if (UseEmptyValueMode)
+            {
+                // 只在空值模式下显示这些选项
+                Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, HideWhenEmpty);
+                Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, LockWhenEmpty);
             }
         }
 

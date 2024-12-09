@@ -51,7 +51,7 @@
                 </DockPanel>
                 
                 <DockPanel Margin="0,5" LastChildFill="True">
-                    <Label Content="Max Chars Per Line:" DockPanel.Dock="Left"/>
+                    <Label Content="Max Chars Per Line:" DockPanel.Dock="Left" ToolTip="需要字符之间有空格才可以正常换行"/>
                     <TextBox x:Name="MaxCharsBox" Text="100" Width="50" HorizontalAlignment="Right"/>
                 </DockPanel>
             </StackPanel>

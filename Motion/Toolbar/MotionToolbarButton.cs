@@ -5,6 +5,10 @@ using System.Windows.Forms;
 using System.Linq;
 using Grasshopper.GUI.Canvas;
 using System.Drawing;
+using System.Reflection;
+using System;
+using System.Runtime.CompilerServices;
+using Rhino;
 
 namespace Motion.Toolbar
 {
@@ -24,18 +28,29 @@ namespace Motion.Toolbar
                 if (editor == null) return;
 
                 // 获取指定的工具栏
-                toolStrip = (ToolStrip)editor.Controls[0].Controls[1];
-                if (toolStrip == null) return;
 
-                toolStripItems = toolStrip.Items;
+                //toolStrip = (ToolStrip)editor.Controls[0].Controls[1];
 
-                if (!separatorsAdded)
+                Type typeFromHandle = typeof(GH_DocumentEditor);
+                BindingFlags bindingAttr = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField;
+                FieldInfo field = typeFromHandle.GetField("_CanvasToolbar", bindingAttr);
+                object objectValue = RuntimeHelpers.GetObjectValue(field.GetValue(Instances.DocumentEditor));
+
+                if (objectValue is ToolStrip toolStrip)
                 {
-                    // 在倒数第二个位置添加左分隔符
-                    toolStripItems.Insert(toolStripItems.Count - 1, new ToolStripSeparator());
-                    // 在最后添加右分隔符
-                    toolStripItems.Add(new ToolStripSeparator());
-                    separatorsAdded = true;
+                    toolStripItems = toolStrip.Items;
+                    if (!separatorsAdded)
+                    {
+                        // 在倒数第二个位置添加左分隔符
+                        toolStripItems.Insert(toolStripItems.Count - 1, new ToolStripSeparator());
+                        // 在最后添加右分隔符
+                        toolStripItems.Add(new ToolStripSeparator());
+                        separatorsAdded = true;
+                    }
+                }
+                else
+                {
+                    RhinoApp.WriteLine($"Toolbar object is not a ToolStrip: {objectValue?.GetType().FullName ?? "null"}");
                 }
             }
         }
