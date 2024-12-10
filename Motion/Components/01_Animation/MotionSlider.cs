@@ -108,10 +108,14 @@ namespace Motion.Animation
             // 如果有保存的控制关系，尝试立即恢复
             if (_isControlled || _controlledSliderGuids.Count > 0)
             {
-                document.ScheduleSolution(50, doc =>
+                Rhino.RhinoApp.WriteLine("Start!" + DateTime.Now.ToString());
+                OnPingDocument().ScheduleSolution(50, doc =>
                 {
+                    Rhino.RhinoApp.WriteLine(doc.DisplayName.ToString());
                     RestoreControlRelationships();
+                    Rhino.RhinoApp.WriteLine("Restored Relationship"+DateTime.Now.ToString());
                 });
+                Rhino.RhinoApp.WriteLine("End!" + DateTime.Now.ToString());
             }
         }
 
@@ -399,7 +403,7 @@ namespace Motion.Animation
                 GH_Document doc = this.OnPingDocument();
                 if (doc != null)
                 {
-                    doc.ScheduleSolution(100, d => RestoreControlRelationships());
+                    doc.ScheduleSolution(30, d => RestoreControlRelationships());
                 }
 
                 // 调用基类的 Read 方法，但不要立即返回
@@ -495,21 +499,42 @@ namespace Motion.Animation
         // 区间更新方法
         public virtual void SetRange(decimal minimum, decimal maximum)
         {
-            if (Slider.Minimum != minimum || Slider.Maximum != maximum)
+            bool rangeChanged = Slider.Minimum != minimum || Slider.Maximum != maximum;
+
+            // 原有的 SetRange 逻辑
+            Slider.Minimum = minimum;
+            Slider.Maximum = maximum;
+
+            // 保留 SetSliderValue 的逻辑
+            decimal currentValue = Slider.Value;
+            if (currentValue < minimum)
+                SetSliderValue(minimum);
+            else if (currentValue > maximum)
+                SetSliderValue(maximum);
+
+            // 如果范围发生变化，通知控制器更新范围
+            if (rangeChanged && _isControlled && _controllerGuid != Guid.Empty)
             {
-                // 加区间变化提示
-                //Rhino.RhinoApp.WriteLine($"区间变化 (SetRange方法): {Slider.Minimum}-{Slider.Maximum} => {minimum}-{maximum}");
-                
-                Slider.Minimum = minimum;
-                Slider.Maximum = maximum;
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    var controller = doc.FindObject(_controllerGuid, true) as MotionUnionSlider;
+                    controller?.UpdateUnionRange();
+                }
+            }
+        }
 
-                // 确保当前值在新区间内
-                if (Slider.Value < minimum)
-                    SetSliderValue(minimum);
-                else if (Slider.Value > maximum)
-                    SetSliderValue(maximum);
-
-                ExpireSolution(true);
+        private void Slider_RangeChanged(object sender, EventArgs e)
+        {
+            // 通知控制器更新范围
+            if (_isControlled && _controllerGuid != Guid.Empty)
+            {
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    var controller = doc.FindObject(_controllerGuid, true) as MotionUnionSlider;
+                    controller?.UpdateUnionRange();
+                }
             }
         }
     }

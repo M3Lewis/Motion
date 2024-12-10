@@ -1,21 +1,20 @@
+using GH_IO.Serialization;
+using Grasshopper;
+using Grasshopper.GUI.Base;
+using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using System;
-using System.Linq;
-using System.Xml.Linq;
-using GH_IO.Serialization;
-using Grasshopper.GUI.Base;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Windows.Forms;
 using System.Drawing;
-using Grasshopper.GUI.Canvas;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace Motion.Animation
 {
     public class MotionUnionSlider : MotionSlider
     {
         private bool _isRestoringState = false;
-        private decimal _savedValue;
         private static MotionUnionSlider _instance;
         private bool _isUpdatingRange = false;
         private readonly System.Threading.SemaphoreSlim _updateLock = new System.Threading.SemaphoreSlim(1, 1);
@@ -119,11 +118,29 @@ namespace Motion.Animation
         private void OnObjectsDeleted(object sender, GH_DocObjectEventArgs e)
         {
             if (_isUpdatingRange) return;
-            
-            bool hasDeletedSlider = e.Objects.Any(obj => obj is MotionSlider && !(obj is MotionUnionSlider));
+
+            // 检查是否有受控的滑块被删除
+            bool hasDeletedSlider = e.Objects.Any(obj => 
+                obj is MotionSlider && _controlledSliders.Contains(obj as MotionSlider));
+
             if (hasDeletedSlider)
             {
-                UpdateUnionRange();
+                // 清理已删除的滑块
+                _controlledSliders.RemoveAll(slider => 
+                    e.Objects.Contains(slider));
+                _controlledSliderGuids.RemoveAll(guid => 
+                    e.Objects.Any(obj => obj.InstanceGuid == guid));
+
+                // 如果还有受控滑块，立即更新区间
+                if (_controlledSliders.Count > 0)
+                {
+                    // 在主线程上执行更新
+                    Instances.ActiveCanvas?.BeginInvoke((MethodInvoker)delegate
+                    {
+                        UpdateUnionRange();
+                        ExpireSolution(false);
+                    });
+                }
             }
         }
 
