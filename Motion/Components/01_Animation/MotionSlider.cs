@@ -108,14 +108,11 @@ namespace Motion.Animation
             // 如果有保存的控制关系，尝试立即恢复
             if (_isControlled || _controlledSliderGuids.Count > 0)
             {
-                Rhino.RhinoApp.WriteLine("Start!" + DateTime.Now.ToString());
                 OnPingDocument().ScheduleSolution(50, doc =>
                 {
-                    Rhino.RhinoApp.WriteLine(doc.DisplayName.ToString());
                     RestoreControlRelationships();
-                    Rhino.RhinoApp.WriteLine("Restored Relationship"+DateTime.Now.ToString());
+                    //Rhino.RhinoApp.WriteLine("Restored Relationship"+DateTime.Now.ToString());
                 });
-                Rhino.RhinoApp.WriteLine("End!" + DateTime.Now.ToString());
             }
         }
 

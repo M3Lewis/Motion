@@ -104,8 +104,17 @@ namespace Motion.Animation
             bool hasNewSlider = e.Objects.Any(obj => obj is MotionSlider && !(obj is MotionUnionSlider));
             if (hasNewSlider)
             {
-                //Rhino.RhinoApp.WriteLine("\nNew slider added, current state:");
-                //DebugControlRelationships();
+                // 检查新添加的对象中是否有复制出来的被控制滑块
+                foreach (IGH_DocumentObject obj in e.Objects)
+                {
+                    if (obj is MotionSlider slider && !_controlledSliders.Contains(slider))
+                    {
+                        if (slider._isControlled && slider._controllerGuid == this.InstanceGuid)
+                        {
+                            AddControlledSlider(slider);
+                        }
+                    }
+                }
                 
                 GH_Document doc = this.OnPingDocument();
                 if (doc != null)
