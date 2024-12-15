@@ -37,6 +37,7 @@ namespace Motion.Animation
         {
             pManager.AddNumberParameter("Events", "E", "事件值列表", GH_ParamAccess.list);
             pManager.AddNumberParameter("Time", "T", "当前时间", GH_ParamAccess.item);
+            pManager[1].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -139,10 +140,23 @@ namespace Motion.Animation
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            // 检查时间输入端是否已连接到 TimeLine(Union) Slider
+            var timeParam = Params.Input[1];
+
+            var timelineSlider = OnPingDocument()?.Objects
+                .OfType<GH_NumberSlider>()
+                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+
+            if (timelineSlider == null || !timeParam.Sources.Contains(timelineSlider))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "请放置 Motion Union Slider 并连接到时间输入端");
+                return;
+            }
+
             // 1. 预分配容器大小以避免动态扩容
             List<double> eventValues = new List<double>();
             if (!DA.GetDataList(0, eventValues)) return;
-            
+
             int capacity = eventValues.Count;
             var mappedEventValues = new List<double>(capacity);
             var eventStart = new List<double>(capacity);
@@ -150,18 +164,20 @@ namespace Motion.Animation
             var isReversedIntervals = new List<bool>(capacity);
             var valueDomains = new List<Interval>(capacity);
 
-Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
+            Params.Input[0].WireDisplay = GH_ParamWireDisplay.hidden;
             // 2. 缓存常用对象
             var doc = OnPingDocument();
-            var timelineSlider = doc.Objects
-                    .OfType<GH_NumberSlider>()
-                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
-            
+
             if (timelineSlider == null) return;
             double timelineSliderValue = (double)timelineSlider.Slider.Value;
 
             // 3. 优化循环
             var sources = Params.Input[0].Sources;
+            var groupNames = new List<string>();  // 用于收集 Group 昵称
+
+            // 获取所有 Group
+            var allGroups = doc.Objects.OfType<GH_Group>().ToList();
+
             for (int i = 0; i < eventValues.Count; i++)
             {
                 var source = sources[i];
@@ -169,6 +185,13 @@ Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
 
                 var graphMapper = source.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
                 if (graphMapper == null) continue;
+
+                // 查找包含这个 Graph Mapper 的 Group
+                var containingGroup = allGroups.FirstOrDefault(g => g.ObjectIDs.Contains(graphMapper.InstanceGuid));
+                if (containingGroup != null && !string.IsNullOrEmpty(containingGroup.NickName))
+                {
+                    groupNames.Add(containingGroup.NickName);
+                }
 
                 graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
                 var eventComponent = graphMapper.Sources[0]?.Attributes.GetTopLevel.DocObject as EventComponent;
@@ -178,7 +201,7 @@ Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
                 string[] timeDomainExtremes = eventComponent.NickName.Split(new char[] { '-' }, 2);
                 if (timeDomainExtremes.Length != 2) continue;
 
-                if (!double.TryParse(timeDomainExtremes[0], out double timeDomainStart) || 
+                if (!double.TryParse(timeDomainExtremes[0], out double timeDomainStart) ||
                     !double.TryParse(timeDomainExtremes[1], out double timeDomainEnd))
                     continue;
 
@@ -194,10 +217,10 @@ Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
                 isReversedIntervals.Add(valueDomain.T0 > valueDomain.T1);
 
                 // 5. 优化数值计算
-                double mappedValue = valueDomain.IsSingleton 
-                    ? valueDomain.Mid 
+                double mappedValue = valueDomain.IsSingleton
+                    ? valueDomain.Mid
                     : Math.Min(Math.Max(valueDomain.T0 + eventValues[i] * valueDomain.Length, valueDomain.Min), valueDomain.Max);
-                
+
                 mappedEventValues.Add(mappedValue);
             }
 
@@ -205,11 +228,11 @@ Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
             if (eventStart.Count == 0) return;
 
             sort(eventStart, mappedEventValues, eventInterval, eventValues, isReversedIntervals, valueDomains,
-                out var sortedStartTimes, out var sortedMappedValues, out var sortedTimeIntervals, 
+                out var sortedStartTimes, out var sortedMappedValues, out var sortedTimeIntervals,
                 out var sortedEventValues, out var sortedIsReversed, out var sortedValueDomains);
 
             // 7. 优化输出处理
-            double result = GetCurrentValue(timelineSliderValue, sortedTimeIntervals, sortedMappedValues, 
+            double result = GetCurrentValue(timelineSliderValue, sortedTimeIntervals, sortedMappedValues,
                 sortedEventValues, sortedIsReversed, sortedValueDomains,
                 out var currentInterval, out var currentEventValue, out var currentIndex, out var currentDomain);
 
@@ -217,13 +240,21 @@ Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
             _currentMappedEventValue = result;
             _currentEventIndex = currentIndex;
 
-            // 8. 优化条件判断
+            // 8. 优化条件判断并更新消息
             bool isDefaultInterval = currentInterval.T0 == 0 && currentInterval.T1 == 1;
             bool isInEventInterval = currentInterval.IncludesParameter(timelineSliderValue);
 
-            this.Message = isDefaultInterval || !isInEventInterval 
+            // 构建消息
+            string intervalMessage = isDefaultInterval || !isInEventInterval 
                 ? "OUTSIDE" 
                 : $"【{currentInterval.T0}-{currentInterval.T1}】";
+            
+            // 添加 Group 昵称
+            string groupMessage = groupNames.Count > 0 
+                ? $"\n{string.Join("\n", groupNames.Distinct())}" 
+                : "";
+
+            this.Message = intervalMessage + groupMessage;
 
             // 9. 优化输出赋值
             DA.SetData(0, result);

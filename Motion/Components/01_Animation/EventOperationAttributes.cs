@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using Grasshopper.Kernel.Special;
 using System.Linq;
 using Grasshopper;
+using System;
 
 namespace Motion.Animation
 {
@@ -26,8 +27,8 @@ namespace Motion.Animation
             if (Owner == null || Owner.Params.Input[0].SourceCount == 0)
                 return GH_ObjectResponse.Ignore;
 
-            // 获取所有连接的 GraphMapper 和对应的 EventComponent
-            var menuItems = new List<(EventComponent component, string nickname)>();
+            // 获取所有连接的 GraphMapper 和对应的 EventComponent，并存储区间最小值
+            var menuItems = new List<(EventComponent component, string nickname, double minValue)>();
             foreach (var source in Owner.Params.Input[0].Sources)
             {
                 var graphMapper = source.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
@@ -36,12 +37,20 @@ namespace Motion.Animation
                     var eventComponent = graphMapper.Sources[0].Attributes.GetTopLevel.DocObject as EventComponent;
                     if (eventComponent != null)
                     {
-                        menuItems.Add((eventComponent, eventComponent.NickName));
+                        // 解析区间最小值
+                        string[] parts = eventComponent.NickName.Split('-');
+                        if (parts.Length == 2 && double.TryParse(parts[0], out double minValue))
+                        {
+                            menuItems.Add((eventComponent, eventComponent.NickName, minValue));
+                        }
                     }
                 }
             }
 
             if (!menuItems.Any()) return GH_ObjectResponse.Ignore;
+
+            // 按区间最小值排序
+            menuItems.Sort((a, b) => a.minValue.CompareTo(b.minValue));
 
             // 创建上下文菜单
             var menu = new ToolStripDropDown();
@@ -68,7 +77,6 @@ namespace Motion.Animation
         {
             base.Render(canvas, graphics, channel);
 
-            
             if (channel == GH_CanvasChannel.Objects)
             {
                 var eventOperation = Owner as EventOperation;
@@ -92,7 +100,10 @@ namespace Motion.Animation
                     }
 
                     double currentMappedEventValue = eventOperation.CurrentMappedEventValue;
-                    string currentMappedEventValueLabel = $"{currentMappedEventValue:F2}";
+                    // 根据数值大小决定显示格式，使用Math.Round进行四舍五入
+                    string currentMappedEventValueLabel = currentMappedEventValue > 1000 
+                        ? $"{(int)Math.Round(currentMappedEventValue)}" 
+                        : $"{currentMappedEventValue:F2}";
 
                     var currentMappedEventValueBounds = new RectangleF(
                         Bounds.Right + 5,
@@ -107,7 +118,6 @@ namespace Motion.Animation
                     }
                 }
             }
-            
         }
     }
 }

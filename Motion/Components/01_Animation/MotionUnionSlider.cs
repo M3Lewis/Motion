@@ -419,6 +419,9 @@ namespace Motion.Animation
             {
                 UpdateUnionRange();
             }
+
+            // 自动连接到所有时间输入端
+            ConnectToTimeInputs();
         }
 
         public override void AppendAdditionalMenuItems(ToolStripDropDown menu)

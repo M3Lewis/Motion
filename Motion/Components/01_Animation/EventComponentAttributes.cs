@@ -33,6 +33,8 @@ namespace Motion.Animation
         private readonly int ButtonHeight = 18;
         private readonly int ButtonSpacing = 4;
 
+        private readonly string EmptyModeText = "Empty Mode";
+
         public EventComponentAttributes(EventComponent owner) : base(owner)
         {
         }
@@ -86,6 +88,38 @@ namespace Motion.Animation
             {
                 var owner = Owner as EventComponent;
                 if (owner == null) return;
+
+                // 如果开启了空值模式菜单，显示提示文字
+                if (owner.UseEmptyValueMode)
+                {
+                    // 计算文字位置（在组件上方）
+                    var textBounds = new RectangleF(
+                        Bounds.X,
+                        Bounds.Y - 20, // 在组件上方20个像素
+                        Bounds.Width,
+                        20
+                    );
+
+                    // 使用半透明的背景色
+                    using (var brush = new SolidBrush(Color.FromArgb(80, Color.Black)))
+                    {
+                        graphics.FillRectangle(brush, textBounds);
+                    }
+
+                    // 绘制文字
+                    graphics.DrawString(
+                        EmptyModeText,
+                        GH_FontServer.Standard,
+                        Brushes.White,
+                        textBounds,
+                        new StringFormat()
+                        {
+                            Alignment = StringAlignment.Center,
+                            LineAlignment = StringAlignment.Center
+                        }
+                    );
+                }
+
                 // 只在鼠标悬停时绘制范围框
                 if (mouseOver && owner?.affectedObjects != null && owner.affectedObjects.Any())
                 {
@@ -214,7 +248,7 @@ namespace Motion.Animation
                 );
 
                 
-                // 计算终点（受影响组件的中心点）
+                // 计算终点（受影响组件的中心���）
                 PointF endPoint = new PointF(
                     affectComponentBounds.Left + affectComponentBounds.Width / 2,
                     affectComponentBounds.Top + affectComponentBounds.Height / 2

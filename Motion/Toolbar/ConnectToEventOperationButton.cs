@@ -87,6 +87,8 @@ namespace Motion.Toolbar
                     {
                         selectedEventOp.Params.Input[0].AddSource(mapper);
                     }
+                    // 将新组件添加到现有组或创建新组
+                    AddToExistingGroupOrCreate(selectedEventOp, selectedMappers);
                 }
                 else
                 {
@@ -94,7 +96,7 @@ namespace Motion.Toolbar
                     var eventOp = new EventOperation();
                     eventOp.CreateAttributes();
 
-                    // 计算新组件的位置（在选中的Graph Mappers的最右侧）
+                    // 计算新组件的位置（在选中的Graph Mappers的最右侧
                     float rightmostX = selectedMappers[0].Attributes.Bounds.Right;
                     float avgY = selectedMappers[0].Attributes.Bounds.Y + selectedMappers[0].Attributes.Bounds.Height / 2;
 
@@ -111,6 +113,9 @@ namespace Motion.Toolbar
                         eventOp.Params.Input[0].AddSource(mapper);
                     }
 
+                    // 创建新组
+                    CreateOrUpdateGroup(eventOp, selectedMappers);
+
                     doc.NewSolution(true);
                 }
             }
@@ -120,6 +125,162 @@ namespace Motion.Toolbar
             }
         }
 
+        // 新增方法：将新组件添加到现有组或创建新组
+        private void AddToExistingGroupOrCreate(EventOperation eventOp, List<GH_GraphMapper> mappers)
+        {
+            var doc = Instances.ActiveCanvas.Document;
+            
+            // 获取所有相关的Event组件
+            var relatedEvents = new List<EventComponent>();
+            foreach (var mapper in mappers)
+            {
+                var sources = mapper.Sources;
+                foreach (var source in sources)
+                {
+                    if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                    {
+                        relatedEvents.Add(eventComp);
+                    }
+                }
+            }
+
+            // 获取已经连接到EventOperation的所有Graph Mapper
+            var existingMappers = eventOp.Params.Input[0].Sources
+                .Select(s => s.Attributes.GetTopLevel.DocObject)
+                .OfType<GH_GraphMapper>()
+                .ToList();
+
+            // 查找包含现有Graph Mapper的组
+            var existingGroup = doc.Objects.OfType<GH_Group>()
+                .FirstOrDefault(g => existingMappers.Any(m => g.ObjectIDs.Contains(m.InstanceGuid)));
+
+            // 如果没有找到包含现有Graph Mapper的组，则查找是否有组包含新的Graph Mapper或Event
+            if (existingGroup == null)
+            {
+                existingGroup = doc.Objects.OfType<GH_Group>()
+                    .FirstOrDefault(g => mappers.Any(m => g.ObjectIDs.Contains(m.InstanceGuid)) || 
+                                       relatedEvents.Any(e => g.ObjectIDs.Contains(e.InstanceGuid)));
+            }
+
+            if (existingGroup != null)
+            {
+                // 将新的Graph Mappers添加到现有组
+                foreach (var mapper in mappers)
+                {
+                    if (!existingGroup.ObjectIDs.Contains(mapper.InstanceGuid))
+                    {
+                        existingGroup.AddObject(mapper.InstanceGuid);
+                    }
+                }
+
+                // 将相关的Event组件添加到现有组
+                foreach (var evt in relatedEvents)
+                {
+                    if (!existingGroup.ObjectIDs.Contains(evt.InstanceGuid))
+                    {
+                        existingGroup.AddObject(evt.InstanceGuid);
+                    }
+                }
+            }
+            else
+            {
+                // 如果没有找到现有组，创建新组
+                CreateOrUpdateGroup(eventOp, mappers);
+            }
+        }
+
+        // 添加辅助方法来检查组件是否在组内并创建/更新组
+        private void CreateOrUpdateGroup(EventOperation eventOp, List<GH_GraphMapper> mappers)
+        {
+            var doc = Instances.ActiveCanvas.Document;
+            
+            // 获取所有相关的Event组件
+            var relatedEvents = new List<EventComponent>();
+            foreach (var mapper in mappers)
+            {
+                var sources = mapper.Sources;
+                foreach (var source in sources)
+                {
+                    if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                    {
+                        relatedEvents.Add(eventComp);
+                    }
+                }
+            }
+            
+            // 检查是否所有组件都已经在同一个组内
+            var existingGroup = GetCommonGroup(mappers, relatedEvents);
+            if (existingGroup != null)
+            {
+                // 如果已经在同一个组内，不需要进行操作
+                return;
+            }
+
+            // 创建新组
+            var group = new GH_Group();
+            group.CreateAttributes();
+            
+            // 设置组的名称和颜色
+            group.NickName = eventOp.NickName;  // 使用EventOperation的nickname
+            group.Colour = Color.FromArgb(60, 150, 150, 150);
+
+            // 添加所有Graph Mappers到组
+            foreach (var mapper in mappers)
+            {
+                group.AddObject(mapper.InstanceGuid);
+            }
+
+            // 添加所有相关的Event组件到组
+            foreach (var evt in relatedEvents)
+            {
+                group.AddObject(evt.InstanceGuid);
+            }
+
+            // 添加组到文档
+            doc.AddObject(group, false);
+        }
+
+        // 添加辅助方法来获取组件共同所在的组
+        private GH_Group GetCommonGroup(List<GH_GraphMapper> mappers, List<EventComponent> events)
+        {
+            var doc = Instances.ActiveCanvas.Document;
+            var allGroups = doc.Objects.OfType<GH_Group>().ToList();
+
+            foreach (var group in allGroups)
+            {
+                bool containsAll = true;
+
+                // 检查组是否包含所有Graph Mappers
+                foreach (var mapper in mappers)
+                {
+                    if (!group.ObjectIDs.Contains(mapper.InstanceGuid))
+                    {
+                        containsAll = false;
+                        break;
+                    }
+                }
+
+                // 检查组是否包含所有Event组件
+                if (containsAll && events.Any())
+                {
+                    foreach (var evt in events)
+                    {
+                        if (!group.ObjectIDs.Contains(evt.InstanceGuid))
+                        {
+                            containsAll = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (containsAll)
+                {
+                    return group;
+                }
+            }
+
+            return null;
+        }
 
         // 新增辅助方法：检查是否所有 Graph Mapper 都连接到同一个 EventOperation
         private EventOperation GetCommonConnectedEventOperation(List<GH_GraphMapper> mappers)

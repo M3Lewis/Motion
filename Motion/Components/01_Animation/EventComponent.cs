@@ -155,7 +155,7 @@ namespace Motion.Animation
 
         public EventComponent()
             : base("Event", "Event",
-                "控制值变化的事件",
+               "控制值变化的事件",
                 "Motion", "01_Animation")
         {
             UpdateMessage();
@@ -294,7 +294,7 @@ namespace Motion.Animation
                 double.TryParse(parts[1], out double max))
             {
                 var doc = OnPingDocument();
-                // 使用Timeline Slider模式
+                // 用Timeline Slider模式
                 if (_timelineSlider != null)
                 {
                     double timelineSliderValue = (double)_timelineSlider.CurrentValue;
@@ -991,6 +991,12 @@ namespace Motion.Animation
                 // 更新UI
                 ExpireSolution(true);
             }
+        }
+
+        private void EmptyModeMenuItem_Clicked(object sender, EventArgs e)
+        {
+            UseEmptyValueMode = !UseEmptyValueMode;
+            ExpireSolution(true);
         }
     }
 }

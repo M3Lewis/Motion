@@ -67,7 +67,7 @@ namespace Motion.Toolbar
                     return;
                 }
 
-                const float EVENT_WIDTH = 150f;
+                const float EVENT_WIDTH = 100f;
                 const float VERTICAL_SPACING = 120f;
                 const float HORIZONTAL_OFFSET = 300f;
 
@@ -120,7 +120,7 @@ namespace Motion.Toolbar
                                 else if (comp is GH_GraphMapper mapper)
                                 {
                                     mapper.Attributes.Pivot = new PointF(
-                                        targetPos.X + EVENT_WIDTH + 50f,
+                                        targetPos.X + EVENT_WIDTH,
                                         targetPos.Y - 65f
                                     );
                                     mapper.Attributes.Selected = false;
