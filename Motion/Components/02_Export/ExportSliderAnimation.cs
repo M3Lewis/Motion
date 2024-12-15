@@ -26,8 +26,8 @@ namespace Motion.Export
 
         public ExportSliderAnimation()
             : base(
-                "ExportSliderAnimation",
-                "ExportSliderAnimation",
+                "Export Slider Animation",
+                "Export Slider Animation",
                 "Slider自动导出Rhino视窗图片，支持透明背景和Cycles模式，可指定slider范围",
                 "Motion",
                 "02_Export"
