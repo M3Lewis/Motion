@@ -16,7 +16,7 @@ namespace Motion.Animation
 {
     public class EventComponent : GH_Component
     {
-        
+
         private MotionSender _linkedSender;
         // 添加一个临时存储GUID的列表
         private List<Guid> _pendingGuids = new List<Guid>();
@@ -107,7 +107,7 @@ namespace Motion.Animation
         {
             // 检查是否添加了 Union Slider
             var addedUnionSlider = e.Objects
-                .FirstOrDefault(obj => obj is MotionUnionSlider && 
+                .FirstOrDefault(obj => obj is MotionUnionSlider &&
                                      obj.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
 
             if (addedUnionSlider != null)
@@ -116,7 +116,7 @@ namespace Motion.Animation
                 if (doc != null)
                 {
                     // 延迟执行以确保 Union Slider 完全初始化
-                    doc.ScheduleSolution(5, d => 
+                    doc.ScheduleSolution(5, d =>
                     {
                         FindAndConnectTimelineSlider();
                         ExpireSolution(true);
@@ -200,7 +200,6 @@ namespace Motion.Animation
             }
 
             Menu_AppendSeparator(menu);
-            Menu_AppendSeparator(menu);
             // 添加模式切换选项
             var modeItem = Menu_AppendItem(menu, "空值模式", OnModeToggle, true, UseEmptyValueMode);
             modeItem.ToolTipText = "切换是否使用空值模式进行Hide/Lock控制";
@@ -211,8 +210,34 @@ namespace Motion.Animation
                 Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, HideWhenEmpty);
                 Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, LockWhenEmpty);
             }
+
+            Menu_AppendSeparator(menu);
+
+            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "选择区间");
+            foreach (string key in MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
+                .OrderBy(s =>
+                {
+                    var parts = s.Split('-');
+                    if (parts.Length == 2 && double.TryParse(parts[0], out double first) && double.TryParse(parts[1], out double second))
+                    {
+                        return first * 1000000 + second; // 使用大数字来确保排序正确
+                    }
+                    return 0;
+                }))
+            {
+                if (!string.IsNullOrEmpty(key))
+                {
+                    ToolStripMenuItem keyitem = Menu_AppendItem(recentKeyMenu.DropDown, key, new EventHandler(Menu_KeyClicked));
+                }
+            }
         }
 
+        protected void Menu_KeyClicked(object sender, EventArgs e)
+        {
+            ToolStripMenuItem keyItem = (ToolStripMenuItem)sender;
+            this.NickName = keyItem.Text;
+            this.Attributes.ExpireLayout();
+        }
         private void OnJumpToOperation(object sender, EventArgs e)
         {
             if (Params.Output[0].Recipients.Count == 0) return;
@@ -325,7 +350,7 @@ namespace Motion.Animation
                         // 更新状态
                         _lastInInterval = currentInInterval;
                         _lastHasData = true;
-                        
+
                     }
                     // 更新Message以显示当前时间值
                     this.Message = $"[{min}-{max}]\n{value:F2}";
@@ -457,7 +482,7 @@ namespace Motion.Animation
                 if (doc != null)
                 {
                     // 延迟执行以确保 Sender 完全初始化
-                    doc.ScheduleSolution(5, d => 
+                    doc.ScheduleSolution(5, d =>
                     {
                         var timeInput = this.Params.Input[0];
                         if (timeInput.SourceCount == 0)  // 只在没有连接时尝试连接
@@ -783,7 +808,7 @@ namespace Motion.Animation
             {
                 isUpdating = true;
 
-                if (affectedObjects == null || !affectedObjects.Any()) 
+                if (affectedObjects == null || !affectedObjects.Any())
                 {
                     isUpdating = false;
                     return;
@@ -815,7 +840,7 @@ namespace Motion.Animation
 
                             // 创建受影响对象的副本以避免集合修改问题
                             var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
-                            
+
                             foreach (var obj in objectsToUpdate)
                             {
                                 if (obj == null) continue;
@@ -824,7 +849,7 @@ namespace Motion.Animation
                                 {
                                     if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                                     {
-                                        d.ScheduleSolution(1, doc => 
+                                        d.ScheduleSolution(1, doc =>
                                         {
                                             previewObj.Hidden = isEmpty;
                                             doc.ExpireSolution();
@@ -859,7 +884,7 @@ namespace Motion.Animation
                                 if (_lastHideOrLockState != shouldHideOrLock)
                                 {
                                     var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
-                                    
+
                                     foreach (var obj in objectsToUpdate)
                                     {
                                         if (obj == null) continue;
@@ -868,7 +893,7 @@ namespace Motion.Animation
                                         {
                                             if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
                                             {
-                                                d.ScheduleSolution(1, doc => 
+                                                d.ScheduleSolution(1, doc =>
                                                 {
                                                     previewObj.Hidden = shouldHideOrLock;
                                                     doc.ExpireSolution();
@@ -971,7 +996,7 @@ namespace Motion.Animation
         private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
         {
             bool needUpdate = false;
-            
+
             // 检查是否有受控制的对象被删除
             foreach (var deletedObj in e.Objects)
             {
@@ -981,13 +1006,13 @@ namespace Motion.Animation
                     needUpdate = true;
                 }
             }
-            
+
             // 如果没有任何受控制的对象，关闭 HIDE/LOCK 开关
             if (needUpdate && !affectedObjects.Any())
             {
                 HideWhenEmpty = false;
                 LockWhenEmpty = false;
-                
+
                 // 更新UI
                 ExpireSolution(true);
             }
