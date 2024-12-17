@@ -11,8 +11,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
+using System.Windows.Forms;
 
 namespace Motion.Export
 {
@@ -178,7 +180,6 @@ namespace Motion.Export
 
         private async Task ExecuteRenderingWithParams(RenderParameters parameters, IGH_DataAccess DA = null)
         {
-            // 检查 Frame 输入源
             if (this.Params.Input[9].Sources.Count == 0)
                 return;
 
@@ -192,20 +193,30 @@ namespace Motion.Export
             bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
 
             views.RedrawEnabled = true;
-            // List<string> outputPaths = new List<string>();  // 注释掉
 
             try 
             {
+                bool wasAborted = false;
+                CancellationTokenSource cts = new CancellationTokenSource();
+
+                Action<int, int> updateProgress = (frame, total) =>
+                {
+                    this.Message = $"Rendering Frame.. {frame + 1}/{total}";
+                    this.OnDisplayExpired(true);
+                    
+                    // 检查ESC键
+                    if (System.Windows.Forms.Control.ModifierKeys == Keys.Escape)
+                    {
+                        cts.Cancel();
+                        wasAborted = true;
+                    }
+                    
+                    // 处理Windows消息队列
+                    Application.DoEvents();
+                };
+
                 await Task.Run(() =>
                 {
-                    bool wasAborted = false;
-
-                    Action<int, int> updateProgress = (frame, total) =>
-                    {
-                        this.Message = $"Rendering Frame.. {frame + 1}/{total}";
-                        this.OnDisplayExpired(true);
-                    };
-
                     RhinoApp.InvokeOnUiThread(new Action(() =>
                     {
                         var sliderAnimator = new MotionSliderAnimator(unionSlider)
@@ -236,24 +247,24 @@ namespace Motion.Export
                             return;
                         }
 
+                        sliderAnimator.CancellationToken = cts.Token;  // 传递取消令牌
                         sliderAnimator.MotionStartAnimation(
                             parameters.IsTransparent,
                             parameters.ViewName,
                             parameters.IsCycles,
                             parameters.RealtimeRenderPasses,
-                            out _, // 使用弃元运算符替代 outputPaths
+                            out _,
                             out wasAborted,
                             updateProgress
                         );
 
                         this.Message = wasAborted ? "Render Cancelled!" : "Render Finished!";
-                        // 注释掉输出更新
-                        // if (DA != null && outputPaths != null && outputPaths.Count > 0)
-                        // {
-                        //     DA.SetDataList(0, outputPaths);
-                        // }
                     }));
                 });
+            }
+            catch (OperationCanceledException)
+            {
+                this.Message = "Render Cancelled!";
             }
             catch (Exception ex)
             {

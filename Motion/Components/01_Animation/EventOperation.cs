@@ -1,14 +1,12 @@
+using Grasshopper.Kernel;
+using Grasshopper.Kernel.Parameters;
+using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
+using Rhino.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using Grasshopper.GUI.Canvas;
-using Grasshopper;
-using Grasshopper.Kernel;
-using Grasshopper.Kernel.Special;
-using Grasshopper.Kernel.Types;
-using Rhino.Geometry;
-using Grasshopper.Kernel.Parameters;
 
 namespace Motion.Animation
 {

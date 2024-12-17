@@ -27,8 +27,8 @@ namespace Motion.Animation
             if (Owner == null || Owner.Params.Input[0].SourceCount == 0)
                 return GH_ObjectResponse.Ignore;
 
-            // 获取所有连接的 GraphMapper 和对应的 EventComponent，并存储区间最小值
-            var menuItems = new List<(EventComponent component, string nickname, double minValue)>();
+            // 获取所有连接的 GraphMapper 和对应的 EventComponent，并存储区间最小值和最大值
+            var menuItems = new List<(EventComponent component, string nickname, double minValue, double maxValue)>();
             foreach (var source in Owner.Params.Input[0].Sources)
             {
                 var graphMapper = source.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
@@ -37,11 +37,13 @@ namespace Motion.Animation
                     var eventComponent = graphMapper.Sources[0].Attributes.GetTopLevel.DocObject as EventComponent;
                     if (eventComponent != null)
                     {
-                        // 解析区间最小值
+                        // 解析区间最小值和最大值
                         string[] parts = eventComponent.NickName.Split('-');
-                        if (parts.Length == 2 && double.TryParse(parts[0], out double minValue))
+                        if (parts.Length == 2 && 
+                            double.TryParse(parts[0], out double minValue) && 
+                            double.TryParse(parts[1], out double maxValue))
                         {
-                            menuItems.Add((eventComponent, eventComponent.NickName, minValue));
+                            menuItems.Add((eventComponent, eventComponent.NickName, minValue, maxValue));
                         }
                     }
                 }
@@ -49,8 +51,12 @@ namespace Motion.Animation
 
             if (!menuItems.Any()) return GH_ObjectResponse.Ignore;
 
-            // 按区间最小值排序
-            menuItems.Sort((a, b) => a.minValue.CompareTo(b.minValue));
+            // 按区间最小值排序，如果最小值相同则按最大值排序
+            menuItems.Sort((a, b) =>
+            {
+                int minComparison = a.minValue.CompareTo(b.minValue);
+                return minComparison != 0 ? minComparison : a.maxValue.CompareTo(b.maxValue);
+            });
 
             // 创建上下文菜单
             var menu = new ToolStripDropDown();

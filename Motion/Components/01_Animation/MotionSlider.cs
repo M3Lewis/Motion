@@ -786,19 +786,34 @@ namespace Motion.Animation
                                 Owner.Slider.Minimum = min;
                                 Owner.Slider.Maximum = max;
                                 Owner.ExpireSolution(true);
+                                
+                                // 取消选中状态
+                                Owner.OnPingDocument()?.DeselectAll();
+                                Instances.ActiveCanvas?.Refresh();
                             }
                         }
                     };
+
+                    // 临时保存原始位置
+                    var originalBounds = Owner.Slider.Bounds;
+                    
+                    // 临时将滑块位置设置为文本框位置
+                    Owner.Slider.Bounds = Rectangle.Round(_rangeTextBox);
+
                     Owner.Slider.ShowTextInputBox(
                         sender,
                         true,
                         sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl),
                         content
                     );
+
+                    // 恢复原始位置
+                    Owner.Slider.Bounds = originalBounds;
+                    
                     return GH_ObjectResponse.Handled;
                 }
 
-                // 果不是文本框，检查是否点击了滑块
+                // 如果不是文本框，检查是否点击了滑块
                 if ((double)sender.Viewport.Zoom >= 0.9 && Owner.Slider.Bounds.Contains(GH_Convert.ToPoint(e.CanvasLocation)))
                 {
                     string content = base.Owner.Slider.GripTextPure;

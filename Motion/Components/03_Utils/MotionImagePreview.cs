@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Windows.Forms;
 
 namespace Motion.Utils
 {
@@ -21,6 +22,7 @@ namespace Motion.Utils
         private readonly string _transparencyTempFile;
         private readonly string _environmentTempFile;
 
+        public bool IsShowSurfaceBoundary { get; private set; } = false;  // 是否使用空值模式
 
         public MotionImagePreview()
             : base("Motion Image Preview", "Motion Image Preview",
@@ -30,35 +32,6 @@ namespace Motion.Utils
             // 在构造函数中初始化临时文件路径
             _transparencyTempFile = Path.Combine(Path.GetTempPath(), "MotionTransparencyTex.png");
             _environmentTempFile = Path.Combine(Path.GetTempPath(), "MotionEnvironmentTex.png");
-        }
-
-        private Texture BitmapToTexture(Bitmap bitmap, bool isTransparency)
-        {
-            try
-            {
-                string tempPath = isTransparency ? _transparencyTempFile : _environmentTempFile;
-                bitmap.Save(tempPath, System.Drawing.Imaging.ImageFormat.Png);
-                
-                var fileRef = new FileReference(
-                    tempPath,           // absolutePath
-                    tempPath,           // relativePath
-                    ContentHash.CreateFromFile(tempPath),  // 直接使用构造函数
-                    FileReferenceStatus.FullPathValid
-                );
-
-                var texture = new Texture
-                {
-                    FileReference = fileRef,
-                    Enabled = true,
-                };
-
-                return texture;
-            }
-            catch (Exception ex)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to convert bitmap to texture: " + ex.Message);
-                return null;
-            }
         }
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
@@ -71,6 +44,17 @@ namespace Motion.Utils
             pManager[1].Optional = true;
         }
 
+        protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
+        {
+            base.AppendAdditionalComponentMenuItems(menu);
+            var modeItem = Menu_AppendItem(menu, "显示Surface边框线", OnModeToggle, true, IsShowSurfaceBoundary);
+        }
+        private void OnModeToggle(object sender, EventArgs e)
+        {
+            IsShowSurfaceBoundary = !IsShowSurfaceBoundary;
+            // 切换模式时重置状态
+            ExpireSolution(true);
+        }
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
         }
@@ -136,12 +120,15 @@ namespace Motion.Utils
                     return;
                 }
             }
-            foreach (GH_CustomPreviewItem item2 in m_items)
+            if (IsShowSurfaceBoundary)
             {
-                if (!(item2.Geometry is GH_Mesh) || CentralSettings.PreviewMeshEdges)
+                foreach (GH_CustomPreviewItem item2 in m_items)
                 {
-                    GH_PreviewWireArgs args3 = new GH_PreviewWireArgs(args.Viewport, args.Display, item2.Colour, args.DefaultCurveThickness);
-                    item2.Geometry.DrawViewportWires(args3);
+                    if (!(item2.Geometry is GH_Mesh) || CentralSettings.PreviewMeshEdges)
+                    {
+                        GH_PreviewWireArgs args3 = new GH_PreviewWireArgs(args.Viewport, args.Display, item2.Colour, args.DefaultCurveThickness);
+                        item2.Geometry.DrawViewportWires(args3);
+                    }
                 }
             }
         }

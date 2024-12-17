@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Threading;
+using System.Windows.Forms;
 
 namespace Motion.Export
 {
@@ -16,12 +18,14 @@ namespace Motion.Export
     {
         public Interval CustomRange { get; set; }
         public bool UseCustomRange { get; set; }
+        public CancellationToken CancellationToken { get; set; }
 
         public MotionSliderAnimator(GH_NumberSlider nOwner)
             : base(nOwner)
         {
             CustomRange = new Interval(0, 100);
             UseCustomRange = false;
+            CancellationToken = CancellationToken.None;
         }
 
         public void MotionStartAnimation(bool isTransparent, string viewName, bool isCycles, int realtimeRenderPasses, out List<string> outputPathList, out bool wasAborted, Action<int, int> progressCallback = null)
@@ -95,7 +99,7 @@ namespace Motion.Export
                 int oldPasses = -1;
                 while (m_currentValue <= maxValue)
                 {
-                    if (GH_Document.IsEscapeKeyDown())
+                    if (CancellationToken.IsCancellationRequested || GH_Document.IsEscapeKeyDown())
                     {
                         wasAborted = true;
                         break;
@@ -148,6 +152,8 @@ namespace Motion.Export
                     //stopwatch.Stop();
                     //RhinoApp.WriteLine ($"{m_currentValue} spend time:{stopwatch.ElapsedMilliseconds} ms");
                     m_currentValue += 1.0;
+
+                    Application.DoEvents();
                 }
 
                 m_owner.Slider.Value = UseCustomRange ? (int)CustomRange.Min : 0;

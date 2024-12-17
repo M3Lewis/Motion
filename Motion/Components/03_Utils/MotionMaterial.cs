@@ -1,15 +1,12 @@
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
-using Rhino.Display;
 using Rhino.DocObjects;
 using Rhino.FileIO;
 using Rhino.Geometry;
-using Rhino.Render;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Motion.Utils
 {
@@ -17,6 +14,11 @@ namespace Motion.Utils
     {
         private readonly string _transparencyTempFile;
         private readonly string _bumpTempFile;
+        private readonly string _environmentTempFile;
+        private readonly string _diffuseTempFile;
+        private static int _instanceCounter = 0;
+        private readonly int _instanceId;
+        private readonly Dictionary<string, Texture> _textureCache;
 
         private string _ImageFolder;
         private string[] _ImageFiles;
@@ -33,14 +35,43 @@ namespace Motion.Utils
                 "创建渲染材质,贴图支持输入路径和System.Drawing.Bitmap，可配合Javid/Bitmap+插件使用",
                 "Motion", "03_Utils")
         {
-            _transparencyTempFile = Path.Combine(Path.GetTempPath(), "MotionTransparencyTex.png");
-            _bumpTempFile = Path.Combine(Path.GetTempPath(), "MotionBumpTex.png");
+            _instanceId = System.Threading.Interlocked.Increment(ref _instanceCounter);
+            _transparencyTempFile = Path.Combine(Path.GetTempPath(), $"MotionTransparencyTex_{_instanceId}.png");
+            _bumpTempFile = Path.Combine(Path.GetTempPath(), $"MotionBumpTex_{_instanceId}.png");
+            _environmentTempFile = Path.Combine(Path.GetTempPath(), $"MotionEnvironmentTex_{_instanceId}.png");
+            _diffuseTempFile = Path.Combine(Path.GetTempPath(), $"MotionDiffuseTex_{_instanceId}.png");
+            _textureCache = new Dictionary<string, Texture>();
+        }
+
+        public override void RemovedFromDocument(GH_Document document)
+        {
+            base.RemovedFromDocument(document);
+            _textureCache.Clear();
+
+            // 清理临时文件
+            DeleteTempFile(_transparencyTempFile);
+            DeleteTempFile(_bumpTempFile);
+            DeleteTempFile(_environmentTempFile);
+            DeleteTempFile(_diffuseTempFile);
+        }
+
+        private void DeleteTempFile(string filePath)
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+            catch (Exception ex)
+            {
+                // 忽略删除失败的错误
+            }
         }
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             // 基础颜色参数
-            pManager.AddColourParameter("Diffuse Color", "DC", "漫反射颜色", GH_ParamAccess.item, Color.White);
+            pManager.AddColourParameter("Diffuse Color", "DC", "反射颜色", GH_ParamAccess.item, Color.White);
             pManager.AddColourParameter("Ambient Color", "AC", "环境色", GH_ParamAccess.item, Color.Black);
             pManager.AddColourParameter("Emission Color", "EC", "自发光颜色", GH_ParamAccess.item, Color.Black);
             pManager.AddColourParameter("Specular Color", "SC", "高光颜色", GH_ParamAccess.item, Color.White);
@@ -73,31 +104,72 @@ namespace Motion.Utils
             pManager.AddGenericParameter("Material", "M", "渲染材质", GH_ParamAccess.item);
         }
 
-        private Texture BitmapToTexture(Bitmap bitmap, bool isTransparency)
+        private Texture GetTextureFromObject(object obj, TextureType textureType)
         {
+            if (obj == null) return null;
+
             try
             {
-                string tempPath = isTransparency ? _transparencyTempFile : _bumpTempFile;
-                bitmap.Save(tempPath, System.Drawing.Imaging.ImageFormat.Png);
+                // 直接使用文件路径
+                if (obj is string path && File.Exists(path))
+                    return GetTextureFromCache(path);
 
-                var fileRef = new FileReference(
-                    tempPath,
-                    tempPath,
-                    ContentHash.CreateFromFile(tempPath),
-                    FileReferenceStatus.FullPathValid
-                );
+                if (obj is GH_String ghString && File.Exists(ghString.Value))
+                    return GetTextureFromCache(ghString.Value);
 
-                var texture = new Texture
-                {
-                    FileReference = fileRef,
-                    Enabled = true,
-                };
+                // 处理Bitmap
+                if (obj is Bitmap bitmap)
+                    return BitmapToTexture(bitmap, textureType);
 
-                return texture;
+                if (obj is IGH_Goo goo && goo.CastTo<Bitmap>(out Bitmap bmp))
+                    return BitmapToTexture(bmp, textureType);
+
+                return null;
             }
             catch (Exception ex)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to convert bitmap to texture: " + ex.Message);
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"处理贴图时出错: {ex.Message}");
+                return null;
+            }
+        }
+
+        private Texture GetTextureFromCache(string path)
+        {
+            if (_textureCache.ContainsKey(path))
+                return _textureCache[path];
+
+            var fileRef = new FileReference(
+                path,
+                path,
+                ContentHash.CreateFromFile(path),
+                FileReferenceStatus.FullPathValid
+            );
+            var texture = new Texture { FileReference = fileRef };
+            _textureCache[path] = texture;
+            return texture;
+        }
+
+        private Texture BitmapToTexture(Bitmap bitmap, TextureType textureType)
+        {
+            if (bitmap == null) return null;
+
+            string tempPath = textureType switch
+            {
+                TextureType.Transparency => _transparencyTempFile,
+                TextureType.Bump => _bumpTempFile,
+                TextureType.Emap => _environmentTempFile,
+                TextureType.Diffuse => _diffuseTempFile,
+                _ => _diffuseTempFile
+            };
+
+            try
+            {
+                bitmap.Save(tempPath, System.Drawing.Imaging.ImageFormat.Png);
+                return GetTextureFromCache(tempPath);
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"保存位图时出错: {ex.Message}");
                 return null;
             }
         }
@@ -200,239 +272,51 @@ namespace Motion.Utils
 
         private void HandleEnviromentMap(object environmentMap, GH_Material ghMaterialObj)
         {
-            if (environmentMap != null)
+            if (environmentMap == null) return;
+
+            var texture = GetTextureFromObject(environmentMap, TextureType.Emap);
+            if (texture != null)
             {
-                if (environmentMap is string envPath && File.Exists(envPath))
+                if (environmentMap is string path && 
+                    Path.GetExtension(path).ToLower() is string ext && 
+                    (ext == ".hdr" || ext == ".hdri"))
                 {
-                    string ext = Path.GetExtension(envPath).ToLower();
-                    if (ext == ".hdr" || ext == ".hdri")
-                    {
-                        // 对于 HDR 文件使用特殊的处理
-                        var fileRef = new FileReference(
-                            envPath,
-                            envPath,
-                            ContentHash.CreateFromFile(envPath),
-                            FileReferenceStatus.FullPathValid
-                        );
-                        var texture = new Texture
-                        {
-                            FileReference = fileRef,
-                            Enabled = true,
-                            TextureType = TextureType.Emap
-                        };
-                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
-                    }
-                    else
-                    {
-                        var fileRef = new FileReference(
-                            envPath,
-                            envPath,
-                            ContentHash.CreateFromFile(envPath),
-                            FileReferenceStatus.FullPathValid
-                        );
-                        var texture = new Texture { FileReference = fileRef };
-
-                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
-                    }
+                    texture.TextureType = TextureType.Emap;
                 }
-                else if (environmentMap is Bitmap envBitmap)
-                {
-                    var texture = BitmapToTexture(envBitmap, true);
-                    if (texture != null)
-                    {
-                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
-                    }
-                }
-                else if (environmentMap is GH_String envGhString)
-                {
-                    string path = envGhString.Value;
-                    if (File.Exists(path))
-                    {
-                        var fileRef = new FileReference(
-                            path,
-                            path,
-                            ContentHash.CreateFromFile(path),
-                            FileReferenceStatus.FullPathValid
-                        );
-                        var texture = new Texture { FileReference = fileRef };
-
-                        ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
-                    }
-                }
-                else if (environmentMap is IGH_Goo)
-                {
-                    var goo = environmentMap as IGH_Goo;
-                    if (goo.CastTo<Bitmap>(out Bitmap bmp))
-                    {
-                        var texture = BitmapToTexture(bmp, true);
-                        if (texture != null)
-                        {
-                            ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
-                        }
-                    }
-                }
+                ghMaterialObj.Value.SetEnvironmentTexture(texture, true);
             }
         }
+
         private void HandleBumpMap(object bumpMap, GH_Material ghMaterialObj)
         {
-            // 处理凹凸贴图
-            if (bumpMap != null)
+            if (bumpMap == null) return;
+
+            var texture = GetTextureFromObject(bumpMap, TextureType.Bump);
+            if (texture != null)
             {
-                if (bumpMap is string bumpPath && File.Exists(bumpPath))
-                {
-                    var fileRef = new FileReference(
-                        bumpPath,
-                        bumpPath,
-                        ContentHash.CreateFromFile(bumpPath),
-                        FileReferenceStatus.FullPathValid
-                    );
-                    var texture = new Texture { FileReference = fileRef };
-                    //material.SetTexture(texture, TextureType.Bump);
-                    ghMaterialObj.Value.SetBumpTexture(texture, true);
-                }
-                else if (bumpMap is Bitmap bumpBitmap)
-                {
-                    var texture = BitmapToTexture(bumpBitmap, false);
-                    if (texture != null)
-                    {
-                        //material.SetTexture(texture, TextureType.Bump);
-                        ghMaterialObj.Value.SetBumpTexture(texture, true);
-                    }
-                }
-                else if (bumpMap is GH_String bumpGhString)
-                {
-                    string path = bumpGhString.Value;
-                    if (File.Exists(path))
-                    {
-                        var fileRef = new FileReference(
-                            path,
-                            path,
-                            ContentHash.CreateFromFile(path),
-                            FileReferenceStatus.FullPathValid
-                        );
-                        var texture = new Texture { FileReference = fileRef };
-                        //material.SetTexture(texture, TextureType.Bump);
-                        ghMaterialObj.Value.SetBumpTexture(texture, false);
-                    }
-                }
-                else if (bumpMap is IGH_Goo)
-                {
-                    var goo = bumpMap as IGH_Goo;
-                    if (goo.CastTo<Bitmap>(out Bitmap bmp))
-                    {
-                        var texture = BitmapToTexture(bmp, false);
-                        if (texture != null)
-                        {
-                            //material.SetTexture(texture, TextureType.Bump);
-                            ghMaterialObj.Value.SetBumpTexture(texture, true);
-                        }
-                    }
-                }
+                ghMaterialObj.Value.SetBumpTexture(texture, true);
             }
         }
+
         private void HandleDiffuseMap(object diffuseMap, Material material)
         {
-            if (diffuseMap != null)
+            if (diffuseMap == null) return;
+
+            var texture = GetTextureFromObject(diffuseMap, TextureType.Diffuse);
+            if (texture != null)
             {
-                if (diffuseMap is string diffusePath && File.Exists(diffusePath))
-                {
-                    var fileRef = new FileReference(
-                        diffusePath,
-                        diffusePath,
-                        ContentHash.CreateFromFile(diffusePath),
-                        FileReferenceStatus.FullPathValid
-                    );
-                    var texture = new Texture { FileReference = fileRef };
-                    material.SetTexture(texture, TextureType.Diffuse);
-                }
-                else if (diffuseMap is Bitmap transBitmap)
-                {
-                    var texture = BitmapToTexture(transBitmap, true);
-                    if (texture != null)
-                    {
-                        material.SetTexture(texture, TextureType.Diffuse);
-                    }
-                }
-                else if (diffuseMap is GH_String transGhString)
-                {
-                    string path = transGhString.Value;
-                    if (File.Exists(path))
-                    {
-                        var fileRef = new FileReference(
-                            path,
-                            path,
-                            ContentHash.CreateFromFile(path),
-                            FileReferenceStatus.FullPathValid
-                        );
-                        var texture = new Texture { FileReference = fileRef };
-                        material.SetTexture(texture, TextureType.Diffuse);
-                    }
-                }
-                else if (diffuseMap is IGH_Goo)
-                {
-                    var goo = diffuseMap as IGH_Goo;
-                    if (goo.CastTo<Bitmap>(out Bitmap bmp))
-                    {
-                        var texture = BitmapToTexture(bmp, true);
-                        if (texture != null)
-                        {
-                            material.SetTexture(texture, TextureType.Diffuse);
-                        }
-                    }
-                }
+                material.SetTexture(texture, TextureType.Diffuse);
             }
         }
+
         private void HandleTransparencyMap(object transparencyMap, Material material)
         {
-            // 处理透明度贴图
-            if (transparencyMap != null)
+            if (transparencyMap == null) return;
+
+            var texture = GetTextureFromObject(transparencyMap, TextureType.Transparency);
+            if (texture != null)
             {
-                if (transparencyMap is string transPath && File.Exists(transPath))
-                {
-                    var fileRef = new FileReference(
-                        transPath,
-                        transPath,
-                        ContentHash.CreateFromFile(transPath),
-                        FileReferenceStatus.FullPathValid
-                    );
-                    var texture = new Texture { FileReference = fileRef };
-                    material.SetTransparencyTexture(texture);
-                }
-                else if (transparencyMap is Bitmap transBitmap)
-                {
-                    var texture = BitmapToTexture(transBitmap, true);
-                    if (texture != null)
-                    {
-                        material.SetTransparencyTexture(texture);
-                    }
-                }
-                else if (transparencyMap is GH_String transGhString)
-                {
-                    string path = transGhString.Value;
-                    if (File.Exists(path))
-                    {
-                        var fileRef = new FileReference(
-                            path,
-                            path,
-                            ContentHash.CreateFromFile(path),
-                            FileReferenceStatus.FullPathValid
-                        );
-                        var texture = new Texture { FileReference = fileRef };
-                        material.SetTransparencyTexture(texture);
-                    }
-                }
-                else if (transparencyMap is IGH_Goo)
-                {
-                    var goo = transparencyMap as IGH_Goo;
-                    if (goo.CastTo<Bitmap>(out Bitmap bmp))
-                    {
-                        var texture = BitmapToTexture(bmp, true);
-                        if (texture != null)
-                        {
-                            material.SetTransparencyTexture(texture);
-                        }
-                    }
-                }
+                material.SetTransparencyTexture(texture);
             }
         }
         

@@ -2,13 +2,11 @@
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Types;
-using Rhino.Display;
 using Rhino.DocObjects;
 using Rhino.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Windows.Documents;
 using Font = Rhino.DocObjects.Font;
 
 namespace Motion.Utils
