@@ -67,7 +67,7 @@ namespace Motion.UI
 
             if (values.Count != oldRanges.Count)
             {
-                MessageBox.Show("新值的数量必须与原始值的数量相同！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("新值的数量必���与原始值的数量相同！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -143,7 +143,7 @@ namespace Motion.UI
             for (int i = 0; i < values.Count - 1; i++)
             {
                 decimal maxValue = values[i + 1];
-                if (noOverlap)
+                if (noOverlap && i < values.Count - 2)
                 {
                     maxValue -= 1;
                 }
