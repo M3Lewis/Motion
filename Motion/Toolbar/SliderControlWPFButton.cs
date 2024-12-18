@@ -14,7 +14,7 @@ namespace Motion.Toolbar
     public class SliderControlWPFButton : MotionToolbarButton
     {
         private ToolStripButton button;
-        protected override int ToolbarOrder => 1;
+        protected override int ToolbarOrder => 5;
         public SliderControlWPFButton()
         {
             
