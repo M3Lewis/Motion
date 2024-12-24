@@ -49,7 +49,7 @@ namespace Motion.Toolbar
             button.Size = new System.Drawing.Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = null;// Resources.MotionSliderSettings; // 需要添加对应的图标
-            button.ToolTipText = "左键：切换秒数输入模式\n右键：设置每秒帧数";
+            button.ToolTipText = "鼠标左键：显示Slider帧数对应的时间\n鼠标右键：设置每秒帧数";
             button.Click += LeftClickButton;
             button.MouseDown += RightClickButton;
         }

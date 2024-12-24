@@ -80,19 +80,44 @@ namespace Motion.Toolbar
                     return;
                 }
 
-                if (selectedEventOp != null)
+                if (selectedEventOp == null)
                 {
-                    // 如果选中了 Event Operation，直接连接到现有组件
-                    foreach (var mapper in selectedMappers)
+                    // 尝试从同组中查找已连接的 EventOperation
+                    var group = GetCommonGroup(selectedMappers, new List<EventComponent>());
+                    if (group != null)
                     {
-                        selectedEventOp.Params.Input[0].AddSource(mapper);
+                        // 获取组内所有的 Graph Mappers
+                        var groupMappers = doc.Objects
+                            .Where(obj => group.ObjectIDs.Contains(obj.InstanceGuid))
+                            .OfType<GH_GraphMapper>()
+                            .ToList();
+
+                        // 查找组内已连接到 EventOperation 的 Graph Mapper
+                        foreach (var mapper in groupMappers)
+                        {
+                            var existingEventOp = mapper.Recipients
+                                .Select(r => r.Attributes.GetTopLevel.DocObject)
+                                .OfType<EventOperation>()
+                                .FirstOrDefault();
+
+                            if (existingEventOp != null)
+                            {
+                                // 将选中的 Graph Mappers 连接到找到的 EventOperation
+                                foreach (var selectedMapper in selectedMappers)
+                                {
+                                    if (!selectedMapper.Recipients.Any(r => 
+                                        r.Attributes.GetTopLevel.DocObject == existingEventOp))
+                                    {
+                                        existingEventOp.Params.Input[0].AddSource(selectedMapper);
+                                    }
+                                }
+                                doc.NewSolution(true);
+                                return;
+                            }
+                        }
                     }
-                    // 将新组件添加到现有组或创建新组
-                    AddToExistingGroupOrCreate(selectedEventOp, selectedMappers);
-                }
-                else
-                {
-                    // 如果没有选中 Event Operation，创建新的组件
+
+                    // 如果没有找到已连接的 EventOperation，创建新的组件
                     var eventOp = new EventOperation();
                     eventOp.CreateAttributes();
 
@@ -117,6 +142,16 @@ namespace Motion.Toolbar
                     CreateOrUpdateGroup(eventOp, selectedMappers);
 
                     doc.NewSolution(true);
+                }
+                else
+                {
+                    // 如果选中了 Event Operation，直接连接到现有组件
+                    foreach (var mapper in selectedMappers)
+                    {
+                        selectedEventOp.Params.Input[0].AddSource(mapper);
+                    }
+                    // 将新组件添加到现有组或创建新组
+                    AddToExistingGroupOrCreate(selectedEventOp, selectedMappers);
                 }
             }
             catch (Exception ex)

@@ -538,11 +538,41 @@ namespace Motion.Animation
 
             using (var brush = new SolidBrush(Color.DeepSkyBlue))
             {
-                float textX = Owner.Slider.Bounds.Left - GH_FontServer.StringWidth(rangeText, font) - 5;
-                float textY = Owner.Slider.Bounds.Top + (Owner.Slider.Bounds.Height - fontHeight) / 2;
-                graphics.DrawString(rangeText, font, brush, new PointF(textX, textY));
-            }
+                // 绘制帧数范围
+                float rangeTextX = Owner.Slider.Bounds.Left - GH_FontServer.StringWidth(rangeText, font) - 5;
+                float rangeTextY = Owner.Slider.Bounds.Top + (Owner.Slider.Bounds.Height - fontHeight) / 2;
+                graphics.DrawString(rangeText, font, brush, new PointF(rangeTextX, rangeTextY));
 
+                // 如果处于秒数输入模式，绘制秒数文本
+                if (Motion.Toolbar.MotionSliderSettings.IsSecondsInputMode())
+                {
+                    // 计算秒数
+                    double minSeconds = (double)Owner.Slider.Minimum / Motion.Toolbar.MotionSliderSettings.FramesPerSecond;
+                    double maxSeconds = (double)Owner.Slider.Maximum / Motion.Toolbar.MotionSliderSettings.FramesPerSecond;
+                    string secondsText = $"{minSeconds:F1}s-{maxSeconds:F1}s";
+
+                    // 创建秒数文本的边界
+                    var secondsTextBounds = new RectangleF(
+                        rangeTextX - 100,  // 在区间文本左侧100像素
+                        rangeTextY,
+                        95,  // 文本宽度
+                        fontHeight
+                    );
+
+                    // 绘制秒数文本
+                    graphics.DrawString(
+                        secondsText,
+                        GH_FontServer.Standard,
+                        brush,
+                        secondsTextBounds,
+                        new StringFormat()
+                        {
+                            Alignment = StringAlignment.Far,  // 右对齐
+                            LineAlignment = StringAlignment.Center
+                        }
+                    );
+                }
+            }
         }
     }
 
@@ -605,7 +635,7 @@ namespace Motion.Animation
     //        {
     //            // 绘制锁定状态的边框
     //            RectangleF bounds = Owner.Slider.Bounds;
-    //            bounds.Inflate(2, 2); // 扩大边框范围
+    //            bounds.Inflate(2, 2); // 扩大���框范围
 
     //            // 创建虚线画笔
     //            using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))

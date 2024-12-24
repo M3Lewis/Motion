@@ -107,11 +107,11 @@ namespace Motion.Export
 
                     if (UseCustomRange)
                     {
-                        RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex + (int)CustomRange.Min} of {(int)CustomRange.Min}-{(int)CustomRange.Max}. Total:{(int)CustomRange.Max - (int)CustomRange.Min + 1} Time left: {EstimateTimeLeft(ticks)}s";
+                        RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex + (int)CustomRange.Min} of {(int)CustomRange.Min}-{(int)CustomRange.Max}. | Total:{(int)CustomRange.Max - (int)CustomRange.Min + 1} | Time left: {EstimateTimeLeftFormatted(ticks)}";
                     }
                     else
                     {
-                        RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex} of {m_owner.Slider.Minimum}-{m_owner.Slider.Maximum}. Total:{m_owner.Slider.Maximum - m_owner.Slider.Minimum + 1} Time left: {EstimateTimeLeft(ticks)}s";
+                        RhinoApp.CommandPrompt = $"Generating frame {m_frameIndex} of {m_owner.Slider.Minimum}-{m_owner.Slider.Maximum}. | Total:{m_owner.Slider.Maximum - m_owner.Slider.Minimum + 1} | Time left: {EstimateTimeLeftFormatted(ticks)}";
                     }
 
                     // sliderֵ
@@ -221,6 +221,18 @@ namespace Motion.Export
             }
 
             return viewCapture.CaptureToBitmap(myView);
+        }
+
+        private string EstimateTimeLeftFormatted(long t_Start)
+        {
+            checked
+            {
+                long num = Convert.ToInt64((double)(DateTime.Now.Ticks - t_Start) / (double)(m_frameIndex + 1));
+                double totalSeconds = Math.Round(new TimeSpan(Convert.ToInt64((m_frameCount - m_frameIndex) * num)).TotalSeconds * 0.2, 0) * 5.0;
+                int minutes = (int)(totalSeconds / 60);
+                int seconds = (int)(totalSeconds % 60);
+                return $"{minutes}m{seconds}s";
+            }
         }
     }
 }

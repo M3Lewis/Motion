@@ -194,6 +194,10 @@ namespace Motion.Export
 
             views.RedrawEnabled = true;
 
+            // 添加计时器
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
             try 
             {
                 bool wasAborted = false;
@@ -243,7 +247,7 @@ namespace Motion.Export
 
                         if (parameters.IsCycles && !isRaytracedMode)
                         {
-                            this.Message = "请打开光线跟踪模式!";
+                            this.Message = "请打开光线跟踪(Raytraced)模式!";
                             return;
                         }
 
@@ -258,17 +262,31 @@ namespace Motion.Export
                             updateProgress
                         );
 
-                        this.Message = wasAborted ? "Render Cancelled!" : "Render Finished!";
+                        if (wasAborted)
+                        {
+                            this.Message = $"Render Cancelled!\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
+                            RhinoApp.WriteLine($"Render cancelled at {DateTime.Now:HH:mm:ss}");
+                        }
+                        else
+                        {
+                            this.Message = $"Render Finished!\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
+                            RhinoApp.WriteLine($"Render finished at {DateTime.Now:HH:mm:ss}");
+                        }
                     }));
                 });
             }
             catch (OperationCanceledException)
             {
-                this.Message = "Render Cancelled!";
+                stopwatch.Stop();
+                this.Message = $"Render Cancelled!\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
+                RhinoApp.WriteLine($"Render cancelled at {DateTime.Now:HH:mm:ss}");
             }
             catch (Exception ex)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"渲染过程出错: {ex.Message}");
+                stopwatch.Stop();
+                this.Message = $"Error: {ex.Message}\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
+                RhinoApp.WriteLine($"Render error occured at {DateTime.Now:HH:mm:ss}");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Render error occured: {ex.Message}");
             }
         }
 
@@ -377,6 +395,23 @@ namespace Motion.Export
                 
                 // 强制更新组件
                 ExpireSolution(true);
+            }
+        }
+
+        // 添加格式化时间的辅助方法
+        private string FormatTimeSpan(TimeSpan timeSpan)
+        {
+            if (timeSpan.TotalHours >= 1)
+            {
+                return $"{(int)timeSpan.TotalHours}h{timeSpan.Minutes}m{timeSpan.Seconds}s";
+            }
+            else if (timeSpan.TotalMinutes >= 1)
+            {
+                return $"{timeSpan.Minutes}m{timeSpan.Seconds}s";
+            }
+            else
+            {
+                return $"{timeSpan.Seconds}s";
             }
         }
     }
