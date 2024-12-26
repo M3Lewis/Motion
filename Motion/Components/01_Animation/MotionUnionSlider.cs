@@ -211,48 +211,42 @@ namespace Motion.Animation
 
             try
             {
-                // 尝试获取锁，如果无法立即获取则返回
+                // 尝试获取锁，如果无法立即获取则保存待更新值并返回
                 if (!await _updateLock.WaitAsync(0, cancellationToken))
+                {
+                    _pendingValue = value;
                     return;
+                }
 
                 _isRefreshing = true;
                 _isUpdating = true;
 
-                // 如果有新的待更新值，使用最新的值
-                decimal updateValue = _pendingValue != 0 ? _pendingValue : value;
-                _pendingValue = 0;
+                // 使用最新的值
+                decimal updateValue = value;
 
                 var slidersToUpdate = _controlledSliders
                     .Where(s => s?.Slider != null)
                     .ToList();
 
-                foreach (var slider in slidersToUpdate)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        return;
-
-                    // 在UI线程上更新滑块值
-                    await Task.Run(() =>
-                    {
-                        Grasshopper.Instances.ActiveCanvas?.BeginInvoke((MethodInvoker)delegate
-                        {
-                            slider.SetSliderValue(updateValue);
-                        });
-                    }, cancellationToken);
-                }
-
-                // 在UI线程上请求更新
-                if (!cancellationToken.IsCancellationRequested)
+                // 批量更新所有滑块
+                await Task.Run(() =>
                 {
                     Grasshopper.Instances.ActiveCanvas?.BeginInvoke((MethodInvoker)delegate
                     {
                         foreach (var slider in slidersToUpdate)
                         {
-                            slider.ExpireSolution(true);
+                            if (cancellationToken.IsCancellationRequested) return;
+                            slider.SetSliderValue(updateValue);
+                        }
+
+                        // 一次性触发所有滑块的更新
+                        foreach (var slider in slidersToUpdate)
+                        {
+                            slider.ExpireSolution(false);
                         }
                         this.ExpireSolution(true);
                     });
-                }
+                }, cancellationToken);
             }
             finally
             {
@@ -264,7 +258,7 @@ namespace Motion.Animation
 
         public async void UnionSlider_ValueChanged(object sender, GH_SliderEventArgs e)
         {
-            if (_isUpdatingRange||_isRestoringState) return;
+            if (_isUpdatingRange || _isRestoringState) return;
 
             try
             {
@@ -273,15 +267,7 @@ namespace Motion.Animation
                 _updateCancellation.Dispose();
                 _updateCancellation = new CancellationTokenSource();
 
-                // 如果正在更新，存储新值
-                if (_isUpdating)
-                {
-                    _pendingValue = Slider.Value;
-                    return;
-                }
-
-                // 延迟执行更新
-                await Task.Delay(UPDATE_DELAY, _updateCancellation.Token);
+                // 移除延迟，直接执行更新
                 await UpdateControlledSlidersAsync(Slider.Value, _updateCancellation.Token);
             }
             catch (OperationCanceledException)
@@ -559,7 +545,7 @@ namespace Motion.Animation
                         fontHeight
                     );
 
-                    // 绘制秒数文本
+                    // 绘制秒数��本
                     graphics.DrawString(
                         secondsText,
                         GH_FontServer.Standard,
@@ -635,7 +621,7 @@ namespace Motion.Animation
     //        {
     //            // 绘制锁定状态的边框
     //            RectangleF bounds = Owner.Slider.Bounds;
-    //            bounds.Inflate(2, 2); // 扩大���框范围
+    //            bounds.Inflate(2, 2); // 扩大框范围
 
     //            // 创建虚线画笔
     //            using (Pen lockPen = new Pen(Color.FromArgb(128, 41, 171, 173), 1f))

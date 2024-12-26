@@ -5,6 +5,37 @@
         Topmost="True"
         xmlns:local="clr-namespace:Motion.Toolbar">
 
+    <Window.Resources>
+        <Style x:Key="AutoUpdateButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#EEEEEE"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#DDDDDD"/>
+                            </Trigger>
+                            <Trigger Property="Tag" Value="Active">
+                                <Setter Property="Background" Value="#90CAF9"/>
+                                <Setter Property="BorderBrush" Value="#1976D2"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -42,20 +73,30 @@
 
         <Button x:Name="minusButton" 
                 Content="-" 
-                PreviewMouseDown="Button_PreviewMouseDown"
-                PreviewMouseUp="Button_PreviewMouseUp"
                 Click="MinusButton_Click"
+                MouseRightButtonDown="MinusButton_Click"
+                Style="{StaticResource AutoUpdateButtonStyle}"
                 Margin="5" 
                 Grid.Row="2" 
-                Grid.Column="0"/>
+                Grid.Column="0">
+            <Button.ToolTip>
+                左键点击: 减少1帧
+                右键点击: 开始/停止自动递减
+            </Button.ToolTip>
+        </Button>
         <Button x:Name="plusButton" 
                 Content="+" 
-                PreviewMouseDown="Button_PreviewMouseDown"
-                PreviewMouseUp="Button_PreviewMouseUp"
                 Click="PlusButton_Click"
+                MouseRightButtonDown="PlusButton_Click"
+                Style="{StaticResource AutoUpdateButtonStyle}"
                 Margin="5" 
                 Grid.Row="2" 
-                Grid.Column="1"/>
+                Grid.Column="1">
+            <Button.ToolTip>
+                左键点击: 增加1帧
+                右键点击: 开始/停止自动递增
+            </Button.ToolTip>
+        </Button>
         <Button x:Name="minButton" 
                 Content="MIN" 
                 Click="MinButton_Click" 

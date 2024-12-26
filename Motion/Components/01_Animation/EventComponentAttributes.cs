@@ -23,11 +23,9 @@ namespace Motion.Animation
         // 按钮相关字段
         private RectangleF hideButtonBounds;
         private RectangleF lockButtonBounds;
-        private RectangleF collapseButtonBounds;
 
         public bool HideButtonDown;
         public bool LockButtonDown;
-        public bool CollapseButtonDown;
 
         private readonly int ButtonWidth = 18;
         private readonly int ButtonHeight = 18;
@@ -49,30 +47,23 @@ namespace Motion.Animation
             float buttonHeight = 20.0f;
             float spacing = 1f;
 
-            // 添加按钮布局
-            hideButtonBounds = new RectangleF(
-                Bounds.X,
-                Bounds.Bottom + spacing,
-                Bounds.Width,
-                buttonHeight);
-            hideButtonBounds.Inflate(-1.0f, -1.0f);
-
-            lockButtonBounds = new RectangleF(
-                Bounds.X,
-                Bounds.Bottom + buttonHeight + spacing,
-                Bounds.Width,
-                buttonHeight);
-            lockButtonBounds.Inflate(-1.0f, -1.0f);
-
-            // 添加折叠按钮布局（在右上角）
-            collapseButtonBounds = new RectangleF(
-                Bounds.Right - 34,
-                Bounds.Y + 2,
-                9,
-                9);
-
-            if (!IsCollapsed)
+            // 只在未折叠时添加按钮布局
+            if (!eventComponent.IsCollapsed)
             {
+                hideButtonBounds = new RectangleF(
+                    Bounds.X,
+                    Bounds.Bottom + spacing,
+                    Bounds.Width,
+                    buttonHeight);
+                hideButtonBounds.Inflate(-1.0f, -1.0f);
+
+                lockButtonBounds = new RectangleF(
+                    Bounds.X,
+                    Bounds.Bottom + buttonHeight + spacing,
+                    Bounds.Width,
+                    buttonHeight);
+                lockButtonBounds.Inflate(-1.0f, -1.0f);
+
                 // 扩展边界以包含所有按钮
                 var buttonArea = RectangleF.Union(hideButtonBounds, lockButtonBounds);
                 buttonArea.Inflate(2.0f, 2.0f);
@@ -89,136 +80,118 @@ namespace Motion.Animation
                 var owner = Owner as EventComponent;
                 if (owner == null) return;
 
-                // 如果开启了空值模式菜单，显示提示文字
-                if (owner.UseEmptyValueMode)
+                // 只在未折叠时渲染按钮
+                if (!owner.IsCollapsed)
                 {
-                    // 计算文字位置（在组件上方）
-                    var textBounds = new RectangleF(
-                        Bounds.X,
-                        Bounds.Y - 20, // 在组件上方20个像素
-                        Bounds.Width,
-                        20
-                    );
-
-                    // 使用半透明的背景色
-                    using (var brush = new SolidBrush(Color.FromArgb(80, Color.Black)))
+                    // 如果开启了空值模式菜单，显示提示文字
+                    if (owner.UseEmptyValueMode)
                     {
-                        graphics.FillRectangle(brush, textBounds);
-                    }
+                        // 计算文字位置（在组件上方）
+                        var textBounds = new RectangleF(
+                            Bounds.X,
+                            Bounds.Y - 20, // 在组件上方20个像素
+                            Bounds.Width,
+                            20
+                        );
 
-                    // 绘制文字
-                    graphics.DrawString(
-                        EmptyModeText,
-                        GH_FontServer.Standard,
-                        Brushes.White,
-                        textBounds,
-                        new StringFormat()
+                        // 使用半透明的背景色
+                        using (var brush = new SolidBrush(Color.FromArgb(80, Color.Black)))
                         {
-                            Alignment = StringAlignment.Center,
-                            LineAlignment = StringAlignment.Center
-                        }
-                    );
-                }
-
-                // 只在鼠标悬停时绘制范围框
-                if (mouseOver && owner?.affectedObjects != null && owner.affectedObjects.Any())
-                {
-                    // 根据状态决定边框颜色
-                    Color boundaryColor;
-
-                    // 获取原始颜色
-                    Color orange = Color.Orange;
-                    Color dodgerBlue = Color.DodgerBlue;
-                    Color limeGreen = Color.LimeGreen;
-
-                    // 创建 Alpha 值为一半的新颜色
-                    Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
-                    Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
-                    Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
-
-                    if (owner.HideWhenEmpty && owner.LockWhenEmpty)
-                    {
-                        boundaryColor = orangeWithLessAlpha;
-                    }
-                    else if (owner.HideWhenEmpty)
-                    {
-                        boundaryColor = dodgerBlueWithLessAlpha;
-                    }
-                    else if (owner.LockWhenEmpty)
-                    {
-                        boundaryColor = limeGreenWithLessAlpha;
-                    }
-                    else
-                    {
-                        boundaryColor = Color.Transparent;
-                    }
-
-                    // 绘制范围框
-                    foreach (var obj in owner.affectedObjects)
-                    {
-                        if (obj?.Attributes != null)
-                        {
-                            var objBounds = obj.Attributes.Bounds;
-                            objBounds.Inflate(5f, 5f);
-                            DrawBoundary(graphics, objBounds, boundaryColor);
-                            DrawGuideLine(graphics, Owner.Attributes.Bounds, objBounds, boundaryColor);
-                        }
-                    }
-                }
-
-
-                if (owner != null)
-                {
-                    // 渲染折叠按钮
-
-
-                    graphics.DrawString(
-                    IsCollapsed ? "▾" : "▴",
-                    GH_FontServer.Large,
-                    Brushes.LightBlue,
-                    collapseButtonBounds,
-                    new StringFormat()
-                    {
-                        Alignment = StringAlignment.Center,
-                        LineAlignment = StringAlignment.Center
-                    });
-
-                    // 只在未折叠时渲染其他按钮
-                    if (!IsCollapsed)
-                    {
-                        // Hide 按钮
-                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(hideButtonBounds,
-                            owner.HideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                        {
-                            capsule.Render(graphics, Selected, Owner.Locked, false);
-                            graphics.DrawString(
-                                "Hide",
-                                GH_FontServer.StandardBold,
-                                Brushes.White,
-                                hideButtonBounds,
-                                new StringFormat()
-                                {
-                                    Alignment = StringAlignment.Center,
-                                    LineAlignment = StringAlignment.Center
-                                });
+                            graphics.FillRectangle(brush, textBounds);
                         }
 
-                        // Lock 按钮
-                        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(lockButtonBounds,
-                            owner.LockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                        // 绘制文字
+                        graphics.DrawString(
+                            EmptyModeText,
+                            GH_FontServer.Standard,
+                            Brushes.White,
+                            textBounds,
+                            new StringFormat()
+                            {
+                                Alignment = StringAlignment.Center,
+                                LineAlignment = StringAlignment.Center
+                            }
+                        );
+                    }
+
+                    // 只在鼠标悬停时绘制范围框
+                    if (mouseOver && owner?.affectedObjects != null && owner.affectedObjects.Any())
+                    {
+                        // 根据状态决定边框颜色
+                        Color boundaryColor;
+
+                        // 获取原始颜色
+                        Color orange = Color.Orange;
+                        Color dodgerBlue = Color.DodgerBlue;
+                        Color limeGreen = Color.LimeGreen;
+
+                        // 创建 Alpha 值为一半的新颜色
+                        Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
+                        Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
+                        Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
+
+                        if (owner.HideWhenEmpty && owner.LockWhenEmpty)
                         {
-                            capsule.Render(graphics, Selected, Owner.Locked, false);
-                            graphics.DrawString(
-                                "Lock",
-                                GH_FontServer.StandardBold,
-                                Brushes.White,
-                                lockButtonBounds,
-                                new StringFormat()
-                                {
-                                    Alignment = StringAlignment.Center,
-                                    LineAlignment = StringAlignment.Center
-                                });
+                            boundaryColor = orangeWithLessAlpha;
                         }
+                        else if (owner.HideWhenEmpty)
+                        {
+                            boundaryColor = dodgerBlueWithLessAlpha;
+                        }
+                        else if (owner.LockWhenEmpty)
+                        {
+                            boundaryColor = limeGreenWithLessAlpha;
+                        }
+                        else
+                        {
+                            boundaryColor = Color.Transparent;
+                        }
+
+                        // 绘制范围框
+                        foreach (var obj in owner.affectedObjects)
+                        {
+                            if (obj?.Attributes != null)
+                            {
+                                var objBounds = obj.Attributes.Bounds;
+                                objBounds.Inflate(5f, 5f);
+                                DrawBoundary(graphics, objBounds, boundaryColor);
+                                DrawGuideLine(graphics, Owner.Attributes.Bounds, objBounds, boundaryColor);
+                            }
+                        }
+                    }
+
+                    // Hide 按钮
+                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(hideButtonBounds,
+                        owner.HideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                    {
+                        capsule.Render(graphics, Selected, Owner.Locked, false);
+                        graphics.DrawString(
+                            "Hide",
+                            GH_FontServer.StandardBold,
+                            Brushes.White,
+                            hideButtonBounds,
+                            new StringFormat()
+                            {
+                                Alignment = StringAlignment.Center,
+                                LineAlignment = StringAlignment.Center
+                            });
+                    }
+
+                    // Lock 按钮
+                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(lockButtonBounds,
+                        owner.LockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
+                    {
+                        capsule.Render(graphics, Selected, Owner.Locked, false);
+                        graphics.DrawString(
+                            "Lock",
+                            GH_FontServer.StandardBold,
+                            Brushes.White,
+                            lockButtonBounds,
+                            new StringFormat()
+                            {
+                                Alignment = StringAlignment.Center,
+                                LineAlignment = StringAlignment.Center
+                            });
                     }
                 }
             }
@@ -248,7 +221,7 @@ namespace Motion.Animation
                 );
 
                 
-                // 计算终点（受影响组件的中心���）
+                // 计算终点（受影响组件的中心点）
                 PointF endPoint = new PointF(
                     affectComponentBounds.Left + affectComponentBounds.Width / 2,
                     affectComponentBounds.Top + affectComponentBounds.Height / 2
@@ -275,12 +248,6 @@ namespace Motion.Animation
             {
                 if (e.Button == MouseButtons.Left)
                 {
-                    if (collapseButtonBounds.Contains(e.CanvasLocation))
-                    {
-                        CollapseButtonDown = true;
-                        sender.Refresh();
-                        return GH_ObjectResponse.Capture;
-                    }
                     if (hideButtonBounds.Contains(e.CanvasLocation))
                     {
                         HideButtonDown = true;
@@ -341,67 +308,68 @@ namespace Motion.Animation
             if (owner == null)
                 return base.RespondToMouseUp(sender, e);
 
-            if (CollapseButtonDown)
-            {
-                return HandleCollapseButton(sender, e, owner);
-            }
-
             if (HideButtonDown)
             {
-                return HandleHideButton(sender, e, owner);
+                HideButtonDown = false;
+                sender.Refresh();
+
+                if (!hideButtonBounds.Contains(e.CanvasLocation))
+                    return GH_ObjectResponse.Release;
+
+                UpdateAffectedObjects(sender, owner);
+                owner.HideWhenEmpty = !owner.HideWhenEmpty;
+                owner.UpdateGroupVisibilityAndLock();
+                sender.Refresh();
+                return GH_ObjectResponse.Release;
             }
 
             if (LockButtonDown)
             {
-                return HandleLockButton(sender, e, owner);
+                LockButtonDown = false;
+                sender.Refresh();
+
+                if (!lockButtonBounds.Contains(e.CanvasLocation))
+                    return GH_ObjectResponse.Release;
+
+                if (!UpdateAffectedObjects(sender, owner) && !owner.affectedObjects.Any())
+                    return GH_ObjectResponse.Release;
+
+                owner.LockWhenEmpty = !owner.LockWhenEmpty;
+                owner.UpdateGroupVisibilityAndLock();
+                sender.Refresh();
+                return GH_ObjectResponse.Release;
             }
 
             return base.RespondToMouseUp(sender, e);
         }
 
-        private GH_ObjectResponse HandleCollapseButton(GH_Canvas sender, GH_CanvasMouseEvent e, EventComponent owner)
+        // 添加双击事件处理
+        public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            CollapseButtonDown = false;
-            if (!collapseButtonBounds.Contains(e.CanvasLocation))
-                return GH_ObjectResponse.Release;
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+            {
+                var owner = Owner as EventComponent;
+                if (owner == null) return GH_ObjectResponse.Ignore;
 
-            IsCollapsed = !IsCollapsed;
-            ExpireLayout();
-            sender.Refresh();
-            return GH_ObjectResponse.Release;
+                // 执行跳转到 EventOperation 的逻辑
+                if (owner.Params.Output[0].Recipients.Count == 0) return GH_ObjectResponse.Ignore;
+
+                foreach (var recipient in owner.Params.Output[0].Recipients)
+                {
+                    var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
+                    if (graphMapper?.Recipients.Count == 0) continue;
+
+                    var eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                    if (eventOperation == null) continue;
+
+                    // 跳转到 EventOperation
+                    owner.GoComponent(eventOperation);
+                    return GH_ObjectResponse.Handled;
+                }
+            }
+            return base.RespondToMouseDoubleClick(sender, e);
         }
-
-        private GH_ObjectResponse HandleHideButton(GH_Canvas sender, GH_CanvasMouseEvent e, EventComponent owner)
-        {
-            HideButtonDown = false;
-            sender.Refresh();
-
-            if (!hideButtonBounds.Contains(e.CanvasLocation))
-                return GH_ObjectResponse.Release;
-
-            UpdateAffectedObjects(sender, owner);
-            owner.HideWhenEmpty = !owner.HideWhenEmpty;
-            owner.UpdateGroupVisibilityAndLock();
-            sender.Refresh();
-            return GH_ObjectResponse.Release;
-        }
-
-        private GH_ObjectResponse HandleLockButton(GH_Canvas sender, GH_CanvasMouseEvent e, EventComponent owner)
-        {
-            LockButtonDown = false;
-            sender.Refresh();
-
-            if (!lockButtonBounds.Contains(e.CanvasLocation))
-                return GH_ObjectResponse.Release;
-
-            if (!UpdateAffectedObjects(sender, owner) && !owner.affectedObjects.Any())
-                return GH_ObjectResponse.Release;
-
-            owner.LockWhenEmpty = !owner.LockWhenEmpty;
-            owner.UpdateGroupVisibilityAndLock();
-            sender.Refresh();
-            return GH_ObjectResponse.Release;
-        }
+        
         public void SetCollapsedState(bool state)
         {
             _isCollapsed = state;

@@ -25,6 +25,9 @@ namespace Motion.Animation
         internal List<IGH_DocumentObject> affectedObjects = new List<IGH_DocumentObject>();
         public bool UseEmptyValueMode { get; private set; } = false;  // 是否使用空值模式
 
+        // 检查是否有连接的 EventOperation
+        private bool _hasEventOperation = false;
+
         private bool _hideWhenEmpty = false;
         public bool HideWhenEmpty
         {
@@ -169,37 +172,15 @@ namespace Motion.Animation
             // 添加分隔线和跳转选项
             Menu_AppendSeparator(menu);
 
-            // 检查是否有连接的 EventOperation
-            var hasEventOperation = false;
-            IGH_DocumentObject targetOperation = null;
-
-            if (Params.Output[0].Recipients.Count == 0) return;
-
-            foreach (var recipient in Params.Output[0].Recipients)
-            {
-                var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                if (graphMapper?.Recipients.Count == 0) continue;
-
-                targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
-                if (targetOperation == null) continue;
-
-                hasEventOperation = true;
-                break;
-            }
-
-            // 添加跳转菜单项
-            var jumpItem = Menu_AppendItem(menu, "跳转到 EventOperation", OnJumpToOperation);
-            jumpItem.Enabled = hasEventOperation;
-            if (hasEventOperation)
-            {
-                jumpItem.ToolTipText = "跳转到关联的 EventOperation 组件";
-            }
-            else
-            {
-                jumpItem.ToolTipText = "没有找到关联的 EventOperation 组件";
-            }
+            // 添加显示/隐藏按钮的菜单项
+            var showHideItem = Menu_AppendItem(menu, 
+                IsCollapsed ? "显示HIDE/LOCK按钮" : "显示HIDE/LOCK按钮", 
+                OnShowHideButtonsClicked, 
+                true, 
+                !IsCollapsed);
 
             Menu_AppendSeparator(menu);
+
             // 添加模式切换选项
             var modeItem = Menu_AppendItem(menu, "空值模式", OnModeToggle, true, UseEmptyValueMode);
             modeItem.ToolTipText = "切换是否使用空值模式进行Hide/Lock控制";
@@ -303,6 +284,33 @@ namespace Motion.Animation
                     UpdateGroupVisibilityAndLock();
                 }
                 return;
+            }
+            IGH_DocumentObject targetOperation = null;
+
+            if (Params.Output[0].Recipients.Count == 0) return;
+
+            foreach (var recipient in Params.Output[0].Recipients)
+            {
+                var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
+                if (graphMapper?.Recipients.Count == 0)
+                {
+                    _hasEventOperation = false;
+                    continue;
+                }
+
+                targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                if (targetOperation == null)
+                {
+                    _hasEventOperation = false;
+                    continue;
+                }
+
+                _hasEventOperation = true;
+                break;
+            }
+            if (!_hasEventOperation)
+            {
+                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "没有找到关联的 EventOperation 组件");
             }
 
             double time = 0;
@@ -1021,6 +1029,24 @@ namespace Motion.Animation
         private void EmptyModeMenuItem_Clicked(object sender, EventArgs e)
         {
             UseEmptyValueMode = !UseEmptyValueMode;
+            ExpireSolution(true);
+        }
+
+        // 添加折叠状态属性
+        private bool _isCollapsed = false;
+        public bool IsCollapsed
+        {
+            get => _isCollapsed;
+            set
+            {
+                _isCollapsed = value;
+                (Attributes as EventComponentAttributes)?.SetCollapsedState(value);
+            }
+        }
+
+        private void OnShowHideButtonsClicked(object sender, EventArgs e)
+        {
+            IsCollapsed = !IsCollapsed;
             ExpireSolution(true);
         }
     }

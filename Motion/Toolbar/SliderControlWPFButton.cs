@@ -70,8 +70,7 @@ namespace Motion.Toolbar
                     return;
                 }
 
-                SliderControlWPF window = new SliderControlWPF(connectedSlider as GH_NumberSlider);
-                window.Show();
+                SliderControlWPF.ShowWindow(connectedSlider as GH_NumberSlider);
             }
             catch (Exception ex)
             {

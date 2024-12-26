@@ -48,7 +48,7 @@ namespace Motion.Toolbar
             button.Name = "Modify Slider";
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            button.Image = Properties.Resources.SliderControlWPF; // 需要添加对应的图标
+            button.Image = Properties.Resources.ModifySliderButton; // 需要添加对应的图标
             button.ToolTipText = "修改Motion Slider";
             button.Click += Button_Click;
         }

@@ -67,7 +67,7 @@ namespace Motion.UI
 
             if (values.Count != oldRanges.Count)
             {
-                MessageBox.Show("新值的数量必���与原始值的数量相同！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("新值的数量必须与原始值的数量相同！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -187,11 +187,14 @@ namespace Motion.UI
             // 设置起始位置和间距
             double startX = centerX;
             double startY = centerY;
-            const double verticalSpacing = 50; // slider之间的垂直间距
+            const double verticalSpacing = 50;
 
             // 计算总数以确定起始Y坐标
             int totalSliders = ranges.Count();
             startY -= (totalSliders - 1) * verticalSpacing / 2;
+
+            // 查找现有的 MotionUnionSlider
+            var existingUnionSlider = doc.Objects.OfType<MotionUnionSlider>().FirstOrDefault();
 
             int index = 0;
             foreach (var (min, max) in ranges)
@@ -209,6 +212,9 @@ namespace Motion.UI
                 slider.Slider.Minimum = min;
                 slider.Slider.Maximum = max;
                 slider.Slider.Value = min;
+
+                // 如果存在 UnionSlider，建立控制关系
+                existingUnionSlider?.AddControlledSlider(slider);
 
                 index++;
             }

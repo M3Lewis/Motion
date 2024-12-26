@@ -256,7 +256,7 @@ namespace Motion.Toolbar
             group.CreateAttributes();
             
             // 设置组的名称和颜色
-            group.NickName = eventOp.NickName;  // 使用EventOperation的nickname
+            group.NickName = "Events";  // 使用EventOperation的nickname
             group.Colour = Color.FromArgb(60, 150, 150, 150);
 
             // 添加所有Graph Mappers到组

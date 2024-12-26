@@ -16,13 +16,17 @@ namespace Motion.Toolbar
         private static readonly Regex _numericRegex = new Regex("[^0-9-]+");
         private System.Windows.Threading.DispatcherTimer _timer;
         private bool _updatingFromTimer = false;
-        private const int UPDATE_DELAY = 16; // 约60fps
+        private const int UPDATE_DELAY = 16; // 保持60fps的更新频率
         private DateTime _lastUpdateTime = DateTime.Now;
         private bool _isDragging = false;
         private double _pendingValue = 0;
         private System.Windows.Threading.DispatcherTimer _updateTimer;
         private System.Windows.Threading.DispatcherTimer _buttonRepeatTimer;
         private System.Windows.Controls.Button _currentButton;
+        private bool _isAutoIncrementing = false;
+        private bool _isAutoDecrementing = false;
+        private System.Windows.Threading.DispatcherTimer _autoUpdateTimer;
+        private static SliderControlWPF _instance;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -63,10 +67,15 @@ namespace Motion.Toolbar
                     _value = roundedValue;
                     _pendingValue = roundedValue;
                     
-                    // 如果不是正在拖动，立即更新
+                    // 如果不是正在拖动，使用节流方式更新
                     if (!_isDragging)
                     {
-                        UpdateGHSlider(roundedValue);
+                        var now = DateTime.Now;
+                        if ((now - _lastUpdateTime).TotalMilliseconds >= UPDATE_DELAY)
+                        {
+                            UpdateGHSlider(roundedValue);
+                            _lastUpdateTime = now;
+                        }
                     }
                     
                     OnPropertyChanged(nameof(Value));
@@ -74,7 +83,45 @@ namespace Motion.Toolbar
             }
         }
 
-        public SliderControlWPF(GH_NumberSlider ghSlider)
+        public static void ShowWindow(GH_NumberSlider ghSlider)
+        {
+            if (_instance != null)
+            {
+                // 恢复窗口状态
+                if (_instance.WindowState == WindowState.Minimized)
+                {
+                    _instance.WindowState = WindowState.Normal;
+                }
+                
+                // 显示并激活窗口
+                _instance.Show();
+                _instance.Activate();
+                _instance.Focus();
+                
+                // 确保窗口置顶
+                _instance.Topmost = false;
+                _instance.Topmost = true;
+                
+                _instance.UpdateSlider(ghSlider);
+            }
+            else
+            {
+                _instance = new SliderControlWPF(ghSlider);
+                _instance.Show();
+                
+                _instance.Closed += (s, e) => _instance = null;
+            }
+        }
+
+        private void UpdateSlider(GH_NumberSlider ghSlider)
+        {
+            _ghSlider = ghSlider;
+            Min = Math.Round((double)_ghSlider.Slider.Minimum);
+            Max = Math.Round((double)_ghSlider.Slider.Maximum);
+            Value = Math.Round((double)_ghSlider.Slider.Value);
+        }
+
+        internal SliderControlWPF(GH_NumberSlider ghSlider)
         {
             InitializeComponent();
 
@@ -107,10 +154,16 @@ namespace Motion.Toolbar
             _timer.Tick += Timer_Tick;
             _timer.Start();
 
+            // 初始化自动更新计时器
+            _autoUpdateTimer = new System.Windows.Threading.DispatcherTimer();
+            _autoUpdateTimer.Interval = TimeSpan.FromMilliseconds(50); // 50ms 的更新间隔
+            _autoUpdateTimer.Tick += AutoUpdateTimer_Tick;
+
             this.Closed += (s, e) => 
             {
                 _timer.Stop();
                 _updateTimer.Stop();
+                _autoUpdateTimer.Stop(); // 添加新计时器的停止
             };
 
             this.Topmost = true;
@@ -162,13 +215,25 @@ namespace Motion.Toolbar
 
         private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            Value = e.NewValue;
+            if (_updatingFromTimer) return;
             
-            // 如果正在拖动，启动更新计时器
+            _pendingValue = e.NewValue;
+            
+            // 如果正在拖动，使用计时器延迟更新
             if (_isDragging)
             {
                 _updateTimer.Stop();
                 _updateTimer.Start();
+            }
+            else
+            {
+                // 非拖动状态下，使用节流方式更新
+                var now = DateTime.Now;
+                if ((now - _lastUpdateTime).TotalMilliseconds >= UPDATE_DELAY)
+                {
+                    UpdateGHSlider(e.NewValue);
+                    _lastUpdateTime = now;
+                }
             }
         }
 
@@ -215,14 +280,58 @@ namespace Motion.Toolbar
 
         private void PlusButton_Click(object sender, RoutedEventArgs e)
         {
-            if ((DateTime.Now - _lastUpdateTime).TotalMilliseconds < UPDATE_DELAY) return;
-            Value = Math.Min(Max, Value + 1);
+            // 检查是否是鼠标右键
+            if (e is MouseButtonEventArgs mouseEvent && mouseEvent.ChangedButton == MouseButton.Right)
+            {
+                _isAutoIncrementing = !_isAutoIncrementing;
+                _isAutoDecrementing = false;
+
+                // 更新按钮视觉状态
+                plusButton.Tag = _isAutoIncrementing ? "Active" : null;
+                minusButton.Tag = null;
+
+                if (_isAutoIncrementing)
+                {
+                    _autoUpdateTimer.Start();
+                }
+                else
+                {
+                    _autoUpdateTimer.Stop();
+                }
+            }
+            else if (!_isAutoIncrementing && !_isAutoDecrementing)
+            {
+                // 左键点击时的行为
+                Value = Math.Min(Max, Value + 1);
+            }
         }
 
         private void MinusButton_Click(object sender, RoutedEventArgs e)
         {
-            if ((DateTime.Now - _lastUpdateTime).TotalMilliseconds < UPDATE_DELAY) return;
-            Value = Math.Max(Min, Value - 1);
+            // 检查是否是鼠标右键
+            if (e is MouseButtonEventArgs mouseEvent && mouseEvent.ChangedButton == MouseButton.Right)
+            {
+                _isAutoDecrementing = !_isAutoDecrementing;
+                _isAutoIncrementing = false;
+
+                // 更新按钮视觉状态
+                minusButton.Tag = _isAutoDecrementing ? "Active" : null;
+                plusButton.Tag = null;
+
+                if (_isAutoDecrementing)
+                {
+                    _autoUpdateTimer.Start();
+                }
+                else
+                {
+                    _autoUpdateTimer.Stop();
+                }
+            }
+            else if (!_isAutoIncrementing && !_isAutoDecrementing)
+            {
+                // 左键点击时的行为
+                Value = Math.Max(Min, Value - 1);
+            }
         }
 
         private void MinButton_Click(object sender, RoutedEventArgs e)
@@ -240,7 +349,12 @@ namespace Motion.Toolbar
             _updateTimer.Stop();
             if (_isDragging)
             {
-                UpdateGHSlider(_pendingValue);
+                var now = DateTime.Now;
+                if ((now - _lastUpdateTime).TotalMilliseconds >= UPDATE_DELAY)
+                {
+                    UpdateGHSlider(_pendingValue);
+                    _lastUpdateTime = now;
+                }
             }
         }
 
@@ -248,45 +362,17 @@ namespace Motion.Toolbar
         {
             if (_ghSlider == null || _updatingFromTimer) return;
 
-            var now = DateTime.Now;
-            if ((now - _lastUpdateTime).TotalMilliseconds < UPDATE_DELAY) return;
-
             _ghSlider.Slider.Value = (decimal)value;
             _ghSlider.ExpireSolution(true);
-            _lastUpdateTime = now;
         }
 
-        private void Button_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        private void AutoUpdateTimer_Tick(object sender, EventArgs e)
         {
-            _currentButton = sender as System.Windows.Controls.Button;
-            
-            if (_buttonRepeatTimer == null)
-            {
-                _buttonRepeatTimer = new System.Windows.Threading.DispatcherTimer();
-                _buttonRepeatTimer.Tick += ButtonRepeatTimer_Tick;
-            }
-            
-            // 每次按下时都重新设置为初始延迟
-            _buttonRepeatTimer.Interval = TimeSpan.FromMilliseconds(750);
-            _buttonRepeatTimer.Start();
-        }
-
-        private void Button_PreviewMouseUp(object sender, MouseButtonEventArgs e)
-        {
-            _buttonRepeatTimer?.Stop();
-            _currentButton = null;
-        }
-
-        private void ButtonRepeatTimer_Tick(object sender, EventArgs e)
-        {
-            // 第一次触发后改为快速重复
-            _buttonRepeatTimer.Interval = TimeSpan.FromMilliseconds(50);
-            
-            if (_currentButton == plusButton)
+            if (_isAutoIncrementing)
             {
                 Value = Math.Min(Max, Value + 1);
             }
-            else if (_currentButton == minusButton)
+            else if (_isAutoDecrementing)
             {
                 Value = Math.Max(Min, Value - 1);
             }
