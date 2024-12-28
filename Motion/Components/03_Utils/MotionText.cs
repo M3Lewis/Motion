@@ -42,6 +42,7 @@ namespace Motion.Utils
             pManager.AddIntegerParameter("VAlignment", "VA", "垂直对齐", GH_ParamAccess.item, 3);
             pManager.AddColourParameter("Color", "C", "文字颜色（可输入多种颜色）", GH_ParamAccess.list, Color.White);
             pManager.AddNumberParameter("Spacing", "SP", "字符间距", GH_ParamAccess.item, 0.0);
+            pManager.AddNumberParameter("Offset", "O", "边界矩形的偏移距离", GH_ParamAccess.item, 0.0);
 
             // 设置可选参数
             pManager[2].Optional = true;
@@ -96,6 +97,7 @@ namespace Motion.Utils
         {
             pManager.AddMeshParameter("TextMesh", "M", "文字Mesh", GH_ParamAccess.tree);
             pManager.AddCurveParameter("TextCurves", "C", "文字的边缘线", GH_ParamAccess.tree);
+            pManager.AddRectangleParameter("BoundingBox", "B", "带偏移的边界矩形", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -111,6 +113,7 @@ namespace Motion.Utils
             int vAlign = 0;
             List<Color> color = new List<Color>();
             double spacing = 0.0;
+            double offsetDistance = 0.0;
 
             // 获取输入数据
             if (!DA.GetData(0, ref text)) return;
@@ -123,11 +126,12 @@ namespace Motion.Utils
             DA.GetData(7, ref vAlign);
             DA.GetDataList(8, color);
             DA.GetData(9, ref spacing);
+            DA.GetData(10, ref offsetDistance);
 
             // 创建字体
             Font rhinoFont = new Font(fontName, (Font.FontWeight)fontWeight, (Font.FontStyle)fontStyle, false, false);
 
-            // 创建 TextEntity 用于生成曲面
+            // 创建 TextEntity
             var textEntity = new TextEntity
             {
                 PlainText = text,
@@ -218,9 +222,13 @@ namespace Motion.Utils
                 }
             }
 
+            // 获取带偏移的边界矩形
+            Rectangle3d boundingRect = GetOffsetTextRectangle(curves,textEntity, offsetDistance);
+
             // 输出结果
             DA.SetDataTree(0, meshTree);
             DA.SetDataTree(1, curveTree);
+            DA.SetData(2, boundingRect);
         }
 
         private TextJustification GetTextJustification(int hAlign, int vAlign)
@@ -239,6 +247,45 @@ namespace Motion.Utils
             justification |= (TextJustification)vAlign;
 
             return justification;
+        }
+
+        private Rectangle3d GetOffsetTextRectangle(Curve[] curves, TextEntity textEntity, double offsetDistance)
+        {
+            if (curves == null || curves.Length == 0) return Rectangle3d.Unset;
+
+            // 使用文字的平面来获取边界框，这样可以保证边界框与文字方向一致
+            Plane textPlane = textEntity.Plane;
+
+            // 从第一条曲线开始初始化边界区间
+            Box firstBoundingBox = new Box(curves[0].GetBoundingBox(textPlane));
+            Interval boundX = firstBoundingBox.X;  // X方向的区间
+            Interval boundY = firstBoundingBox.Y;  // Y方向的区间
+
+            // 如果有多条曲线，扩展边界区间以包含所有曲线
+            if (curves.Length > 1)
+            {
+                for (int i = 1; i < curves.Length; i++)
+                {
+                    Box currentBoundingBox = new Box(curves[i].GetBoundingBox(textPlane));
+                    
+                    // 扩展X方向的区间
+                    boundX.T0 = Math.Min(boundX.T0, currentBoundingBox.X.T0);  // 更新最小X
+                    boundX.T1 = Math.Max(boundX.T1, currentBoundingBox.X.T1);  // 更新最大X
+                    
+                    // 扩展Y方向的区间
+                    boundY.T0 = Math.Min(boundY.T0, currentBoundingBox.Y.T0);  // 更新最小Y
+                    boundY.T1 = Math.Max(boundY.T1, currentBoundingBox.Y.T1);  // 更新最大Y
+                }
+            }
+
+            // 向四周扩展边界，添加偏移距离
+            boundX.T0 -= offsetDistance;  // 左边界向外扩展
+            boundX.T1 += offsetDistance;  // 右边界向外扩展
+            boundY.T0 -= offsetDistance;  // 下边界向外扩展
+            boundY.T1 += offsetDistance;  // 上边界向外扩展
+
+            // 使用文字的平面和扩展后的边界区间创建矩形
+            return new Rectangle3d(textPlane, boundX, boundY);
         }
 
         public override GH_Exposure Exposure => GH_Exposure.quarternary;
