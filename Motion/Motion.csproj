@@ -18,7 +18,7 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>0.7.4</Version>
+    <Version>0.7.5</Version>
     <Title>Motion</Title>
     <Company>M3_Lewis</Company>
     <Description>Make GH Animation much easier</Description>

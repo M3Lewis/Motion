@@ -50,6 +50,7 @@ namespace Motion.UI
                 : GenerateSequentialRanges(values, NoOverlap.IsChecked == true);
 
             CreateMotionSliders(ranges);
+            Close();
         }
 
         private void ReplaceRanges_Click(object sender, RoutedEventArgs e)
@@ -82,6 +83,8 @@ namespace Motion.UI
                 slider.Slider.Maximum = mapping[slider.Slider.Maximum];
                 slider.ExpireSolution(true);
             }
+
+            Close();
         }
 
         private void MergeSliders_Click(object sender, RoutedEventArgs e)
@@ -92,6 +95,7 @@ namespace Motion.UI
             var maxValue = _selectedSliders.Max(s => s.Slider.Maximum);
 
             CreateMotionSliders(new[] { (minValue, maxValue) });
+            Close();
         }
 
         private void SplitSlider_Click(object sender, RoutedEventArgs e)
@@ -114,6 +118,7 @@ namespace Motion.UI
                 : GenerateSequentialRanges(values, SplitNoOverlap.IsChecked == true);
 
             CreateMotionSliders(ranges);
+            Close();
         }
 
         private List<decimal> ParseValues(string input)

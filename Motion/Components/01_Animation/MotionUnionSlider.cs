@@ -43,6 +43,13 @@ namespace Motion.Animation
 
         public MotionUnionSlider() : base()
         {
+            NickName = "TimeLine(Union)";
+            Name = "Motion Union Slider";
+            Description = "统一控制多个Motion Slider的主控滑块。\n" +
+                         "可以自动连接到所有Event Operation的时间输入端。";
+            Category = "Motion";
+            SubCategory = "01_Animation";
+
             Instance = this;
             SetupEvents();
             this.Slider.ValueChanged += UnionSlider_ValueChanged;
@@ -51,6 +58,13 @@ namespace Motion.Animation
 
         public MotionUnionSlider(decimal minimum, decimal maximum) : base(minimum, maximum)
         {
+            NickName = "TimeLine(Union)";
+            Name = "Motion Union Slider";
+            Description = "统一控制多个Motion Slider的主控滑块。\n" +
+                         "可以自动连接到所有Event Operation的时间输入端。";
+            Category = "Motion";
+            SubCategory = "01_Animation";
+
             Instance = this;
             SetupEvents();
             this.Slider.ValueChanged += UnionSlider_ValueChanged;
