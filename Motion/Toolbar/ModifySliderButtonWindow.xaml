@@ -23,7 +23,7 @@
         </GroupBox>
 
         <!-- 替换区间部分 -->
-        <GroupBox Grid.Row="1" Header="替换区间" Margin="0,0,0,10">
+        <GroupBox Grid.Row="1" Header="替换Slider区间" Margin="0,0,0,10">
             <StackPanel>
                 <TextBox x:Name="ReplaceValues" Margin="0,5"
                          IsEnabled="{Binding HasSelectedSliders}"/>
@@ -34,7 +34,7 @@
 
         <!-- 合并部分 -->
         <GroupBox Grid.Row="2" Header="合并Slider" Margin="0,0,0,10">
-            <Button Content="合并选中的Slider" Click="MergeSliders_Click"
+            <Button Content="合并" Click="MergeSliders_Click"
                     IsEnabled="{Binding HasSelectedSliders}"/>
         </GroupBox>
 

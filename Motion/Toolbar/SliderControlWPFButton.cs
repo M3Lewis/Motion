@@ -4,7 +4,6 @@ using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -59,22 +58,28 @@ namespace Motion.Toolbar
         {
             try
             {
-                // 使用 FirstOrDefault 替代 ToList()[0]
-                var connectedSlider = Instances.ActiveCanvas.Document.Objects
-                    .FirstOrDefault((IGH_DocumentObject o) => 
-                        Grasshopper.Utility.LikeOperator(o.NickName, "TimeLine(Union)"));
-
-                if (connectedSlider == null)
+                var doc = Instances.ActiveCanvas?.Document;
+                if (doc == null)
                 {
-                    MessageBox.Show("Please create a union slider first!");
+                    MessageBox.Show("无法访问当前文档！");
                     return;
                 }
 
-                SliderControlWPF.ShowWindow(connectedSlider as GH_NumberSlider);
+                var connectedSlider = doc.Objects
+                    .OfType<GH_NumberSlider>()
+                    .FirstOrDefault(o => Grasshopper.Utility.LikeOperator(o.NickName, "TimeLine(Union)"));
+
+                if (connectedSlider == null)
+                {
+                    MessageBox.Show("请先创建一个Union滑块！");
+                    return;
+                }
+
+                SliderControlWPF.ShowWindow(connectedSlider);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}");
+                MessageBox.Show($"发生错误：{ex.Message}");
             }
         }
     }

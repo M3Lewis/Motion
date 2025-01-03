@@ -79,40 +79,25 @@ namespace Motion.Toolbar
 
                 foreach (GH_NumberSlider timelineSlider in allTimelineSliders)
                 {
-                    bool isConnectedToSender = false;
-                    bool isUnionSlider = timelineSlider.NickName == "TimeLine(Union)";
-
-                    var range = new Interval((double)timelineSlider.Slider.Minimum, (double)timelineSlider.Slider.Maximum);
-                    var rangeStr = range.ToString();
-                    var splitStr = rangeStr.Split(',');
-                    var potentialNickname = string.Join("-", splitStr);
-
-                    var existingSender = doc.Objects
-                        .OfType<MotionSender>()
-                        .FirstOrDefault(s => s.NickName == potentialNickname);
-
-                    if (existingSender != null)
-                    {
+                    if (timelineSlider.NickName == "TimeLine(Union)")
                         continue;
-                    }
 
-                    foreach (var recipient in timelineSlider.Recipients)
-                    {
-                        if (recipient is MotionSender)
-                        {
-                            isConnectedToSender = true;
-                            break;
-                        }
-                    }
+                    bool isConnectedToSender = timelineSlider.Recipients
+                        .Any(recipient => recipient is MotionSender);
 
-                    if (isConnectedToSender || isUnionSlider) continue;
+                    if (isConnectedToSender)
+                        continue;
 
                     MotionSender remoteSender = new MotionSender();
                     doc.AddObject(remoteSender, false);
 
+                    var range = new Interval((double)timelineSlider.Slider.Minimum, (double)timelineSlider.Slider.Maximum);
+                    remoteSender.NickName = $"{range.T0}-{range.T1}";
+
                     PointF sliderPivot = timelineSlider.Attributes.Pivot;
-                    float offsetY = timelineSlider.Attributes.Bounds.Height / 2;
-                    remoteSender.Attributes.Pivot = new PointF(uniformX, sliderPivot.Y + offsetY);
+                    float sliderHeight = timelineSlider.Attributes.Bounds.Height;
+                    
+                    remoteSender.Attributes.Pivot = new PointF(uniformX, sliderPivot.Y + sliderHeight/2);
 
                     remoteSender.AddSource(timelineSlider);
                 }

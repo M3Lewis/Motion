@@ -11,8 +11,6 @@ namespace Motion.Toolbar
     {
         private GH_NumberSlider _ghSlider;
         private double _value;
-        private double _min;
-        private double _max;
         private static readonly Regex _numericRegex = new Regex("[^0-9-]+");
         private System.Windows.Threading.DispatcherTimer _timer;
         private bool _updatingFromTimer = false;
@@ -30,32 +28,6 @@ namespace Motion.Toolbar
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public double Min
-        {
-            get => _min;
-            private set
-            {
-                if (Math.Abs(_min - value) > double.Epsilon)
-                {
-                    _min = value;
-                    OnPropertyChanged(nameof(Min));
-                }
-            }
-        }
-
-        public double Max
-        {
-            get => _max;
-            private set
-            {
-                if (Math.Abs(_max - value) > double.Epsilon)
-                {
-                    _max = value;
-                    OnPropertyChanged(nameof(Max));
-                }
-            }
-        }
-
         public double Value
         {
             get => _value;
@@ -67,7 +39,6 @@ namespace Motion.Toolbar
                     _value = roundedValue;
                     _pendingValue = roundedValue;
                     
-                    // 如果不是正在拖动，使用节流方式更新
                     if (!_isDragging)
                     {
                         var now = DateTime.Now;
@@ -85,52 +56,67 @@ namespace Motion.Toolbar
 
         public static void ShowWindow(GH_NumberSlider ghSlider)
         {
+            if (ghSlider == null) return;
+
             if (_instance != null)
             {
-                // 恢复窗口状态
-                if (_instance.WindowState == WindowState.Minimized)
+                try
                 {
-                    _instance.WindowState = WindowState.Normal;
+                    // 恢复窗口状态
+                    if (_instance.WindowState == WindowState.Minimized)
+                    {
+                        _instance.WindowState = WindowState.Normal;
+                    }
+                    
+                    _instance.UpdateSlider(ghSlider);
+                    
+                    // 显示并激活窗口
+                    _instance.Show();
+                    _instance.Activate();
+                    _instance.Focus();
+                    
+                    // 确保窗口置顶
+                    _instance.Topmost = false;
+                    _instance.Topmost = true;
                 }
-                
-                // 显示并激活窗口
-                _instance.Show();
-                _instance.Activate();
-                _instance.Focus();
-                
-                // 确保窗口置顶
-                _instance.Topmost = false;
-                _instance.Topmost = true;
-                
-                _instance.UpdateSlider(ghSlider);
+                catch
+                {
+                    // 如果出现异常，创建新实例
+                    _instance = null;
+                    _instance = new SliderControlWPF(ghSlider);
+                    _instance.Show();
+                    _instance.Closed += (s, e) => _instance = null;
+                }
             }
             else
             {
                 _instance = new SliderControlWPF(ghSlider);
                 _instance.Show();
-                
                 _instance.Closed += (s, e) => _instance = null;
             }
         }
 
         private void UpdateSlider(GH_NumberSlider ghSlider)
         {
+            if (ghSlider == null) return;
+            
             _ghSlider = ghSlider;
-            Min = Math.Round((double)_ghSlider.Slider.Minimum);
-            Max = Math.Round((double)_ghSlider.Slider.Maximum);
-            Value = Math.Round((double)_ghSlider.Slider.Value);
+            // 使用 slider 控件的属性
+            slider.Minimum = Convert.ToDouble(_ghSlider.Slider.Minimum);
+            slider.Maximum = Convert.ToDouble(_ghSlider.Slider.Maximum);
+            Value = Convert.ToDouble(_ghSlider.Slider.Value);
         }
 
         internal SliderControlWPF(GH_NumberSlider ghSlider)
         {
             InitializeComponent();
-
+            
             _ghSlider = ghSlider;
             
-            // 初始化范围和值
-            _min = Math.Round((double)_ghSlider.Slider.Minimum);
-            _max = Math.Round((double)_ghSlider.Slider.Maximum);
-            _value = Math.Round((double)_ghSlider.Slider.Value);
+            // 直接设置滑块的属性
+            slider.Minimum = Convert.ToDouble(_ghSlider.Slider.Minimum);
+            slider.Maximum = Convert.ToDouble(_ghSlider.Slider.Maximum);
+            Value = Convert.ToDouble(_ghSlider.Slider.Value);
 
             DataContext = this;
 
@@ -156,14 +142,14 @@ namespace Motion.Toolbar
 
             // 初始化自动更新计时器
             _autoUpdateTimer = new System.Windows.Threading.DispatcherTimer();
-            _autoUpdateTimer.Interval = TimeSpan.FromMilliseconds(50); // 50ms 的更新间隔
+            _autoUpdateTimer.Interval = TimeSpan.FromMilliseconds(50);
             _autoUpdateTimer.Tick += AutoUpdateTimer_Tick;
 
             this.Closed += (s, e) => 
             {
                 _timer.Stop();
                 _updateTimer.Stop();
-                _autoUpdateTimer.Stop(); // 添加新计时器的停止
+                _autoUpdateTimer.Stop();
             };
 
             this.Topmost = true;
@@ -186,29 +172,22 @@ namespace Motion.Toolbar
 
                 bool rangeChanged = false;
 
-                // 检查最小值是否改变
-                if (Math.Abs(_min - newMin) > double.Epsilon)
+                // 直接更新滑块的属性
+                if (Math.Abs(slider.Minimum - newMin) > double.Epsilon)
                 {
-                    Min = newMin;
+                    slider.Minimum = newMin;
                     rangeChanged = true;
                 }
 
-                // 检查最大值是否改变
-                if (Math.Abs(_max - newMax) > double.Epsilon)
+                if (Math.Abs(slider.Maximum - newMax) > double.Epsilon)
                 {
-                    Max = newMax;
+                    slider.Maximum = newMax;
                     rangeChanged = true;
                 }
 
-                // 检查值是否改变
-                if (Math.Abs(_value - newValue) > double.Epsilon)
+                if (Math.Abs(Value - newValue) > double.Epsilon || rangeChanged)
                 {
-                    Value = newValue;
-                }
-                // 如果范围改变了，确保值在新范围内
-                else if (rangeChanged)
-                {
-                    Value = Math.Max(newMin, Math.Min(newMax, _value));
+                    Value = Math.Max(newMin, Math.Min(newMax, newValue));
                 }
             }
         }
@@ -264,8 +243,8 @@ namespace Motion.Toolbar
         {
             if (int.TryParse(valueTextBox.Text, out int newValue))
             {
-                // 确保值在范围内
-                newValue = (int)Math.Max(Min, Math.Min(Max, newValue));
+                // 使用 slider.Maximum 和 slider.Minimum 替代 Max 和 Min
+                newValue = (int)Math.Max(slider.Minimum, Math.Min(slider.Maximum, newValue));
                 Value = newValue;
             }
             else
@@ -301,8 +280,8 @@ namespace Motion.Toolbar
             }
             else if (!_isAutoIncrementing && !_isAutoDecrementing)
             {
-                // 左键点击时的行为
-                Value = Math.Min(Max, Value + 1);
+                // 左键点击时的行为，使用 slider.Maximum
+                Value = Math.Min(slider.Maximum, Value + 1);
             }
         }
 
@@ -329,19 +308,19 @@ namespace Motion.Toolbar
             }
             else if (!_isAutoIncrementing && !_isAutoDecrementing)
             {
-                // 左键点击时的行为
-                Value = Math.Max(Min, Value - 1);
+                // 左键点击时的行为，使用 slider.Minimum
+                Value = Math.Max(slider.Minimum, Value - 1);
             }
         }
 
         private void MinButton_Click(object sender, RoutedEventArgs e)
         {
-            Value = Min;
+            Value = slider.Minimum;  // 使用 slider.Minimum
         }
 
         private void MaxButton_Click(object sender, RoutedEventArgs e)
         {
-            Value = Max;
+            Value = slider.Maximum;  // 使用 slider.Maximum
         }
 
         private void UpdateTimer_Tick(object sender, EventArgs e)
@@ -370,11 +349,11 @@ namespace Motion.Toolbar
         {
             if (_isAutoIncrementing)
             {
-                Value = Math.Min(Max, Value + 1);
+                Value = Math.Min(slider.Maximum, Value + 1);  // 使用 slider.Maximum
             }
             else if (_isAutoDecrementing)
             {
-                Value = Math.Max(Min, Value - 1);
+                Value = Math.Max(slider.Minimum, Value - 1);  // 使用 slider.Minimum
             }
         }
     }

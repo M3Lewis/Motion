@@ -18,7 +18,7 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>0.7.5</Version>
+    <Version>0.7.6</Version>
     <Title>Motion</Title>
     <Company>M3_Lewis</Company>
     <Description>Make GH Animation much easier</Description>
@@ -186,6 +186,12 @@
       <YakPackageToMove Include="$(BaseOutputPath)$(Configuration)\net48\*.yak" />
     </ItemGroup>
     <Move SourceFiles="@(YakPackageToMove)" DestinationFolder="$(BaseOutputPath)$(Configuration)\" Condition="$(BuildYakPackage) == 'True'" />
+  
+	<Move 
+        SourceFiles="$(OutputPath)net7.0-windows\Motion.gha" 
+        DestinationFiles="$(OutputPath)net7.0-windows\Motion(Core).gha" 
+        Condition="Exists('$(OutputPath)net7.0-windows\Motion.gha')" 
+    />
   </Target>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="Copy &quot;C:\Users\M3\Nutstore\1\我的坚果云\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;&#xA;Copy &quot;C:\Users\M3\Nutstore\1\我的坚果云\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />

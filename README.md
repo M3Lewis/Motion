@@ -11,24 +11,31 @@
 #### Motion Slider
 
 * 点击区间文本框直接修改Slider区间
-* 配合工具栏上的`CreateUnionSliderButton`，创建`Motion Union Slider`，之后可以复制粘贴`Motion Slider`，`Motion Union Slider`的区间会自动进行更新
+* 配合工具栏上的`CreateUnionSliderButton`，创建`Motion Union Slider`，之后可以复制粘贴`Motion Slider`，并修改其区间，`Motion Union Slider`的区间会自动进行更新
 * `Motion Union Slider`的值与`Motion Slider`的值是联动的
-* `Union Slider`点击右键菜单可以连接到所有`EventOperation`和`Interval Lock`的时间输入端，避免特殊情况下断开连接
+* `Union Slider`点击右键菜单可以连接到所有`EventOperation`和`Interval Lock`的时间输入端，避免特殊情况下断开连接后无法重连
+
+
 
 #### Motion Sender
 
 * 将`Motion Sender`放在`Motion Slider`的输出端旁边，会自动连接它的输出端，并显示其区间范围
 * 双击`Motion Sender`可以快速创建`Event`以及后接的`Graph Mapper`，`Graph Mapper`的默认模式为`Bezier`
 
+
+
 #### Event
 
 * 输入端`Time`接收`Motion Sender`传来的值
 * 输入端`Domain`确定想改变的数值范围
-* 选择某个组件，点击`HIDE`可以在这个Event的时间范围之外隐藏组件显示，点击`LOCK`可以在这个Event的时间范围之外锁定组件
-* 鼠标移动到按钮范围内，会自动绘制指示线，来显示哪些组件被这个Event隐藏/锁定
+* 选择某个组件，点击`HIDE`可以在这个Event的时间范围之外隐藏组件显示，点击`LOCK`可以在这个`Event`的时间范围之外锁定组件
+* 鼠标移动到按钮范围内，会自动绘制指示线，来显示哪些组件被这个`Event`隐藏/锁定
+* 双击`Event`可跳转到该`Event`对应的`EventOperation`
 * 右键菜单
   * 使用空值模式时，只有在组件接收不到值时才会进行对指定组件的隐藏/锁定操作
-  * 点击`跳转至EventOperation`，可跳转到该`Event`对应的`EventOperation`
+  * 可选择区间，和指定区间的`Motion Sender`进行连接
+
+
 
 #### EventOperation
 
@@ -106,6 +113,7 @@
 * 可输入多种颜色，颜色会均分到每个字符
 * 输出文字Mesh
 * 输出文字边缘线
+* 可以控制文字的包围矩形大小
 
 
 
@@ -147,19 +155,33 @@
 
 ## 工具栏按钮
 
-#### SliderControlWPFButton
+#### ModifySliderButton
+
+* 批量创建`Motion Slider`
+  * 例如输入`0,30,60,90`，点击创建，生成区间为0-30,30-60,60-90的三个新的`Motion Slider`
+* 分割选中的`Motion Slider`区间并新建
+  * 例如文本框内显示`0,30`，可以将其修改为`0,15,30`，这样会创建出0-15,15-30两个新的`Motion Slider`
+* 合并选中的`Motion Slider`区间并新建
+  * 先选择想合并的`Motion Slider`，例如0-30,30-60,60-90区间的三个`Motion Slider`
+  * 点击合并按钮后，画布上会创建出一个新的`Motion Slider`，区间为0-90
+* 替换选中的`Motion Slider`区间值
+  * 例如选中的`Motion Slider`区间值分别为0-30,30-60,60-90，此时文本框内会出现`0,30,60,90`，将30改为33，60改为66，点击替换按钮，然后所有区间值都会进行相应修改
+
+
+
+#### SliderControlButton
 
 * 控制`UnionSlider`，双向更新
 * 支持输入数值，按`Enter`确定
 * 点击`+` /`-` 增减值
-  * 按住按钮`0.75S`后，可连续增加/减少值
+  * 鼠标右键点击按钮，可连续增加/减少值
 * 点击`MIN` / `MAX` 跳转到最小值
 
 
 
 #### UpdateSenderButton
 
-* 为所有`Motion Slider`添加`Motion Sender`
+* 为所有`Motion Slider`连接到对应区间的`Motion Sender`
 
 
 
@@ -176,6 +198,10 @@
 * 选择多个`Graph Mapper`，点击按钮，新建`Event Operation`并自动连好连线
 * 新建的`Event Operation`会自动和`Union Slider`连接
 * 如果同时选中了已存在的`Event Operation`和`Graph Mapper`，点击左键也会多对一连接
+* 连接时，将与其连接的所有`Event`和`Graph`归到一个`GH_Group`内
+  * 如果已有`EventOperation`和`GH_Group`，则将新的`Event`和`Graph Mapper`添加至这个组。
+
+* 如果选中了一个`Graph Mapper`，它没有连接到`Event Operation`，但是与它在同个`GH_Group`的`Graph Mapper`已经连接到一个`Event Operation`，那么点击按钮，选中的`Graph Mapper`就会连接至这个`Event Operation`
 
 
 
@@ -211,5 +237,16 @@
 
 
 
+#### JumpToAffectedComponentButton
 
+* 选择`Event`（点选），按钮会变亮，点击按钮跳转至被`HIDE`/`LOCK`的组件
+
+* 选择被`Event`组件`HIDE`/`LOCK`的组件（点选），按钮会变亮，点击按钮跳转至对应`Event`组件
+
+
+
+#### MotionSliderSettingsButton
+
+* 点击按钮后，变为开启状态。此时会在`Motion Slider`的左侧显示时间
+* 时间取决于每秒帧数。可以右键点击按钮，修改每秒帧数。显示的时间会根据帧数做出相应变化。
 

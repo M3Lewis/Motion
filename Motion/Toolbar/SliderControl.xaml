@@ -49,9 +49,7 @@
         </Grid.ColumnDefinitions>
 
         <Slider x:Name="slider" 
-                Minimum="{Binding Min, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                Maximum="{Binding Max, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                Value="{Binding Value, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                Value="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 TickFrequency="1"
                 IsSnapToTickEnabled="True"
                 Margin="5" 
