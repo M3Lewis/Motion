@@ -327,9 +327,10 @@ namespace Motion.Widgets
                 // 时间轴区域 - 移到下方，避免与文本框重叠
                 timelineBounds = new Rectangle(
                     frameCounterBounds.Right + padding,
-                    bounds.Top + textBoxHeight + padding * 2,  // 在文本框下方留出空间
+                    bounds.Top + bounds.Height / 2 - 15,  // 将时间轴垂直居中，上下各预留15像素的空间
                     bounds.Right - frameCounterBounds.Right - padding * 3,
-                    bounds.Height - textBoxHeight - padding * 3);  // 减小高度
+                    30  // 设置固定高度为30像素
+                );
                 
                 // 绘制背景
                 using (var brush = new SolidBrush(Color.FromArgb(53, 53, 53)))
@@ -393,7 +394,7 @@ namespace Motion.Widgets
                 // 绘制时间轴
                 using (var pen = new Pen(Color.White, 1))
                 {
-                    // 绘制主轴线
+                    // 绘制主轴线 - 确保在时间轴区域的正中间
                     g.DrawLine(pen, 
                         timelineBounds.Left, timelineBounds.Top + timelineBounds.Height/2,
                         timelineBounds.Right, timelineBounds.Top + timelineBounds.Height/2);
@@ -404,6 +405,7 @@ namespace Motion.Widgets
                         float x = timelineBounds.Left + (frame - startFrame) * pixelsPerFrame;
                         int tickHeight = frame % 50 == 0 ? 10 : 5;
                         
+                        // 从中心线向上下对称绘制刻度
                         g.DrawLine(pen,
                             x, timelineBounds.Top + timelineBounds.Height/2 - tickHeight,
                             x, timelineBounds.Top + timelineBounds.Height/2 + tickHeight);
@@ -412,8 +414,9 @@ namespace Motion.Widgets
                         {
                             using (var font = new Font("Arial", 8))
                             {
+                                // 将帧数标签绘制在下方
                                 g.DrawString(frame.ToString(), font, Brushes.White,
-                                    x - 10, timelineBounds.Bottom - 20);
+                                    x - 10, timelineBounds.Top + timelineBounds.Height/2 + tickHeight + 2);
                             }
                         }
                     }
@@ -479,42 +482,6 @@ namespace Motion.Widgets
 
         private bool isDragging = false;
         private float dragOffset = 0;
-
-        private int ShowNumericInputDialog(string title, int currentValue, int minValue, int maxValue)
-        {
-            using (var form = new Form())
-            using (var numBox = new Grasshopper.GUI.GH_NumericTextBox())
-            {
-                form.Text = title;
-                form.ClientSize = new Size(200, 60);
-                form.FormBorderStyle = FormBorderStyle.FixedDialog;
-                form.StartPosition = FormStartPosition.CenterScreen;
-                form.MinimizeBox = false;
-                form.MaximizeBox = false;
-                
-                numBox.Value = currentValue;
-                numBox.Decimals = 0;
-                numBox.LowerLimit = minValue;
-                numBox.UpperLimit = maxValue;
-                numBox.Location = new Point(10, 10);
-                numBox.Size = new Size(180, 25);
-                
-                System.Windows.Forms.Button okButton = new System.Windows.Forms.Button();
-                okButton.DialogResult = DialogResult.OK;
-                okButton.Text = "OK";
-                okButton.Location = new Point(115, 35);
-                
-                form.Controls.AddRange(new Control[] { numBox, okButton });
-                form.AcceptButton = okButton;
-                
-                if (form.ShowDialog() == DialogResult.OK)
-                {
-                    return (int)numBox.Value;
-                }
-                
-                return currentValue;
-            }
-        }
 
         private void CreateEditableTextBox(Rectangle bounds, int currentValue, Action<int> onValueChanged)
         {
@@ -630,10 +597,12 @@ namespace Motion.Widgets
         {
             if (e.Button == System.Windows.Forms.MouseButtons.Left)
             {
-                Point pt = Point.Round(e.CanvasLocation);
+                // 转换坐标
+                PointF canvasPoint = e.CanvasLocation;
+                Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
                 
-                // 检查是否点击了播放按钮
-                if (playButtonBounds.Contains(pt))
+                // 使用转换后的坐标检查点击
+                if (playButtonBounds.Contains(screenPoint))
                 {
                     isPlaying = !isPlaying;
                     if (isPlaying)
@@ -645,8 +614,7 @@ namespace Motion.Widgets
                     return GH_ObjectResponse.Handled;
                 }
                 
-                // 检查是否点击了帧计数器
-                if (frameCounterBounds.Contains(pt))
+                if (frameCounterBounds.Contains(screenPoint))
                 {
                     CreateEditableTextBox(
                         frameCounterBounds,
@@ -662,8 +630,7 @@ namespace Motion.Widgets
                     return GH_ObjectResponse.Handled;
                 }
                 
-                // 检查是否点击了起始帧输入框
-                if (startFrameBounds.Contains(pt))
+                if (startFrameBounds.Contains(screenPoint))
                 {
                     CreateEditableTextBox(
                         startFrameBounds,
@@ -680,8 +647,7 @@ namespace Motion.Widgets
                     return GH_ObjectResponse.Handled;
                 }
                 
-                // 检查是否点击了结束帧输入框
-                if (endFrameBounds.Contains(pt))
+                if (endFrameBounds.Contains(screenPoint))
                 {
                     CreateEditableTextBox(
                         endFrameBounds,
@@ -698,30 +664,27 @@ namespace Motion.Widgets
                     return GH_ObjectResponse.Handled;
                 }
                 
-                // 检查是否点击了帧数标签
-                if (GetFrameLabelBounds().Contains(pt))
+                if (GetFrameLabelBounds().Contains(screenPoint))
                 {
                     float currentX = timelineBounds.Left + (currentFrame - startFrame) * pixelsPerFrame;
                     isDragging = true;
-                    dragOffset = pt.X - currentX;
+                    dragOffset = screenPoint.X - currentX;
                     return GH_ObjectResponse.Capture;
                 }
-                
-                // 移除时间轴点击改变帧的功能
-                // if (timelineBounds.Contains(pt)) { ... }
             }
-            
             return base.RespondToMouseDown(sender, e);
         }
 
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            Point pt = Point.Round(e.CanvasLocation);
+            // 转换坐标
+            PointF canvasPoint = e.CanvasLocation;
+            Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
             
             if (isDragging)
             {
                 float pixelsPerFrame = (float)timelineBounds.Width / (endFrame - startFrame);
-                int newFrame = startFrame + (int)((pt.X - dragOffset - timelineBounds.Left) / pixelsPerFrame);
+                int newFrame = startFrame + (int)((screenPoint.X - dragOffset - timelineBounds.Left) / pixelsPerFrame);
                 newFrame = Math.Max(startFrame, Math.Min(endFrame, newFrame));
                 
                 if (newFrame != currentFrame)
@@ -732,8 +695,7 @@ namespace Motion.Widgets
                 return GH_ObjectResponse.Handled;
             }
             
-            // 检查鼠标是否在帧数标签上
-            bool newHoveringState = GetFrameLabelBounds().Contains(pt);
+            bool newHoveringState = GetFrameLabelBounds().Contains(screenPoint);
             if (newHoveringState != isHoveringIndicator)
             {
                 isHoveringIndicator = newHoveringState;
