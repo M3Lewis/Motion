@@ -1,21 +1,55 @@
 ﻿using Grasshopper;
+using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.GUI.Widgets;
 using Grasshopper.Kernel;
 using System;
 using System.Drawing;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows.Forms;
-using static Grasshopper.GUI.Widgets.GH_MarkovWidget;
 
 namespace Motion.Widgets
 {
     internal class TimelineWidget : GH_Widget
     {
+        private bool isPlaying = false;
+        private int currentFrame = 1;
+        private int startFrame = 1;
+        private int endFrame = 250;
+        private Rectangle playButtonBounds;
+        private Rectangle frameCounterBounds;
+        private Rectangle timelineBounds;
+        private Rectangle startFrameBounds;
+        private Rectangle endFrameBounds;
+        
+        private System.Windows.Forms.Timer animationTimer;
+        private TextBox activeTextBox = null;
+        private bool isHoveringIndicator = false;
+        private float pixelsPerFrame = 0;
+
+        private readonly SizeF labelSize = new SizeF(40, 20); // 固定标签大小，足够容纳4位数字
+
         public TimelineWidget()
         {
+            animationTimer = new System.Windows.Forms.Timer();
+            animationTimer.Interval = 50; // 20fps
+            animationTimer.Tick += AnimationTimer_Tick;
         }
+
+        private void AnimationTimer_Tick(object sender, EventArgs e)
+        {
+            if (currentFrame >= endFrame)
+            {
+                isPlaying = false;
+                animationTimer.Stop();
+            }
+            else
+            {
+                currentFrame++;
+            }
+            Owner?.Refresh();
+        }
+
         public override string Name => "Timeline Widget";
 
         public override string Description => "Motion Animation Timeline widget";
@@ -31,29 +65,29 @@ namespace Motion.Widgets
 
         private Rectangle ActualControlArea => CreateControlArea();
 
-        //private Rectangle ControlArea
-        //{
-        //    get
-        //    {
-        //        Rectangle controlArea = ActualControlArea;
-        //        if (controlArea == null)
-        //        {
-        //            Rectangle clientRectangle = base.Owner.ClientRectangle;
-        //            Rectangle sideRectangle;
-        //            switch (m_dockSide)
-        //            {
-        //                case TimelineWidgetDock.Top:
-        //                    sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Top, 0, ControlAreaSize);
-        //                    return sideRectangle;
+        private Rectangle ControlArea
+        {
+            get
+            {
+                Rectangle controlArea = ActualControlArea;
+                if (controlArea == null)
+                {
+                    Rectangle clientRectangle = base.Owner.ClientRectangle;
+                    Rectangle sideRectangle;
+                    switch (m_dockSide)
+                    {
+                        case TimelineWidgetDock.Top:
+                            sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Top, 0, ControlAreaSize);
+                            return sideRectangle;
 
-        //                case TimelineWidgetDock.Bottom:
-        //                    sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Bottom - ControlAreaSize, 0, ControlAreaSize);
-        //                    return sideRectangle;
-        //            }
-        //        }
-        //        return Rectangle.Empty;
-        //    }
-        //}
+                        case TimelineWidgetDock.Bottom:
+                            sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Bottom - ControlAreaSize, 0, ControlAreaSize);
+                            return sideRectangle;
+                    }
+                }
+                return Rectangle.Empty;
+            }
+        }
 
         private Rectangle BorderArea
         {
@@ -63,14 +97,14 @@ namespace Motion.Widgets
                     return Rectangle.Empty;
 
                 var clientRect = Owner.ClientRectangle;
-                const int height = 100;  // 边界区域固定高度
+                const int height = 120;  // 边界区域固定高度
                 
                 // 根据停靠位置计算边界区域
                 return m_dockSide switch
                 {
                     TimelineWidgetDock.Top => new Rectangle(
                         clientRect.Left,           // 从窗口左侧开始
-                        clientRect.Top,             // 从工具栏下方开始
+                        clientRect.Top+20,             // 从工具栏下方开始
                         clientRect.Width,          // 覆盖整个窗口宽度
                         height),                   // 固定高度
                         
@@ -237,7 +271,10 @@ namespace Motion.Widgets
             {
                 return false;
             }
-            return WidgetArea.Contains(pt_control);
+            // 扩大点击检测区域
+            var area = WidgetArea;
+            area.Inflate(5, 5);  // 向外扩展5个像素
+            return area.Contains(pt_control);
         }
 
         public override void Render(GH_Canvas canvas)
@@ -247,40 +284,473 @@ namespace Motion.Widgets
             try 
             {
                 Graphics g = canvas.Graphics;
-                
-                // 保存当前的转换矩阵
                 var transform = g.Transform;
-                
-                // 重置转换矩阵，使绘制不受画布缩放和平移的影响
                 g.ResetTransform();
                 
-                // 获取widget区域（这个是相对于窗口的固定位置）
                 Rectangle bounds = WidgetArea;
                 if (bounds.IsEmpty) return;
                 
-                // 使用抗锯齿
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 
-                // 直接使用窗口坐标绘制
+                // 计算各个区域的边界
+                const int buttonSize = 30;
+                const int padding = 5;
+                const int textBoxHeight = 20;
+                
+                // 播放按钮区域
+                playButtonBounds = new Rectangle(
+                    bounds.Left + padding, 
+                    bounds.Top + (bounds.Height - buttonSize) / 2,
+                    buttonSize, 
+                    buttonSize);
+                    
+                // 帧计数器区域
+                frameCounterBounds = new Rectangle(
+                    playButtonBounds.Right + padding,
+                    bounds.Top + (bounds.Height - buttonSize) / 2,
+                    80,
+                    buttonSize);
+                    
+                // 添加起始帧和结束帧输入框 - 移到上方
+                startFrameBounds = new Rectangle(
+                    timelineBounds.Right - 160,
+                    bounds.Top + padding,
+                    70,
+                    textBoxHeight);
+                    
+                endFrameBounds = new Rectangle(
+                    timelineBounds.Right - 80,
+                    bounds.Top + padding,
+                    70,
+                    textBoxHeight);
+                    
+                // 时间轴区域 - 移到下方，避免与文本框重叠
+                timelineBounds = new Rectangle(
+                    frameCounterBounds.Right + padding,
+                    bounds.Top + textBoxHeight + padding * 2,  // 在文本框下方留出空间
+                    bounds.Right - frameCounterBounds.Right - padding * 3,
+                    bounds.Height - textBoxHeight - padding * 3);  // 减小高度
+                
                 // 绘制背景
-                using (var brush = new SolidBrush(Color.FromArgb(200, 240, 240, 240)))
+                using (var brush = new SolidBrush(Color.FromArgb(53, 53, 53)))
                 {
                     g.FillRectangle(brush, bounds);
                 }
                 
-                // 绘制边框
-                using (var pen = new Pen(Color.FromArgb(100, 100, 100), 1.0f))
+                // 绘制播放按钮
+                using (var pen = new Pen(Color.White, 2))
+                using (var brush = new SolidBrush(Color.White))
                 {
-                    g.DrawRectangle(pen, bounds);
+                    if (!isPlaying)
+                    {
+                        // 绘制播放三角形
+                        Point[] trianglePoints = new Point[]
+                        {
+                            new Point(playButtonBounds.Left + 10, playButtonBounds.Top + 5),
+                            new Point(playButtonBounds.Left + 10, playButtonBounds.Bottom - 5),
+                            new Point(playButtonBounds.Right - 5, playButtonBounds.Top + buttonSize/2)
+                        };
+                        g.FillPolygon(brush, trianglePoints);
+                    }
+                    else
+                    {
+                        // 绘制暂停符号
+                        g.DrawLine(pen, 
+                            playButtonBounds.Left + 8, playButtonBounds.Top + 5,
+                            playButtonBounds.Left + 8, playButtonBounds.Bottom - 5);
+                        g.DrawLine(pen,
+                            playButtonBounds.Right - 8, playButtonBounds.Top + 5,
+                            playButtonBounds.Right - 8, playButtonBounds.Bottom - 5);
+                    }
                 }
                 
-                // 恢复原始转换矩阵
+                // 绘制帧计数器
+                using (var brush = new SolidBrush(Color.Black))
+                using (var pen = new Pen(Color.White, 1))
+                {
+                    // 绘制帧计数器背景和边框
+                    g.FillRectangle(brush, frameCounterBounds);
+                    g.DrawRectangle(pen, frameCounterBounds);
+                    
+                    // 如果没有活动的编辑框，才绘制文本
+                    if (activeTextBox == null || !frameCounterBounds.Contains(activeTextBox.Location))
+                    {
+                        using (var font = new Font("Arial", 10,FontStyle.Bold))
+                        {
+                            string frameText = $"{currentFrame}";
+                            var format = new StringFormat { 
+                                Alignment = StringAlignment.Center, 
+                                LineAlignment = StringAlignment.Center 
+                            };
+                            g.DrawString(frameText, font, Brushes.White, frameCounterBounds, format);
+                        }
+                    }
+                }
+                
+                // 计算每帧占用的像素数
+                pixelsPerFrame = (float)timelineBounds.Width / (endFrame - startFrame);
+                
+                // 绘制时间轴
+                using (var pen = new Pen(Color.White, 1))
+                {
+                    // 绘制主轴线
+                    g.DrawLine(pen, 
+                        timelineBounds.Left, timelineBounds.Top + timelineBounds.Height/2,
+                        timelineBounds.Right, timelineBounds.Top + timelineBounds.Height/2);
+                    
+                    // 绘制刻度线
+                    for (int frame = startFrame; frame <= endFrame; frame += 10)
+                    {
+                        float x = timelineBounds.Left + (frame - startFrame) * pixelsPerFrame;
+                        int tickHeight = frame % 50 == 0 ? 10 : 5;
+                        
+                        g.DrawLine(pen,
+                            x, timelineBounds.Top + timelineBounds.Height/2 - tickHeight,
+                            x, timelineBounds.Top + timelineBounds.Height/2 + tickHeight);
+                        
+                        if (frame % 50 == 0)
+                        {
+                            using (var font = new Font("Arial", 8))
+                            {
+                                g.DrawString(frame.ToString(), font, Brushes.White,
+                                    x - 10, timelineBounds.Bottom - 20);
+                            }
+                        }
+                    }
+                    
+                    // 绘制当前帧指示器和帧数
+                    float currentX = timelineBounds.Left + (currentFrame - startFrame) * pixelsPerFrame;
+                    using (var indicatorPen = new Pen(Color.DeepSkyBlue, 2))
+                    {
+                        // 绘制指示线
+                        g.DrawLine(indicatorPen,
+                            currentX, timelineBounds.Top,
+                            currentX, timelineBounds.Bottom);
+                        
+                        // 获取并绘制帧数标签
+                        Rectangle labelBounds = GetFrameLabelBounds(g);
+                        
+                        // 绘制背景
+                        using (var brush = new SolidBrush(Color.White))
+                        {
+                            g.FillRectangle(brush, labelBounds);
+                        }
+                        
+                        // 绘制边框
+                        g.DrawRectangle(Pens.Black, labelBounds);
+                        
+                        // 绘制文本（居中对齐）
+                        using (var font = new Font("Arial", 10))
+                        {
+                            string frameText = currentFrame.ToString();
+                            var format = new StringFormat
+                            {
+                                Alignment = StringAlignment.Center,
+                                LineAlignment = StringAlignment.Center
+                            };
+                            g.DrawString(frameText, font, Brushes.Black, labelBounds, format);
+                        }
+                    }
+                }
+                
+                // 绘制起始帧和结束帧输入框
+                using (var brush = new SolidBrush(Color.FromArgb(53,53,53)))
+                using (var pen = new Pen(Color.White, 1))
+                using (var font = new Font("Arial", 8))
+                {
+                    // 起始帧
+                    g.FillRectangle(brush, startFrameBounds);
+                    g.DrawRectangle(pen, startFrameBounds);
+                    g.DrawString($"Start: {startFrame}", font, Brushes.White, startFrameBounds.X + 2, startFrameBounds.Y + 2);
+                    
+                    // 结束帧
+                    g.FillRectangle(brush, endFrameBounds);
+                    g.DrawRectangle(pen, endFrameBounds);
+                    g.DrawString($"End: {endFrame}", font, Brushes.White, endFrameBounds.X + 2, endFrameBounds.Y + 2);
+                }
+                
                 g.Transform = transform;
             }
             catch (Exception ex)
             {
                 Rhino.RhinoApp.WriteLine($"Timeline Widget rendering error: {ex.Message}");
             }
+        }
+
+        private bool isDragging = false;
+        private float dragOffset = 0;
+
+        private int ShowNumericInputDialog(string title, int currentValue, int minValue, int maxValue)
+        {
+            using (var form = new Form())
+            using (var numBox = new Grasshopper.GUI.GH_NumericTextBox())
+            {
+                form.Text = title;
+                form.ClientSize = new Size(200, 60);
+                form.FormBorderStyle = FormBorderStyle.FixedDialog;
+                form.StartPosition = FormStartPosition.CenterScreen;
+                form.MinimizeBox = false;
+                form.MaximizeBox = false;
+                
+                numBox.Value = currentValue;
+                numBox.Decimals = 0;
+                numBox.LowerLimit = minValue;
+                numBox.UpperLimit = maxValue;
+                numBox.Location = new Point(10, 10);
+                numBox.Size = new Size(180, 25);
+                
+                System.Windows.Forms.Button okButton = new System.Windows.Forms.Button();
+                okButton.DialogResult = DialogResult.OK;
+                okButton.Text = "OK";
+                okButton.Location = new Point(115, 35);
+                
+                form.Controls.AddRange(new Control[] { numBox, okButton });
+                form.AcceptButton = okButton;
+                
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    return (int)numBox.Value;
+                }
+                
+                return currentValue;
+            }
+        }
+
+        private void CreateEditableTextBox(Rectangle bounds, int currentValue, Action<int> onValueChanged)
+        {
+            // 确保先清理已存在的文本框
+            RemoveActiveTextBox();
+            
+            try 
+            {
+                // 创建新的文本框
+                activeTextBox = new TextBox();
+                activeTextBox.Location = bounds.Location;
+                activeTextBox.Size = bounds.Size;
+                activeTextBox.Text = currentValue.ToString();
+                activeTextBox.BorderStyle = BorderStyle.FixedSingle;
+                activeTextBox.TextAlign = HorizontalAlignment.Center;
+                
+                // 处理按键事件
+                activeTextBox.KeyDown += (s, e) => {
+                    if (e.KeyCode == Keys.Enter)
+                    {
+                        e.Handled = true;
+                        e.SuppressKeyPress = true;
+                        if (int.TryParse(activeTextBox.Text, out int newValue))
+                        {
+                            onValueChanged(newValue);
+                        }
+                        RemoveActiveTextBox();
+                    }
+                    else if (e.KeyCode == Keys.Escape)
+                    {
+                        e.Handled = true;
+                        e.SuppressKeyPress = true;
+                        RemoveActiveTextBox();
+                    }
+                };
+                
+                // 处理失去焦点事件
+                activeTextBox.LostFocus += (s, e) => {
+                    if (activeTextBox != null && !activeTextBox.IsDisposed)
+                    {
+                        if (int.TryParse(activeTextBox.Text, out int newValue))
+                        {
+                            onValueChanged(newValue);
+                        }
+                        RemoveActiveTextBox();
+                    }
+                };
+                
+                // 添加到画布
+                if (Owner != null && !Owner.IsDisposed)
+                {
+                    Owner.Controls.Add(activeTextBox);
+                    activeTextBox.Focus();
+                    activeTextBox.SelectAll();
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error creating text box: {ex.Message}");
+                RemoveActiveTextBox();
+            }
+        }
+
+        private void RemoveActiveTextBox()
+        {
+            if (activeTextBox == null) return;
+
+            try
+            {
+                var textBox = activeTextBox;
+                activeTextBox = null; // 立即设置为 null 以防止重复调用
+
+                if (!textBox.IsDisposed)
+                {
+                    if (Owner != null && !Owner.IsDisposed && Owner.Controls.Contains(textBox))
+                    {
+                        Owner.Controls.Remove(textBox);
+                    }
+                    textBox.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error removing text box: {ex.Message}");
+            }
+            finally
+            {
+                activeTextBox = null;
+                if (Owner != null && !Owner.IsDisposed)
+                {
+                    Owner.Refresh();
+                }
+            }
+        }
+
+        private Rectangle GetFrameLabelBounds(Graphics g = null)
+        {
+            float currentX = timelineBounds.Left + (currentFrame - startFrame) * pixelsPerFrame;
+            
+            // 使用固定大小
+            float labelX = currentX - labelSize.Width / 2;
+            float labelY = timelineBounds.Top - labelSize.Height - 5;
+            
+            return new Rectangle(
+                (int)(labelX - 2),
+                (int)(labelY - 2),
+                (int)(labelSize.Width + 4),
+                (int)(labelSize.Height + 4)
+            );
+        }
+
+        public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+            {
+                Point pt = Point.Round(e.CanvasLocation);
+                
+                // 检查是否点击了播放按钮
+                if (playButtonBounds.Contains(pt))
+                {
+                    isPlaying = !isPlaying;
+                    if (isPlaying)
+                        animationTimer.Start();
+                    else
+                        animationTimer.Stop();
+                        
+                    sender.Refresh();
+                    return GH_ObjectResponse.Handled;
+                }
+                
+                // 检查是否点击了帧计数器
+                if (frameCounterBounds.Contains(pt))
+                {
+                    CreateEditableTextBox(
+                        frameCounterBounds,
+                        currentFrame,
+                        newValue => {
+                            if (newValue >= startFrame && newValue <= endFrame)
+                            {
+                                currentFrame = newValue;
+                                sender.Refresh();
+                            }
+                        }
+                    );
+                    return GH_ObjectResponse.Handled;
+                }
+                
+                // 检查是否点击了起始帧输入框
+                if (startFrameBounds.Contains(pt))
+                {
+                    CreateEditableTextBox(
+                        startFrameBounds,
+                        startFrame,
+                        newValue => {
+                            if (newValue < endFrame)
+                            {
+                                startFrame = newValue;
+                                currentFrame = Math.Max(startFrame, currentFrame);
+                                sender.Refresh();
+                            }
+                        }
+                    );
+                    return GH_ObjectResponse.Handled;
+                }
+                
+                // 检查是否点击了结束帧输入框
+                if (endFrameBounds.Contains(pt))
+                {
+                    CreateEditableTextBox(
+                        endFrameBounds,
+                        endFrame,
+                        newValue => {
+                            if (newValue > startFrame)
+                            {
+                                endFrame = newValue;
+                                currentFrame = Math.Min(endFrame, currentFrame);
+                                sender.Refresh();
+                            }
+                        }
+                    );
+                    return GH_ObjectResponse.Handled;
+                }
+                
+                // 检查是否点击了帧数标签
+                if (GetFrameLabelBounds().Contains(pt))
+                {
+                    float currentX = timelineBounds.Left + (currentFrame - startFrame) * pixelsPerFrame;
+                    isDragging = true;
+                    dragOffset = pt.X - currentX;
+                    return GH_ObjectResponse.Capture;
+                }
+                
+                // 移除时间轴点击改变帧的功能
+                // if (timelineBounds.Contains(pt)) { ... }
+            }
+            
+            return base.RespondToMouseDown(sender, e);
+        }
+
+        public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            Point pt = Point.Round(e.CanvasLocation);
+            
+            if (isDragging)
+            {
+                float pixelsPerFrame = (float)timelineBounds.Width / (endFrame - startFrame);
+                int newFrame = startFrame + (int)((pt.X - dragOffset - timelineBounds.Left) / pixelsPerFrame);
+                newFrame = Math.Max(startFrame, Math.Min(endFrame, newFrame));
+                
+                if (newFrame != currentFrame)
+                {
+                    currentFrame = newFrame;
+                    sender.Refresh();
+                }
+                return GH_ObjectResponse.Handled;
+            }
+            
+            // 检查鼠标是否在帧数标签上
+            bool newHoveringState = GetFrameLabelBounds().Contains(pt);
+            if (newHoveringState != isHoveringIndicator)
+            {
+                isHoveringIndicator = newHoveringState;
+                sender.Refresh();
+            }
+            
+            return base.RespondToMouseMove(sender, e);
+        }
+
+        public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (isDragging)
+            {
+                isDragging = false;
+                return GH_ObjectResponse.Release;
+            }
+            return base.RespondToMouseUp(sender, e);
         }
     }
 }
