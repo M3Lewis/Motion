@@ -1192,7 +1192,7 @@ namespace Motion.Widgets
 
                     // 更新参数值
                     valueParam.PersistentData.Clear();
-                    var motionValue = new MotionValue(currentValue);
+                    var motionValue = new MotionValueGoo(currentValue);
                     valueParam.PersistentData.Append(motionValue);
                     
                     // 强制参数更新

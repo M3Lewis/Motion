@@ -9,11 +9,11 @@ using GH_IO;
 
 namespace Motion.Parameters
 {
-    public class MotionValue : IGH_Goo, GH_ISerializable
+    public class MotionValueGoo : IGH_Goo, GH_ISerializable
     {
         private double value;
 
-        public MotionValue(double value = 0.0)
+        public MotionValueGoo(double value = 0.0)
         {
             this.value = value;
         }
@@ -31,7 +31,7 @@ namespace Motion.Parameters
 
         public IGH_Goo Duplicate()
         {
-            return new MotionValue(value);
+            return new MotionValueGoo(value);
         }
 
         public IGH_GooProxy EmitProxy()
@@ -100,7 +100,7 @@ namespace Motion.Parameters
         }
     }
 
-    public class MotionValueParameter : GH_PersistentParam<MotionValue>
+    public class MotionValueParameter : GH_PersistentParam<MotionValueGoo>
     {
         public MotionValueParameter()
             : base(new GH_InstanceDescription(
@@ -114,9 +114,9 @@ namespace Motion.Parameters
 
         public override Guid ComponentGuid => new Guid("8644399d-b506-40bd-b574-4409c25fc93b");
 
-        protected override MotionValue InstantiateT()
+        protected override MotionValueGoo InstantiateT()
         {
-            return new MotionValue();
+            return new MotionValueGoo();
         }
 
         public override void ClearData()
@@ -129,12 +129,12 @@ namespace Motion.Parameters
             base.AppendAdditionalMenuItems(menu);
         }
 
-        protected override GH_GetterResult Prompt_Singular(ref MotionValue value)
+        protected override GH_GetterResult Prompt_Singular(ref MotionValueGoo value)
         {
             return GH_GetterResult.cancel;
         }
 
-        protected override GH_GetterResult Prompt_Plural(ref List<MotionValue> values)
+        protected override GH_GetterResult Prompt_Plural(ref List<MotionValueGoo> values)
         {
             return GH_GetterResult.cancel;
         }
