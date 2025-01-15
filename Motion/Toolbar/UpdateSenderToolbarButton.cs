@@ -65,40 +65,56 @@ namespace Motion.Toolbar
                 GH_Document doc = Instances.ActiveCanvas?.Document;
                 if (doc == null) return;
 
-                float maxRightBoundary = float.MinValue;
-                foreach (GH_NumberSlider slider in allTimelineSliders)
-                {
-                    float rightBoundary = slider.Attributes.Bounds.Right;
-                    if (rightBoundary > maxRightBoundary)
+                var sliderPositions = allTimelineSliders
+                    .Where(s => s != null && !(s is MotionUnionSlider))
+                    .Select(s => new
                     {
-                        maxRightBoundary = rightBoundary;
-                    }
-                }
+                        Slider = s,
+                        Right = s.Attributes.Bounds.Right,
+                        Bounds = s.Attributes.Bounds,
+                        ConnectRange = new { 
+                            Min = s.Attributes.Bounds.Top - s.Attributes.Bounds.Height,
+                            Max = s.Attributes.Bounds.Bottom + s.Attributes.Bounds.Height
+                        }
+                    })
+                    .ToList();
 
-                float uniformX = maxRightBoundary + 150;
+                if (!sliderPositions.Any()) return;
 
-                foreach (GH_NumberSlider timelineSlider in allTimelineSliders)
+                float uniformX = sliderPositions.Max(p => p.Right) + 150;
+
+                foreach (var sliderInfo in sliderPositions)
                 {
-                    if (timelineSlider.NickName == "TimeLine(Union)")
-                        continue;
+                    var timelineSlider = sliderInfo.Slider;
 
-                    bool isConnectedToSender = timelineSlider.Recipients
-                        .Any(recipient => recipient is MotionSender);
+                    // 检查是否已经有sender在有效连接范围内
+                    bool hasNearbyConnection = timelineSlider.Recipients
+                        .OfType<MotionSender>()
+                        .Any(sender => 
+                            sender.Attributes.Pivot.Y >= sliderInfo.ConnectRange.Min && 
+                            sender.Attributes.Pivot.Y <= sliderInfo.ConnectRange.Max
+                        );
 
-                    if (isConnectedToSender)
-                        continue;
+                    if (hasNearbyConnection) continue;
 
+                    // 创建新的sender
                     MotionSender remoteSender = new MotionSender();
                     doc.AddObject(remoteSender, false);
 
-                    var range = new Interval((double)timelineSlider.Slider.Minimum, (double)timelineSlider.Slider.Maximum);
+                    // 设置昵称
+                    var range = new Interval(
+                        (double)timelineSlider.Slider.Minimum, 
+                        (double)timelineSlider.Slider.Maximum
+                    );
                     remoteSender.NickName = $"{range.T0}-{range.T1}";
 
-                    PointF sliderPivot = timelineSlider.Attributes.Pivot;
-                    float sliderHeight = timelineSlider.Attributes.Bounds.Height;
-                    
-                    remoteSender.Attributes.Pivot = new PointF(uniformX, sliderPivot.Y + sliderHeight/2);
+                    // 将sender放在slider的中心位置
+                    remoteSender.Attributes.Pivot = new PointF(
+                        uniformX, 
+                        sliderInfo.Bounds.Top + sliderInfo.Bounds.Height/2
+                    );
 
+                    // 建立连接
                     remoteSender.AddSource(timelineSlider);
                 }
 

@@ -76,7 +76,11 @@
     <Compile Remove="Components\OBSOLETE\RangeSelector.cs" />
     <Compile Remove="Components\OBSOLETE\SliderLockButton.cs" />
     <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
+    <Compile Remove="SettingsControl\GH_MarkovWidgetSettingFrontEnd.cs" />
+    <Compile Remove="SettingsControl\GH_MarkovWidgetSettingsUI.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
+    <Compile Remove="Widgets\GH_MarkovWidget.cs" />
+    <Compile Remove="Widgets\GH_MarkovWidgetDock.cs" />
   </ItemGroup>
   
   <ItemGroup>
@@ -119,6 +123,10 @@
     <None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
     <None Include="Components\OBSOLETE\TimelineRange.cs" />
     <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
+    <None Include="SettingsControl\GH_MarkovWidgetSettingFrontEnd.cs" />
+    <None Include="SettingsControl\GH_MarkovWidgetSettingsUI.cs" />
+    <None Include="Widgets\GH_MarkovWidgetDock.cs" />
+    <None Include="Widgets\GH_MarkovWidget.cs" />
   </ItemGroup>
   
   <ItemGroup>
@@ -139,6 +147,9 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="SettingsControl\TimelineWidgetSettingFrontEnd.cs">
+      <SubType>UserControl</SubType>
     </Compile>
   </ItemGroup>
   
@@ -187,11 +198,7 @@
     </ItemGroup>
     <Move SourceFiles="@(YakPackageToMove)" DestinationFolder="$(BaseOutputPath)$(Configuration)\" Condition="$(BuildYakPackage) == 'True'" />
   
-	<Move 
-        SourceFiles="$(OutputPath)net7.0-windows\Motion.gha" 
-        DestinationFiles="$(OutputPath)net7.0-windows\Motion(Core).gha" 
-        Condition="Exists('$(OutputPath)net7.0-windows\Motion.gha')" 
-    />
+	<Move SourceFiles="$(OutputPath)net7.0-windows\Motion.gha" DestinationFiles="$(OutputPath)net7.0-windows\Motion(Core).gha" Condition="Exists('$(OutputPath)net7.0-windows\Motion.gha')" />
   </Target>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="Copy &quot;C:\Users\M3\Nutstore\1\我的坚果云\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;&#xA;Copy &quot;C:\Users\M3\Nutstore\1\我的坚果云\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />
