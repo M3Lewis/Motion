@@ -7,11 +7,26 @@ using System;
 using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
+using System.Linq;
+using System.Collections.Generic;
+using Motion.Parameters;
+using Grasshopper.Kernel.Types;
+using Grasshopper.Kernel.Data;
 
 namespace Motion.Widgets
 {
     internal class TimelineWidget : GH_Widget
     {
+        // 关键帧数据结构
+        private class Keyframe
+        {
+            public int Frame { get; set; }
+            public double Value { get; set; }
+        }
+        
+        private List<Keyframe> keyframes = new List<Keyframe>();
+        private double currentValue = 0.0;
+        
         private bool isPlaying = false;
         private int currentFrame = 1;
         private int startFrame = 1;
@@ -29,25 +44,129 @@ namespace Motion.Widgets
 
         private readonly SizeF labelSize = new SizeF(40, 20); // 固定标签大小，足够容纳4位数字
 
+        // 添加常量定义显示区域的参数
+        private const float VALUE_DISPLAY_HEIGHT = 60; // 值显示区域的高度
+        private const float VALUE_DISPLAY_MARGIN = 20; // 与时间轴的间距
+
+        // 添加关键帧编辑对话框
+        private class KeyframeDialog : Form
+        {
+            public double Value { get; private set; }
+            private TextBox valueTextBox;
+
+            public KeyframeDialog(double initialValue)
+            {
+                this.Text = "Set Keyframe Value";
+                this.Size = new Size(200, 120);
+                this.StartPosition = FormStartPosition.CenterParent;
+                
+                var label = new Label
+                {
+                    Text = "Value:",
+                    Location = new Point(10, 20),
+                    Size = new Size(50, 20)
+                };
+                
+                valueTextBox = new TextBox
+                {
+                    Text = initialValue.ToString(),
+                    Location = new Point(70, 20),
+                    Size = new Size(100, 20)
+                };
+                
+                var okButton = new System.Windows.Forms.Button
+                {
+                    Text = "OK",
+                    DialogResult = DialogResult.OK,
+                    Location = new Point(20, 50),
+                    Size = new Size(70, 25)
+                };
+                
+                var cancelButton = new System.Windows.Forms.Button
+                {
+                    Text = "Cancel",
+                    DialogResult = DialogResult.Cancel,
+                    Location = new Point(100, 50),
+                    Size = new Size(70, 25)
+                };
+                
+                this.Controls.AddRange(new Control[] { label, valueTextBox, okButton, cancelButton });
+                this.AcceptButton = okButton;
+                this.CancelButton = cancelButton;
+            }
+
+            protected override void OnFormClosing(FormClosingEventArgs e)
+            {
+                if (DialogResult == DialogResult.OK)
+                {
+                    if (double.TryParse(valueTextBox.Text, out double result))
+                    {
+                        Value = result;
+                    }
+                    else
+                    {
+                        e.Cancel = true;
+                        MessageBox.Show("Please enter a valid number.");
+                    }
+                }
+                base.OnFormClosing(e);
+            }
+        }
+
+        // 添加字段来跟踪选中的关键帧
+        private Keyframe selectedKeyframe = null;
+
+        // 添加缺失的字段定义
+        private const int padding = 10;
+        private Rectangle bounds;
+
+        private MotionValueParameter valueParam;
+        private bool isParamInitialized = false;
+
         public TimelineWidget()
         {
             animationTimer = new System.Windows.Forms.Timer();
-            animationTimer.Interval = 50; // 20fps
+            animationTimer.Interval = 50;
             animationTimer.Tick += AnimationTimer_Tick;
+        }
+
+        // 添加初始化参数的方法
+        private void InitializeParameter()
+        {
+            if (isParamInitialized || Owner?.Document == null) return;
+
+            // 创建参数
+            valueParam = new MotionValueParameter();
+            valueParam.CreateAttributes();
+            
+            // 设置参数位置
+            valueParam.Attributes.Pivot = new System.Drawing.PointF(100, 100);
+            
+            // 添加参数到文档
+            Owner.Document.AddObject(valueParam, false);
+            
+            isParamInitialized = true;
         }
 
         private void AnimationTimer_Tick(object sender, EventArgs e)
         {
-            if (currentFrame >= endFrame)
+            if (isPlaying)
             {
-                isPlaying = false;
-                animationTimer.Stop();
+                if (currentFrame >= endFrame)
+                {
+                    currentFrame = startFrame;
+                    isPlaying = false;
+                    animationTimer.Stop();
+                }
+                else
+                {
+                    currentFrame++;
+                }
+                
+                // 更新当前值
+                UpdateCurrentValue();
+                Owner?.Refresh();
             }
-            else
-            {
-                currentFrame++;
-            }
-            Owner?.Refresh();
         }
 
         public override string Name => "Timeline Widget";
@@ -73,7 +192,7 @@ namespace Motion.Widgets
                     return Rectangle.Empty;
 
                 var clientRect = Owner.ClientRectangle;
-                const int height = 120;  // 边界区域固定高度
+                const int height = 200;  // 边界区域固定高度
                 
                 // 根据停靠位置计算边界区域
                 return m_dockSide switch
@@ -223,12 +342,69 @@ namespace Motion.Widgets
             }
         }
 
+        // 添加方法来检查是否点击到关键帧
+        private Keyframe GetKeyframeAtPoint(Point point)
+        {
+            if (keyframes.Count == 0) return null;
+            
+            // 检查每个关键帧
+            foreach (var keyframe in keyframes)
+            {
+                float x = timelineBounds.Left + (keyframe.Frame - startFrame) * pixelsPerFrame;
+                float y = MapValueToY(keyframe.Value);
+                
+                // 创建关键帧点的矩形区域（8x8像素）
+                RectangleF keyframeRect = new RectangleF(x - 4, y - 4, 8, 8);
+                
+                if (keyframeRect.Contains(point))
+                {
+                    return keyframe;
+                }
+            }
+            
+            return null;
+        }
+
+        // 重写右键菜单方法
         public override void AppendToMenu(ToolStripDropDownMenu menu)
         {
             base.AppendToMenu(menu);
-            GH_DocumentObject.Menu_AppendSeparator(menu);
-            GH_DocumentObject.Menu_AppendItem(menu, "Top", Menu_DockTop, enabled: true, m_dockSide == TimelineWidgetDock.Top);
-            GH_DocumentObject.Menu_AppendItem(menu, "Bottom", Menu_DockBottom, enabled: true, m_dockSide == TimelineWidgetDock.Bottom);
+            
+            // 如果有选中的关键帧，添加删除选项
+            if (selectedKeyframe != null)
+            {
+                GH_DocumentObject.Menu_AppendSeparator(menu);
+                GH_DocumentObject.Menu_AppendItem(menu, "Delete Keyframe", Menu_DeleteKeyframe);
+            }
+            else
+            {
+                // 原有的菜单项
+                GH_DocumentObject.Menu_AppendSeparator(menu);
+                GH_DocumentObject.Menu_AppendItem(menu, "Top", Menu_DockTop, enabled: true, m_dockSide == TimelineWidgetDock.Top);
+                GH_DocumentObject.Menu_AppendItem(menu, "Bottom", Menu_DockBottom, enabled: true, m_dockSide == TimelineWidgetDock.Bottom);
+                
+                // 添加创建Motion Value参数的选项
+                if (keyframes.Count > 0)
+                {
+                    GH_DocumentObject.Menu_AppendSeparator(menu);
+                    if (valueParam != null)
+                    {
+                        GH_DocumentObject.Menu_AppendItem(menu, "Add Motion Value Parameter", Menu_AddMotionValue);
+                    }
+                }
+            }
+        }
+
+        // 添加删除关键帧的方法
+        private void Menu_DeleteKeyframe(object sender, EventArgs e)
+        {
+            if (selectedKeyframe != null)
+            {
+                keyframes.Remove(selectedKeyframe);
+                selectedKeyframe = null;
+                UpdateCurrentValue();
+                Owner?.Refresh();
+            }
         }
 
         private void Menu_DockTop(object sender, EventArgs e)
@@ -241,6 +417,83 @@ namespace Motion.Widgets
         {
             DockSide = TimelineWidgetDock.Bottom;
             m_owner.Refresh();
+        }
+
+        // 添加清除所有关键帧的方法
+        private void Menu_ClearKeyframes(object sender, EventArgs e)
+        {
+            // 添加确认对话框
+            if (MessageBox.Show(
+                "Are you sure you want to clear all keyframes?",
+                "Clear Keyframes",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                keyframes.Clear();
+                selectedKeyframe = null;
+                currentValue = 0.0;
+                Owner?.Refresh();
+            }
+        }
+
+        // 添加方法来查找现有的 Motion Value 参数
+        private MotionValueParameter FindExistingMotionValue()
+        {
+            if (Owner?.Document == null) return null;
+            
+            // 查找文档中所有的 MotionValueParameter 实例
+            return Owner.Document.Objects
+                .OfType<MotionValueParameter>()
+                .FirstOrDefault();
+        }
+
+        // 修改 Menu_AddMotionValue 方法
+        private void Menu_AddMotionValue(object sender, EventArgs e)
+        {
+            if (Owner?.Document == null) return;
+
+            try
+            {
+                // 先查找是否已存在 Motion Value 参数
+                valueParam = FindExistingMotionValue();
+                
+                // 如果不存在，则创建新的
+                if (valueParam == null)
+                {
+                    valueParam = new MotionValueParameter();
+                    valueParam.CreateAttributes();
+                    valueParam.NickName = "Motion Value";
+                    
+                    // 获取当前widget的位置
+                    var widgetBounds = WidgetArea;
+                    
+                    // 设置参数位置（在widget右侧）
+                    valueParam.Attributes.Pivot = new System.Drawing.PointF(
+                        widgetBounds.Right + 50,
+                        widgetBounds.Top
+                    );
+                    
+                    // 添加参数到文档
+                    Owner.Document.AddObject(valueParam, false);
+                    
+                    // 立即更新值
+                    UpdateCurrentValue();
+                    
+                    // 强制更新解决方案
+                    Owner.Document.NewSolution(true);
+                    
+                    // 调试输出
+                    Rhino.RhinoApp.WriteLine("Created new Motion Value parameter");
+                }
+                else
+                {
+                    Rhino.RhinoApp.WriteLine("Found existing Motion Value parameter");
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error creating Motion Value parameter: {ex.Message}");
+            }
         }
 
         //----------------------------------------------------------------------------------------------------
@@ -258,6 +511,17 @@ namespace Motion.Widgets
 
         public override void Render(GH_Canvas canvas)
         {
+            // 如果还没有关联参数，尝试查找现有的
+            if (valueParam == null)
+            {
+                valueParam = FindExistingMotionValue();
+            }
+            
+            // 在第一次渲染时初始化参数
+            InitializeParameter();
+            
+            bounds = WidgetArea;
+            
             if (!Visible || canvas?.Graphics == null) return;
             
             try 
@@ -412,14 +676,20 @@ namespace Motion.Widgets
                         // 获取并绘制帧数标签
                         Rectangle labelBounds = GetFrameLabelBounds(g);
                         
-                        // 绘制背景
-                        using (var brush = new SolidBrush(Color.White))
+                        // 绘制圆角背景
+                        using (var brush = new SolidBrush(Color.DeepSkyBlue))
+                        using (var path = new System.Drawing.Drawing2D.GraphicsPath())
                         {
-                            g.FillRectangle(brush, labelBounds);
+                            int radius = 4; // 圆角半径
+                            path.AddArc(labelBounds.X, labelBounds.Y, radius * 2, radius * 2, 180, 90);
+                            path.AddArc(labelBounds.Right - radius * 2, labelBounds.Y, radius * 2, radius * 2, 270, 90);
+                            path.AddArc(labelBounds.Right - radius * 2, labelBounds.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
+                            path.AddArc(labelBounds.X, labelBounds.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+                            path.CloseFigure();
+                            
+                            g.FillPath(brush, path);
+                            g.DrawPath(Pens.DeepSkyBlue, path);
                         }
-                        
-                        // 绘制边框
-                        g.DrawRectangle(Pens.Black, labelBounds);
                         
                         // 绘制文本（居中对齐）
                         using (var font = new Font("Arial", 10))
@@ -430,7 +700,7 @@ namespace Motion.Widgets
                                 Alignment = StringAlignment.Center,
                                 LineAlignment = StringAlignment.Center
                             };
-                            g.DrawString(frameText, font, Brushes.Black, labelBounds, format);
+                            g.DrawString(frameText, font, Brushes.White, labelBounds, format);
                         }
                     }
                 }
@@ -449,6 +719,92 @@ namespace Motion.Widgets
                     g.FillRectangle(brush, endFrameBounds);
                     g.DrawRectangle(pen, endFrameBounds);
                     g.DrawString($"End: {endFrame}", font, Brushes.White, endFrameBounds.X + 2, endFrameBounds.Y + 2);
+                }
+                
+                // 在时间轴上方绘制关键帧和插值线
+                if (keyframes.Count > 0)
+                {
+                    using (var keyframePen = new Pen(Color.Orange, 2))
+                    using (var interpolationPen = new Pen(Color.Orange, 1))
+                    using (var keyframeBrush = new SolidBrush(Color.Orange))
+                    {
+                        // 计算当前最大值和最小值
+                        double maxValue = keyframes.Count > 0 ? keyframes.Max(k => k.Value) : 100.0;
+                        double minValue = keyframes.Count > 0 ? keyframes.Min(k => k.Value) : 0.0;
+                        
+                        // 向上/向下取整到10的倍数
+                        maxValue = Math.Ceiling(maxValue / 10.0) * 10.0;
+                        minValue = Math.Floor(minValue / 10.0) * 10.0;
+                        
+                        // 确保最大最小值不相等
+                        if (Math.Abs(maxValue - minValue) < 1e-6)
+                        {
+                            maxValue += 10.0;
+                            minValue -= 10.0;
+                        }
+                        
+                        float displayTop = bounds.Top + padding + VALUE_DISPLAY_HEIGHT * 0.1f;
+                        float displayBottom = timelineBounds.Top - padding;
+                        
+                        // 绘制显示区域边界
+                        using (var boundaryPen = new Pen(Color.FromArgb(60, Color.White)))
+                        {
+                            // 绘制上下边界线
+                            g.DrawLine(boundaryPen, 
+                                timelineBounds.Left, displayTop,
+                                timelineBounds.Right, displayTop);
+                            g.DrawLine(boundaryPen,
+                                timelineBounds.Left, displayBottom,
+                                timelineBounds.Right, displayBottom);
+                            
+                            // 使用动态最大最小值绘制刻度
+                            using (var font = new Font("Arial", 8))
+                            {
+                                g.DrawString(maxValue.ToString("F0"), font, Brushes.White, timelineBounds.Left - 35, displayTop);
+                                g.DrawString(minValue.ToString("F0"), font, Brushes.White, timelineBounds.Left - 35, displayBottom - 8);
+                            }
+                        }
+
+                        // 修改值映射函数以使用动态最大最小值
+                        float MapValueToY(double value)
+                        {
+                            float normalizedValue = (float)((value - minValue) / (maxValue - minValue));
+                            normalizedValue = Math.Max(0, Math.Min(1, normalizedValue));
+                            return displayBottom - (normalizedValue * (displayBottom - displayTop));
+                        }
+
+                        // 绘制插值线
+                        for (int i = 0; i < keyframes.Count - 1; i++)
+                        {
+                            var k1 = keyframes[i];
+                            var k2 = keyframes[i + 1];
+                            
+                            float x1 = timelineBounds.Left + (k1.Frame - startFrame) * pixelsPerFrame;
+                            float x2 = timelineBounds.Left + (k2.Frame - startFrame) * pixelsPerFrame;
+                            
+                            float y1 = MapValueToY(k1.Value);
+                            float y2 = MapValueToY(k2.Value);
+                            
+                            g.DrawLine(interpolationPen, x1, y1, x2, y2);
+                        }
+                        
+                        // 绘制关键帧点
+                        foreach (var keyframe in keyframes)
+                        {
+                            float x = timelineBounds.Left + (keyframe.Frame - startFrame) * pixelsPerFrame;
+                            float y = MapValueToY(keyframe.Value);
+                            
+                            // 绘制关键帧点
+                            g.FillEllipse(keyframeBrush, x - 4, y - 4, 8, 8);
+                            
+                            // 可选：显示关键帧的具体值
+                            using (var font = new Font("Arial", 8))
+                            {
+                                string valueText = $"{keyframe.Value:F1}";
+                                g.DrawString(valueText, font, Brushes.White, x + 5, y - 10);
+                            }
+                        }
+                    }
                 }
                 
                 g.Transform = transform;
@@ -574,12 +930,24 @@ namespace Motion.Widgets
 
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+            // 转换坐标
+            PointF canvasPoint = e.CanvasLocation;
+            Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
+            
+            // 右键点击
+            if (e.Button == MouseButtons.Right)
             {
-                // 转换坐标
-                PointF canvasPoint = e.CanvasLocation;
-                Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
-                
+                // 检查是否点击到关键帧
+                selectedKeyframe = GetKeyframeAtPoint(screenPoint);
+                if (selectedKeyframe != null)
+                {
+                    return GH_ObjectResponse.Handled;
+                }
+            }
+            
+            // 原有的左键点击处理
+            if (e.Button == MouseButtons.Left)
+            {
                 // 使用转换后的坐标检查点击
                 if (playButtonBounds.Contains(screenPoint))
                 {
@@ -669,6 +1037,8 @@ namespace Motion.Widgets
                 if (newFrame != currentFrame)
                 {
                     currentFrame = newFrame;
+                    // 更新当前值
+                    UpdateCurrentValue();
                     sender.Refresh();
                 }
                 return GH_ObjectResponse.Handled;
@@ -686,12 +1056,165 @@ namespace Motion.Widgets
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            if (e.Button == MouseButtons.Right && selectedKeyframe != null)
+            {
+                // 保持选中状态，等待右键菜单处理
+                return GH_ObjectResponse.Release;
+            }
+            
             if (isDragging)
             {
                 isDragging = false;
                 return GH_ObjectResponse.Release;
             }
+            
             return base.RespondToMouseUp(sender, e);
+        }
+
+        // 添加双击响应
+        public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                PointF canvasPoint = e.CanvasLocation;
+                Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
+                
+                // 首先检查是否点击到现有的关键帧
+                var clickedKeyframe = GetKeyframeAtPoint(screenPoint);
+                if (clickedKeyframe != null)
+                {
+                    // 如果点击到现有关键帧，使用其值
+                    using (var dialog = new KeyframeDialog(clickedKeyframe.Value))
+                    {
+                        if (dialog.ShowDialog() == DialogResult.OK)
+                        {
+                            clickedKeyframe.Value = dialog.Value;
+                            sender.Refresh();
+                            return GH_ObjectResponse.Handled;
+                        }
+                    }
+                }
+                // 检查是否在时间轴区域内双击（创建新关键帧）
+                else if (timelineBounds.Contains(screenPoint))
+                {
+                    // 获取当前插值的值作为默认值
+                    UpdateCurrentValue(); // 确保currentValue是最新的
+                    using (var dialog = new KeyframeDialog(currentValue))
+                    {
+                        if (dialog.ShowDialog() == DialogResult.OK)
+                        {
+                            // 添加新关键帧
+                            var newKeyframe = new Keyframe 
+                            { 
+                                Frame = currentFrame,
+                                Value = dialog.Value
+                            };
+                            
+                            // 检查是否已存在该帧的关键帧
+                            var existingKeyframe = keyframes.FirstOrDefault(k => k.Frame == currentFrame);
+                            if (existingKeyframe != null)
+                            {
+                                existingKeyframe.Value = dialog.Value;
+                            }
+                            else
+                            {
+                                keyframes.Add(newKeyframe);
+                                keyframes.Sort((a, b) => a.Frame.CompareTo(b.Frame));
+                            }
+                            
+                            sender.Refresh();
+                            return GH_ObjectResponse.Handled;
+                        }
+                    }
+                }
+            }
+            return base.RespondToMouseDoubleClick(sender, e);
+        }
+
+        // 辅助方法：将值映射到Y坐标
+        private float MapValueToY(double value)
+        {
+            float displayTop = bounds.Top + padding + VALUE_DISPLAY_HEIGHT * 0.1f;
+            float displayBottom = timelineBounds.Top - padding;
+            
+            // 计算当前最大最小值
+            double maxValue = keyframes.Count > 0 ? keyframes.Max(k => k.Value) : 100.0;
+            double minValue = keyframes.Count > 0 ? keyframes.Min(k => k.Value) : 0.0;
+            
+            // 向上/向下取整到10的倍数
+            maxValue = Math.Ceiling(maxValue / 10.0) * 10.0;
+            minValue = Math.Floor(minValue / 10.0) * 10.0;
+            
+            // 确保最大最小值不相等
+            if (Math.Abs(maxValue - minValue) < 1e-6)
+            {
+                maxValue += 10.0;
+                minValue -= 10.0;
+            }
+            
+            float normalizedValue = (float)((value - minValue) / (maxValue - minValue));
+            normalizedValue = Math.Max(0, Math.Min(1, normalizedValue));
+            return displayBottom - (normalizedValue * (displayBottom - displayTop));
+        }
+
+        // 添加值插值计算方法
+        private void UpdateCurrentValue()
+        {
+            if (valueParam == null) return;
+            
+            try 
+            {
+                double interpolatedValue = 0.0;
+                
+                if (keyframes.Count > 0)
+                {
+                    // 找到当前帧所在的关键帧区间
+                    var nextKeyframe = keyframes.FirstOrDefault(k => k.Frame > currentFrame);
+                    var prevKeyframe = keyframes.LastOrDefault(k => k.Frame <= currentFrame);
+                    
+                    if (prevKeyframe == null)
+                    {
+                        interpolatedValue = keyframes.First().Value;
+                    }
+                    else if (nextKeyframe == null)
+                    {
+                        interpolatedValue = keyframes.Last().Value;
+                    }
+                    else
+                    {
+                        // 线性插值
+                        double t = (currentFrame - prevKeyframe.Frame) / (double)(nextKeyframe.Frame - prevKeyframe.Frame);
+                        interpolatedValue = prevKeyframe.Value + (nextKeyframe.Value - prevKeyframe.Value) * t;
+                    }
+
+                    // 更新当前值
+                    currentValue = interpolatedValue;
+
+                    // 更新参数值
+                    valueParam.PersistentData.Clear();
+                    var motionValue = new MotionValue(currentValue);
+                    valueParam.PersistentData.Append(motionValue);
+                    
+                    // 强制参数更新
+                    valueParam.ExpireSolution(true);
+                    
+                    // 请求文档更新
+                    if (Owner?.Document != null)
+                    {
+                        Owner.Document.NewSolution(false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error in UpdateCurrentValue: {ex.Message}");
+            }
+        }
+
+        // 在析构函数中清理
+        ~TimelineWidget()
+        {
+            valueParam = null; // 只清除引用，不删除参数
         }
     }
 }
