@@ -31,95 +31,75 @@ namespace Motion.Widgets
 
         private Rectangle ActualControlArea => CreateControlArea();
 
-        private Rectangle ControlArea
-        {
-            get
-            {
-                Rectangle controlArea = ActualControlArea;
-                if (controlArea == null)
-                {
-                    Rectangle clientRectangle = base.Owner.ClientRectangle;
-                    Rectangle sideRectangle;
-                    switch (m_dockSide)
-                    {
-                        case TimelineWidgetDock.Top:
-                            sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Top, 0, ControlAreaSize);
-                            return sideRectangle;
+        //private Rectangle ControlArea
+        //{
+        //    get
+        //    {
+        //        Rectangle controlArea = ActualControlArea;
+        //        if (controlArea == null)
+        //        {
+        //            Rectangle clientRectangle = base.Owner.ClientRectangle;
+        //            Rectangle sideRectangle;
+        //            switch (m_dockSide)
+        //            {
+        //                case TimelineWidgetDock.Top:
+        //                    sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Top, 0, ControlAreaSize);
+        //                    return sideRectangle;
 
-                        case TimelineWidgetDock.Bottom:
-                            sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Bottom - ControlAreaSize, 0, ControlAreaSize);
-                            return sideRectangle;
-                    }
-                }
-                return Rectangle.Empty;
-            }
-        }
+        //                case TimelineWidgetDock.Bottom:
+        //                    sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Bottom - ControlAreaSize, 0, ControlAreaSize);
+        //                    return sideRectangle;
+        //            }
+        //        }
+        //        return Rectangle.Empty;
+        //    }
+        //}
 
         private Rectangle BorderArea
         {
             get
             {
-                Rectangle result = ControlArea;
-                if (result.IsEmpty)
-                {
+                if (Owner?.Bounds == null || Owner.Bounds.IsEmpty)
                     return Rectangle.Empty;
-                }
-                switch (m_dockSide)
-                {
-                    case TimelineWidgetDock.Top:
-                        result = new Rectangle(result.Right, result.Top, BorderAreaSize, result.Height);
-                        break;
 
-                    case TimelineWidgetDock.Bottom:
-                        result = new Rectangle(result.Left - BorderAreaSize, result.Top, BorderAreaSize, result.Height);
-                        break;
-                }
-                return result;
+                var clientRect = Owner.ClientRectangle;
+                const int height = 100;  // 边界区域固定高度
+                
+                // 根据停靠位置计算边界区域
+                return m_dockSide switch
+                {
+                    TimelineWidgetDock.Top => new Rectangle(
+                        clientRect.Left,           // 从窗口左侧开始
+                        clientRect.Top,             // 从工具栏下方开始
+                        clientRect.Width,          // 覆盖整个窗口宽度
+                        height),                   // 固定高度
+                        
+                    TimelineWidgetDock.Bottom => new Rectangle(
+                        clientRect.Left,           // 从窗口左侧开始
+                        clientRect.Bottom - height, // 从底部向上偏移固定高度
+                        clientRect.Width,          // 覆盖整个窗口宽度
+                        height),                   // 固定高度
+                        
+                    _ => Rectangle.Empty
+                };
             }
         }
 
         private Rectangle CreateControlArea()
         {
-            try 
-            {
-                if (base.Owner == null || base.Owner.ClientRectangle.IsEmpty)
-                    return Rectangle.Empty;
-
-                var clientRect = base.Owner.ClientRectangle;
-                
-                // 确保最小尺寸
-                int width = Math.Max(ControlAreaSize, 100);
-                int height = Math.Max(ControlAreaSize, 100);
-                
-                Rectangle rectangle = new Rectangle(0, 0, width, height);
-                
-                // 根据停靠位置调整
-                switch (m_dockSide)
-                {
-                    case TimelineWidgetDock.Top:
-                        rectangle.X = Math.Max(clientRect.Left, 0);
-                        rectangle.Y = Math.Max(clientRect.Bottom - height, 0);
-                        break;
-                        
-                    case TimelineWidgetDock.Bottom:
-                        rectangle.X = Math.Max(clientRect.Right - width, 0);
-                        rectangle.Y = Math.Max(clientRect.Top, 0);
-                        break;
-                }
-                
-                // 确保矩形完全在客户区域内
-                if (rectangle.Right > clientRect.Right)
-                    rectangle.X = Math.Max(clientRect.Right - width, 0);
-                    
-                if (rectangle.Bottom > clientRect.Bottom)
-                    rectangle.Y = Math.Max(clientRect.Bottom - height, 0);
-                    
-                return rectangle;
-            }
-            catch 
-            {
+            const int padding = 10;  // 内边距
+            var border = BorderArea;
+            
+            if (border.IsEmpty)
                 return Rectangle.Empty;
-            }
+            
+            // 从边界区域向内缩进
+            return new Rectangle(
+                border.Left + padding,           // 左边缘向内缩进
+                border.Top + padding,            // 上边缘向内缩进
+                border.Width - (padding * 2),    // 宽度减去两侧内边距
+                border.Height - (padding * 2)    // 高度减去上下内边距
+            );
         }
 
         public static TimelineWidgetDock DockSide
@@ -235,7 +215,7 @@ namespace Motion.Widgets
             base.AppendToMenu(menu);
             GH_DocumentObject.Menu_AppendSeparator(menu);
             GH_DocumentObject.Menu_AppendItem(menu, "Top", Menu_DockTop, enabled: true, m_dockSide == TimelineWidgetDock.Top);
-            GH_DocumentObject.Menu_AppendItem(menu, "Bottom", Menu_DockTop, enabled: true, m_dockSide == TimelineWidgetDock.Top);
+            GH_DocumentObject.Menu_AppendItem(menu, "Bottom", Menu_DockBottom, enabled: true, m_dockSide == TimelineWidgetDock.Bottom);
         }
 
         private void Menu_DockTop(object sender, EventArgs e)
@@ -268,20 +248,20 @@ namespace Motion.Widgets
             {
                 Graphics g = canvas.Graphics;
                 
-                // 获取widget区域
+                // 保存当前的转换矩阵
+                var transform = g.Transform;
+                
+                // 重置转换矩阵，使绘制不受画布缩放和平移的影响
+                g.ResetTransform();
+                
+                // 获取widget区域（这个是相对于窗口的固定位置）
                 Rectangle bounds = WidgetArea;
-                if (bounds.IsEmpty) return;
-                
-                // 确保边界有效且在可见区域内
-                var visibleRegion = Rectangle.Round(canvas.Viewport.VisibleRegion);
-                if (visibleRegion.IsEmpty) return;
-                
-                bounds = Rectangle.Intersect(bounds, visibleRegion);
                 if (bounds.IsEmpty) return;
                 
                 // 使用抗锯齿
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 
+                // 直接使用窗口坐标绘制
                 // 绘制背景
                 using (var brush = new SolidBrush(Color.FromArgb(200, 240, 240, 240)))
                 {
@@ -291,10 +271,11 @@ namespace Motion.Widgets
                 // 绘制边框
                 using (var pen = new Pen(Color.FromArgb(100, 100, 100), 1.0f))
                 {
-                    bounds.Width--;
-                    bounds.Height--;
                     g.DrawRectangle(pen, bounds);
                 }
+                
+                // 恢复原始转换矩阵
+                g.Transform = transform;
             }
             catch (Exception ex)
             {
