@@ -65,30 +65,6 @@ namespace Motion.Widgets
 
         private Rectangle ActualControlArea => CreateControlArea();
 
-        private Rectangle ControlArea
-        {
-            get
-            {
-                Rectangle controlArea = ActualControlArea;
-                if (controlArea == null)
-                {
-                    Rectangle clientRectangle = base.Owner.ClientRectangle;
-                    Rectangle sideRectangle;
-                    switch (m_dockSide)
-                    {
-                        case TimelineWidgetDock.Top:
-                            sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Top, 0, ControlAreaSize);
-                            return sideRectangle;
-
-                        case TimelineWidgetDock.Bottom:
-                            sideRectangle = new Rectangle(clientRectangle.Left, clientRectangle.Bottom - ControlAreaSize, 0, ControlAreaSize);
-                            return sideRectangle;
-                    }
-                }
-                return Rectangle.Empty;
-            }
-        }
-
         private Rectangle BorderArea
         {
             get
@@ -180,6 +156,9 @@ namespace Motion.Widgets
             {
                 SharedVisible = value;
             }
+        }
+        public override void SetupTooltip(PointF canvasPoint, GH_TooltipDisplayEventArgs e)
+        {
         }
 
         public delegate void DockSideChangedEventHandler();
