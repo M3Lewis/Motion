@@ -1,16 +1,12 @@
 ﻿using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
-using Grasshopper.GUI.Canvas.Interaction;
 using Grasshopper.Kernel;
-using Grasshopper.Kernel.Attributes;
-using Grasshopper.Kernel.Special;
-using System;
-using System.Reflection;
-using System.Windows.Forms;
 using Motion.Settings;
-using Motion.Widgets;
+using Motion.Widget;
+using System;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace Motion.TopMenu
 {

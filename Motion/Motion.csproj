@@ -79,8 +79,6 @@
     <Compile Remove="SettingsControl\GH_MarkovWidgetSettingFrontEnd.cs" />
     <Compile Remove="SettingsControl\GH_MarkovWidgetSettingsUI.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
-    <Compile Remove="Widgets\GH_MarkovWidget.cs" />
-    <Compile Remove="Widgets\GH_MarkovWidgetDock.cs" />
   </ItemGroup>
   
   <ItemGroup>
@@ -125,8 +123,6 @@
     <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
     <None Include="SettingsControl\GH_MarkovWidgetSettingFrontEnd.cs" />
     <None Include="SettingsControl\GH_MarkovWidgetSettingsUI.cs" />
-    <None Include="Widgets\GH_MarkovWidgetDock.cs" />
-    <None Include="Widgets\GH_MarkovWidget.cs" />
   </ItemGroup>
   
   <ItemGroup>

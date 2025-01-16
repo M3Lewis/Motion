@@ -9,11 +9,11 @@ using GH_IO;
 
 namespace Motion.Parameters
 {
-    public class MotionValueGoo : IGH_Goo, GH_ISerializable
+    public class MotionTimelineValueGoo : IGH_Goo, GH_ISerializable
     {
         private double value;
 
-        public MotionValueGoo(double value = 0.0)
+        public MotionTimelineValueGoo(double value = 0.0)
         {
             this.value = value;
         }
@@ -31,7 +31,7 @@ namespace Motion.Parameters
 
         public IGH_Goo Duplicate()
         {
-            return new MotionValueGoo(value);
+            return new MotionTimelineValueGoo(value);
         }
 
         public IGH_GooProxy EmitProxy()
@@ -100,9 +100,9 @@ namespace Motion.Parameters
         }
     }
 
-    public class MotionValueParameter : GH_PersistentParam<MotionValueGoo>
+    public class MotionTimelineValueParam : GH_PersistentParam<MotionTimelineValueGoo>
     {
-        public MotionValueParameter()
+        public MotionTimelineValueParam()
             : base(new GH_InstanceDescription(
                 "Motion Value",   
                 "MValue",        
@@ -114,9 +114,9 @@ namespace Motion.Parameters
 
         public override Guid ComponentGuid => new Guid("8644399d-b506-40bd-b574-4409c25fc93b");
 
-        protected override MotionValueGoo InstantiateT()
+        protected override MotionTimelineValueGoo InstantiateT()
         {
-            return new MotionValueGoo();
+            return new MotionTimelineValueGoo();
         }
 
         public override void ClearData()
@@ -129,12 +129,12 @@ namespace Motion.Parameters
             base.AppendAdditionalMenuItems(menu);
         }
 
-        protected override GH_GetterResult Prompt_Singular(ref MotionValueGoo value)
+        protected override GH_GetterResult Prompt_Singular(ref MotionTimelineValueGoo value)
         {
             return GH_GetterResult.cancel;
         }
 
-        protected override GH_GetterResult Prompt_Plural(ref List<MotionValueGoo> values)
+        protected override GH_GetterResult Prompt_Plural(ref List<MotionTimelineValueGoo> values)
         {
             return GH_GetterResult.cancel;
         }
