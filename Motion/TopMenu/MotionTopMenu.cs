@@ -45,21 +45,21 @@ namespace Motion.TopMenu
                     {
                         Rhino.RhinoApp.WriteLine("Creating new TimelineWidget");
                         TimelineWidget widget = new TimelineWidget();
-                        
-                        // 确保控件位置和尺寸正确
+
+                        // 先设置控件的位置和尺寸
                         widget.Size = new Size(800, 100);
                         widget.Location = new Point(10, 10);
                         widget.Visible = true;
                         widget.Enabled = true;
-                        
+
+                        // 然后再将控件添加到 editor.Controls
                         editor.Controls.Add(widget);
                         widget.BringToFront();
-                        
-                        // 强制布局更新
+
                         editor.PerformLayout();
                         widget.Invalidate(true);
                         widget.Update();
-                        
+
                         Rhino.RhinoApp.WriteLine("TimelineWidget created and added to controls");
                     }
                     else
@@ -73,13 +73,15 @@ namespace Motion.TopMenu
                 }
                 else
                 {
-                    foreach (var widget in editor.Controls.OfType<TimelineWidget>())
+                    var widgets = editor.Controls.OfType<TimelineWidget>().ToList();
+                    foreach (var widget in widgets)
                     {
                         widget.Visible = false;
+                        editor.Controls.Remove(widget);
+                        widget.Dispose();
                     }
                 }
-                
-                // 刷新整个界面
+
                 editor.PerformLayout();
                 editor.Refresh();
                 Instances.ActiveCanvas?.Refresh();

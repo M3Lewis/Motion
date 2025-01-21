@@ -1,4 +1,4 @@
-﻿using Grasshopper;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.GUI.Widgets;
@@ -15,10 +15,14 @@ namespace Motion.Widget
     internal partial class TimelineWidget : Control
     {
         private GH_Canvas Owner => Instances.ActiveCanvas;
-        private List<Keyframe> _keyframes = new List<Keyframe>();
+        private Dictionary<string, List<Keyframe>> _keyframeGroups = new Dictionary<string, List<Keyframe>>();
+        private string _activeGroup = "Default";
+        private Dictionary<string, bool> _groupVisibility = new Dictionary<string, bool>();
+        private Dictionary<string, bool> _groupCollapsed = new Dictionary<string, bool>();
         private double _currentValue = 0.0;
 
         private bool _isPlaying = false;
+        private bool _isCollapsed = false;
         private int _currentFrame = 1;
         private int _startFrame = 1;
         private int _endFrame = 250;
@@ -53,6 +57,8 @@ namespace Motion.Widget
         private const float ZOOM_SPEED = 0.1f;
 
         private const int WIDGET_HEIGHT = 200;
+        private const float GROUP_SPACING = 30f;
+        private const float GROUP_HEADER_HEIGHT = 20f;
 
         public TimelineWidget()
         {
@@ -135,10 +141,11 @@ namespace Motion.Widget
                 if (Owner?.Viewport == null || Parent == null) return;
 
                 var parentBounds = Parent.ClientRectangle;
-                Size = new Size(parentBounds.Width, WIDGET_HEIGHT);
+                int height = _isCollapsed ? 30 : WIDGET_HEIGHT;
+                Size = new Size(parentBounds.Width, height);
                 Location = m_dockSide == TimelineWidgetDock.Top
                     ? new Point(0, WIDGET_HEIGHT + 130)
-                    : new Point(0, parentBounds.Height - WIDGET_HEIGHT);
+                    : new Point(0, parentBounds.Height - height);
 
                 _bounds = new Rectangle(Location, Size);
                 CalculateBounds();
@@ -182,6 +189,22 @@ namespace Motion.Widget
 
             if (e.Button != MouseButtons.Left)
                 return;
+
+            // Check if clicked on collapse/expand button
+            var collapseButtonRect = new Rectangle(
+                _bounds.Right - 30,
+                _bounds.Top + 5,
+                20,
+                20
+            );
+
+            if (collapseButtonRect.Contains(e.Location))
+            {
+                _isCollapsed = !_isCollapsed;
+                UpdateBounds();
+                Invalidate();
+                return;
+            }
 
             // 处理播放按钮点击
             if (_playButtonBounds.Contains(e.Location))
@@ -239,12 +262,77 @@ namespace Motion.Widget
                 return;
             }
 
+            // 处理组头部点击
+            string clickedGroup = GetClickedGroup(e.Location);
+            if (clickedGroup != null)
+            {
+                ToggleGroupVisibility(clickedGroup);
+                Invalidate();
+                return;
+            }
+
             // 处理当前帧指示器拖动
             if (IsOverCurrentFrameHandle(e.Location))
             {
                 StartDragging(e.X);
                 return;
             }
+        }
+
+        private string GetClickedGroup(Point location)
+        {
+            float yOffset = 0;
+            foreach (var group in _keyframeGroups)
+            {
+                var headerRect = new RectangleF(
+                    _timelineBounds.Left,
+                    _timelineBounds.Top + yOffset,
+                    _timelineBounds.Width,
+                    GROUP_HEADER_HEIGHT
+                );
+
+                // Check if clicked on collapse/expand button
+                var collapseRect = new RectangleF(
+                    headerRect.Right - 50,
+                    headerRect.Top + (headerRect.Height - 15) / 2,
+                    15,
+                    15
+                );
+
+                if (collapseRect.Contains(location))
+                {
+                    // Toggle collapsed state
+                    if (_groupCollapsed.ContainsKey(group.Key))
+                    {
+                        _groupCollapsed[group.Key] = !_groupCollapsed[group.Key];
+                    }
+                    else
+                    {
+                        _groupCollapsed[group.Key] = true;
+                    }
+                    return group.Key;
+                }
+
+                // Check if clicked on visibility toggle
+                var visibilityRect = new RectangleF(
+                    headerRect.Right - 25,
+                    headerRect.Top + (headerRect.Height - 15) / 2,
+                    15,
+                    15
+                );
+
+                if (visibilityRect.Contains(location))
+                {
+                    return group.Key;
+                }
+
+                yOffset += GROUP_HEADER_HEIGHT;
+                if (_groupVisibility[group.Key] && !(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
+                {
+                    yOffset += GROUP_SPACING;
+                }
+            }
+            return null;
         }
 
         // 辅助方法，处理播放状态切换
@@ -311,7 +399,6 @@ namespace Motion.Widget
                 }
             }
         }
-
         private void TimelineWidget_MouseUp(object sender, MouseEventArgs e)
         {
             if (_isDragging)
@@ -321,7 +408,6 @@ namespace Motion.Widget
                 Invalidate();
             }
         }
-
         private void TimelineWidget_MouseWheel(object sender, MouseEventArgs e)
         {
             // 只在按下CTRL键时进行缩放
@@ -341,7 +427,44 @@ namespace Motion.Widget
                 Invalidate();
             }
         }
+        private void TimelineWidget_DoubleClick(object sender, EventArgs e)
+        {
+            Point mousePoint = PointToClient(Control.MousePosition);
 
+            // 检查是否双击在某个组区域内
+            string groupName = GetClickedGroup(mousePoint);
+            if (groupName == null)
+                return;
+
+            // 定义关键帧显示区域
+            float displayTop = _bounds.Top + PADDING + VALUE_DISPLAY_HEIGHT * 0.1f;
+            float displayBottom = _timelineBounds.Top - PADDING;
+            RectangleF keyframeDisplayArea = new RectangleF(
+                _timelineBounds.Left,
+                displayTop,
+                _timelineBounds.Width,
+                displayBottom - displayTop
+            );
+
+            // 检查点击是否在关键帧显示区域内
+            if (!keyframeDisplayArea.Contains(mousePoint))
+                return;
+
+            // 检查是否点击到现有的关键帧
+            var clickedKeyframe = GetKeyframeAtPoint(mousePoint);
+            double initialValue = clickedKeyframe?.Value ?? _currentValue;
+
+            // 显示关键帧编辑对话框
+            using (var dialog = new KeyframeDialog(initialValue))
+            {
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return;
+
+                UpdateKeyframe(clickedKeyframe, dialog.Value);
+                UpdateCurrentValue();
+                Invalidate();
+            }
+        }
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -357,12 +480,54 @@ namespace Motion.Widget
                 CalculateBounds();
 
                 DrawBackground(g);
-                DrawPlayButton(g);
-                DrawNavigationButtons(g);
-                DrawFrameCounter(g);
-                DrawTimeline(g);
-                DrawFrameInputs(g);
-                DrawKeyframesAndInterpolation(g);
+                
+                // Draw collapse/expand button
+                var collapseButtonRect = new Rectangle(
+                    _bounds.Right - 30,
+                    _bounds.Top + 5,
+                    20,
+                    20
+                );
+                
+                using (var pen = new Pen(Color.White, 2))
+                {
+                    // Draw minus/plus sign based on collapsed state
+                    g.DrawLine(pen,
+                        collapseButtonRect.Left + 2,
+                        collapseButtonRect.Top + collapseButtonRect.Height/2,
+                        collapseButtonRect.Right - 2,
+                        collapseButtonRect.Top + collapseButtonRect.Height/2);
+                    
+                    if (_isCollapsed)
+                    {
+                        g.DrawLine(pen,
+                            collapseButtonRect.Left + collapseButtonRect.Width/2,
+                            collapseButtonRect.Top + 2,
+                            collapseButtonRect.Left + collapseButtonRect.Width/2,
+                            collapseButtonRect.Bottom - 2);
+                    }
+                }
+
+                if (!_isCollapsed)
+                {
+                    DrawPlayButton(g);
+                    DrawNavigationButtons(g);
+                    DrawFrameCounter(g);
+                    DrawTimeline(g);
+                    DrawFrameInputs(g);
+                }
+                
+                // Draw each visible group
+                float groupOffset = 0;
+                foreach (var group in _keyframeGroups)
+                {
+                    if (_groupVisibility[group.Key])
+                    {
+                        DrawGroupHeader(g, group.Key, ref groupOffset);
+                        DrawKeyframesAndInterpolation(g);
+                        groupOffset += GROUP_SPACING;
+                    }
+                }
 
                 // 强制立即更新显示
                 if (_isPlaying)
@@ -437,43 +602,15 @@ namespace Motion.Widget
             area.Inflate(5, 5);  // 向外扩展5个像素
             return area.Contains(pt_control);
         }
-
-        private void TimelineWidget_DoubleClick(object sender, EventArgs e)
-        {
-            Point mousePoint = PointToClient(Control.MousePosition);
-
-            // 定义关键帧显示区域
-            float displayTop = _bounds.Top + PADDING + VALUE_DISPLAY_HEIGHT * 0.1f;
-            float displayBottom = _timelineBounds.Top - PADDING;
-            RectangleF keyframeDisplayArea = new RectangleF(
-                _timelineBounds.Left,
-                displayTop,
-                _timelineBounds.Width,
-                displayBottom - displayTop
-            );
-
-            // 检查点击是否在关键帧显示区域内
-            if (!keyframeDisplayArea.Contains(mousePoint))
-                return;
-
-            // 检查是否点击到现有的关键帧
-            var clickedKeyframe = GetKeyframeAtPoint(mousePoint);
-            double initialValue = clickedKeyframe?.Value ?? _currentValue;
-
-            // 显示关键帧编辑对话框
-            using (var dialog = new KeyframeDialog(initialValue))
-            {
-                if (dialog.ShowDialog() != DialogResult.OK)
-                    return;
-
-                UpdateKeyframe(clickedKeyframe, dialog.Value);
-                UpdateCurrentValue();
-                Invalidate();
-            }
-        }
-
         private void UpdateKeyframe(Keyframe existingKeyframe, double newValue)
         {
+            // 确保活动组存在
+            if (!_keyframeGroups.ContainsKey(_activeGroup))
+            {
+                _keyframeGroups[_activeGroup] = new List<Keyframe>();
+                _groupVisibility[_activeGroup] = true;
+            }
+
             if (existingKeyframe != null)
             {
                 // 更新现有关键帧
@@ -482,22 +619,59 @@ namespace Motion.Widget
             }
 
             // 添加新关键帧
-            var newKeyframe = new Keyframe
-            {
-                Frame = _currentFrame,
-                Value = newValue
-            };
+            var newKeyframe = new Keyframe(_currentFrame, newValue, _activeGroup);
 
             // 检查是否已存在该帧的关键帧
-            var frameKeyframe = _keyframes.FirstOrDefault(k => k.Frame == _currentFrame);
+            var frameKeyframe = _keyframeGroups[_activeGroup].FirstOrDefault(k => k.Frame == _currentFrame);
             if (frameKeyframe != null)
             {
                 frameKeyframe.Value = newValue;
                 return;
             }
 
-            _keyframes.Add(newKeyframe);
-            _keyframes.Sort((a, b) => a.Frame.CompareTo(b.Frame));
+            _keyframeGroups[_activeGroup].Add(newKeyframe);
+            _keyframeGroups[_activeGroup].Sort((a, b) => a.Frame.CompareTo(b.Frame));
+        }
+
+        // 添加一个辅助方法来确保组存在
+        private void EnsureGroupExists(string groupName)
+        {
+            if (!_keyframeGroups.ContainsKey(groupName))
+            {
+                _keyframeGroups[groupName] = new List<Keyframe>();
+                _groupVisibility[groupName] = true;
+            }
+        }
+
+        private void AddGroup(string groupName)
+        {
+            if (!_keyframeGroups.ContainsKey(groupName))
+            {
+                _keyframeGroups[groupName] = new List<Keyframe>();
+                _groupVisibility[groupName] = true;
+            }
+        }
+
+        private void RemoveGroup(string groupName)
+        {
+            if (_keyframeGroups.ContainsKey(groupName))
+            {
+                _keyframeGroups.Remove(groupName);
+                _groupVisibility.Remove(groupName);
+                
+                if (_activeGroup == groupName)
+                {
+                    _activeGroup = "Default";
+                }
+            }
+        }
+
+        private void ToggleGroupVisibility(string groupName)
+        {
+            if (_groupVisibility.ContainsKey(groupName))
+            {
+                _groupVisibility[groupName] = !_groupVisibility[groupName];
+            }
         }
 
         private void TimelineWidget_HandleCreated(object sender, EventArgs e)
@@ -515,29 +689,30 @@ namespace Motion.Widget
             }
         }
 
-        // 添加值插值计算方法
         private void UpdateCurrentValue()
         {
             try
             {
-                // 更新当前值的逻辑
                 if (_valueParam != null)
                 {
                     double interpolatedValue = 0.0;
 
-                    if (_keyframes.Count > 0)
+                    // 获取当前活动组的关键帧
+                    if (_keyframeGroups.ContainsKey(_activeGroup) && _keyframeGroups[_activeGroup].Count > 0)
                     {
+                        var activeKeyframes = _keyframeGroups[_activeGroup];
+                        
                         // 找到当前帧所在的关键帧区间
-                        var nextKeyframe = _keyframes.FirstOrDefault(k => k.Frame > _currentFrame);
-                        var prevKeyframe = _keyframes.LastOrDefault(k => k.Frame <= _currentFrame);
+                        var nextKeyframe = activeKeyframes.FirstOrDefault(k => k.Frame > _currentFrame);
+                        var prevKeyframe = activeKeyframes.LastOrDefault(k => k.Frame <= _currentFrame);
 
                         if (prevKeyframe == null)
                         {
-                            interpolatedValue = _keyframes.First().Value;
+                            interpolatedValue = activeKeyframes.First().Value;
                         }
                         else if (nextKeyframe == null)
                         {
-                            interpolatedValue = _keyframes.Last().Value;
+                            interpolatedValue = activeKeyframes.Last().Value;
                         }
                         else
                         {
@@ -565,10 +740,7 @@ namespace Motion.Widget
                     }
                 }
 
-                // 确保请求重绘
                 Invalidate();
-
-                // 如果需要，也可以强制立即重绘
                 Update();
             }
             catch (Exception ex)
@@ -626,7 +798,5 @@ namespace Motion.Widget
                 Invalidate();
             }
         }
-
-
     }
 }

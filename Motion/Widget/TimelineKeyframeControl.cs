@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Point = System.Drawing.Point;
 using RectangleF = System.Drawing.RectangleF;
+using System.Collections.Generic;
 
 namespace Motion.Widget
 {
@@ -11,13 +12,17 @@ namespace Motion.Widget
         // 添加方法来检查是否点击到关键帧
         private Keyframe GetKeyframeAtPoint(Point point)
         {
-            if (_keyframes.Count == 0) return null;
+            if (_keyframeGroups.Count == 0 || !_keyframeGroups.ContainsKey(_activeGroup)) 
+                return null;
 
-            // 检查每个关键帧
-            foreach (var keyframe in _keyframes)
+            var activeKeyframes = _keyframeGroups[_activeGroup];
+            if (activeKeyframes.Count == 0) return null;
+
+            // 检查当前活动组中的每个关键帧
+            foreach (var keyframe in activeKeyframes)
             {
                 float x = _timelineBounds.Left + (keyframe.Frame - _startFrame) * _pixelsPerFrame;
-                float y = MapValueToY(keyframe.Value);
+                float y = MapValueToY(keyframe.Value, activeKeyframes);
 
                 // 创建关键帧点的矩形区域（8x8像素）
                 RectangleF keyframeRect = new RectangleF(x - 4, y - 4, 8, 8);
@@ -30,12 +35,13 @@ namespace Motion.Widget
 
             return null;
         }
+
         // 添加删除关键帧的方法
         private void Menu_DeleteKeyframe(object sender, EventArgs e)
         {
-            if (_selectedKeyframe != null)
+            if (_selectedKeyframe != null && _keyframeGroups.ContainsKey(_activeGroup))
             {
-                _keyframes.Remove(_selectedKeyframe);
+                _keyframeGroups[_activeGroup].Remove(_selectedKeyframe);
                 _selectedKeyframe = null;
                 UpdateCurrentValue();
                 Owner?.Refresh();
@@ -52,21 +58,24 @@ namespace Motion.Widget
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
-                _keyframes.Clear();
-                _selectedKeyframe = null;
-                _currentValue = 0.0;
-                Owner?.Refresh();
+                if (_keyframeGroups.ContainsKey(_activeGroup))
+                {
+                    _keyframeGroups[_activeGroup].Clear();
+                    _selectedKeyframe = null;
+                    _currentValue = 0.0;
+                    Owner?.Refresh();
+                }
             }
         }
 
-        private float MapValueToY(double value)
+        private float MapValueToY(double value, List<Keyframe> keyframes)
         {
             float displayTop = _bounds.Top + PADDING + VALUE_DISPLAY_HEIGHT * 0.1f;
             float displayBottom = _timelineBounds.Top - PADDING;
 
             // 计算当前最大最小值
-            double maxValue = _keyframes.Count > 0 ? _keyframes.Max(k => k.Value) : 100.0;
-            double minValue = _keyframes.Count > 0 ? _keyframes.Min(k => k.Value) : 0.0;
+            double maxValue = keyframes.Count > 0 ? keyframes.Max(k => k.Value) : 100.0;
+            double minValue = keyframes.Count > 0 ? keyframes.Min(k => k.Value) : 0.0;
 
             // 向上/向下取整到10的倍数
             maxValue = Math.Ceiling(maxValue / 10.0) * 10.0;

@@ -8,26 +8,6 @@ namespace Motion.Widget
 {
     internal partial class TimelineWidget
     {
-        private bool isParamInitialized = false;
-
-        // 添加初始化参数的方法
-        private void InitializeTimelineValueParameter()
-        {
-            if (isParamInitialized || Owner?.Document == null) return;
-
-            // 创建参数
-            _valueParam = new MotionTimelineValueParam();
-            _valueParam.CreateAttributes();
-
-            // 设置参数位置
-            _valueParam.Attributes.Pivot = new System.Drawing.PointF(100, 100);
-
-            // 添加参数到文档
-            Owner.Document.AddObject(_valueParam, false);
-
-            isParamInitialized = true;
-        }
-
         // 添加方法来查找现有的 Motion Value 参数
         private MotionTimelineValueParam FindExistingMotionValue()
         {

@@ -1,7 +1,8 @@
-﻿using Grasshopper.GUI.Canvas;
+﻿﻿﻿﻿﻿﻿using Grasshopper.GUI.Canvas;
 using System;
 using System.Drawing;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Motion.Widget
 {
@@ -317,8 +318,6 @@ namespace Motion.Widget
             }
         }
 
-
-
         private void DrawRoundedRectangle(System.Drawing.Drawing2D.GraphicsPath path, Rectangle bounds, int radius)
         {
             path.AddArc(bounds.X, bounds.Y, radius * 2, radius * 2, 180, 90);
@@ -347,21 +346,140 @@ namespace Motion.Widget
         }
 
         private void DrawKeyframesAndInterpolation(Graphics g)
+{
+    if (_keyframeGroups.Count == 0) return;
+
+    float groupOffset = 0;
+    float displayTop = _timelineBounds.Top - PADDING;
+    float displayBottom = _timelineBounds.Bottom + PADDING;
+
+    // Define colors for different groups
+    var groupColors = new Dictionary<string, Color>
+    {
+        { "Default", Color.Orange },
+        { "Group1", Color.LimeGreen },
+        { "Group2", Color.DodgerBlue },
+        { "Group3", Color.Violet },
+        { "Group4", Color.Gold }
+    };
+
+    // Draw each group's keyframes and interpolation
+    foreach (var group in _keyframeGroups)
+    {
+        if (!_groupVisibility[group.Key] || group.Value.Count == 0) continue;
+
+        // Calculate group display area
+        float groupDisplayTop = displayTop + groupOffset;
+        float groupDisplayBottom = displayBottom + groupOffset;
+
+        // Draw group header
+        DrawGroupHeader(g, group.Key, ref groupOffset);
+
+        // Only draw keyframes and interpolation if group is visible and not collapsed
+        if (_groupVisibility[group.Key] && !(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
         {
-            if (_keyframes.Count == 0) return;
+            // Draw value boundaries for this group
+            DrawValueDisplayBoundaries(g, groupDisplayTop, groupDisplayBottom, group.Value);
 
-            float displayTop = _timelineBounds.Top - PADDING;
-            float displayBottom = _timelineBounds.Bottom + PADDING;
+            var color = groupColors.ContainsKey(group.Key) ? groupColors[group.Key] : Color.Orange;
+            DrawInterpolationLine(g, groupDisplayTop, groupDisplayBottom, group.Value, color);
+            DrawKeyframePoints(g, groupDisplayTop, groupDisplayBottom, group.Value, color);
 
-            DrawValueDisplayBoundaries(g, displayTop, displayBottom);
-            DrawInterpolationLine(g, displayTop, displayBottom);
-            DrawKeyframePoints(g, displayTop, displayBottom);
+            // Add spacing between groups
+            groupOffset += GROUP_SPACING;
         }
-        private void DrawValueDisplayBoundaries(Graphics g, float displayTop, float displayBottom)
+    }
+}
+
+        private void DrawGroupHeader(Graphics g, string groupName, ref float yOffset)
+        {
+            var headerRect = new RectangleF(
+                _timelineBounds.Left,
+                _timelineBounds.Top + yOffset,
+                _timelineBounds.Width,
+                GROUP_HEADER_HEIGHT
+            );
+
+            // Draw background
+            using (var brush = new SolidBrush(Color.FromArgb(50, 50, 50)))
+            {
+                g.FillRectangle(brush, headerRect);
+            }
+
+            // Draw text
+            using (var font = new Font("Arial", 10))
+            using (var brush = new SolidBrush(Color.White))
+            {
+                var textRect = new RectangleF(
+                    headerRect.Left + 5,
+                    headerRect.Top + (headerRect.Height - font.Height) / 2,
+                    headerRect.Width - 30,
+                    font.Height
+                );
+
+                g.DrawString(groupName, font, brush, textRect);
+            }
+
+            // Draw collapse/expand indicator
+            var collapseRect = new RectangleF(
+                headerRect.Right - 50,
+                headerRect.Top + (headerRect.Height - 15) / 2,
+                15,
+                15
+            );
+
+            using (var pen = new Pen(Color.White, 2))
+            {
+                // Draw minus/plus sign based on collapsed state
+                bool isCollapsed = _groupCollapsed.ContainsKey(groupName) && _groupCollapsed[groupName];
+                
+                // Horizontal line
+                g.DrawLine(pen,
+                    collapseRect.Left + 2,
+                    collapseRect.Top + collapseRect.Height/2,
+                    collapseRect.Right - 2,
+                    collapseRect.Top + collapseRect.Height/2);
+                
+                // Vertical line (only when collapsed)
+                if (isCollapsed)
+                {
+                    g.DrawLine(pen,
+                        collapseRect.Left + collapseRect.Width/2,
+                        collapseRect.Top + 2,
+                        collapseRect.Left + collapseRect.Width/2,
+                        collapseRect.Bottom - 2);
+                }
+            }
+
+            // Draw visibility toggle
+            var visibilityRect = new RectangleF(
+                headerRect.Right - 25,
+                headerRect.Top + (headerRect.Height - 15) / 2,
+                15,
+                15
+            );
+
+            using (var pen = new Pen(Color.White, 2))
+            {
+                if (_groupVisibility[groupName])
+                {
+                    g.DrawLine(pen, visibilityRect.Left, visibilityRect.Top, visibilityRect.Right, visibilityRect.Bottom);
+                    g.DrawLine(pen, visibilityRect.Right, visibilityRect.Top, visibilityRect.Left, visibilityRect.Bottom);
+                }
+                else
+                {
+                    g.DrawRectangle(pen, Rectangle.Round(visibilityRect));
+                }
+            }
+
+            // Update yOffset for next group
+            yOffset += GROUP_HEADER_HEIGHT;
+        }
+        private void DrawValueDisplayBoundaries(Graphics g, float displayTop, float displayBottom, List<Keyframe> keyframes)
         {
             // 计算当前最大最小值
-            double maxValue = _keyframes.Count > 0 ? _keyframes.Max(k => k.Value) : 100.0;
-            double minValue = _keyframes.Count > 0 ? _keyframes.Min(k => k.Value) : 0.0;
+            double maxValue = keyframes.Count > 0 ? keyframes.Max(k => k.Value) : 100.0;
+            double minValue = keyframes.Count > 0 ? keyframes.Min(k => k.Value) : 0.0;
 
             // 向上/向下取整到10的倍数
             maxValue = Math.Ceiling(maxValue / 10.0) * 10.0;
@@ -395,41 +513,41 @@ namespace Motion.Widget
             }
         }
 
-        private void DrawInterpolationLine(Graphics g, float displayTop, float displayBottom)
+        private void DrawInterpolationLine(Graphics g, float displayTop, float displayBottom, List<Keyframe> keyframes, Color color)
         {
-            if (_keyframes.Count < 2) return;
+            if (keyframes.Count < 2) return;
 
-            using (var interpolationPen = new Pen(Color.Orange, 1))
+            using (var interpolationPen = new Pen(color, 1))
             {
-                for (int i = 0; i < _keyframes.Count - 1; i++)
+                for (int i = 0; i < keyframes.Count - 1; i++)
                 {
-                    var k1 = _keyframes[i];
-                    var k2 = _keyframes[i + 1];
+                    var k1 = keyframes[i];
+                    var k2 = keyframes[i + 1];
 
                     // 计算X坐标时考虑时间轴的起始位置
                     float timelineStartFrame = _startFrame - (_timelineBounds.Left / _pixelsPerFrame);
                     float x1 = _timelineBounds.Left + (k1.Frame - timelineStartFrame) * _pixelsPerFrame;
                     float x2 = _timelineBounds.Left + (k2.Frame - timelineStartFrame) * _pixelsPerFrame;
 
-                    float y1 = MapValueToY(k1.Value, displayTop, displayBottom);
-                    float y2 = MapValueToY(k2.Value, displayTop, displayBottom);
+                    float y1 = MapValueToY(k1.Value, displayTop, displayBottom, keyframes);
+                    float y2 = MapValueToY(k2.Value, displayTop, displayBottom, keyframes);
 
                     g.DrawLine(interpolationPen, x1, y1, x2, y2);
                 }
             }
         }
 
-        private void DrawKeyframePoints(Graphics g, float displayTop, float displayBottom)
+        private void DrawKeyframePoints(Graphics g, float displayTop, float displayBottom, List<Keyframe> keyframes, Color color)
         {
-            using (var keyframeBrush = new SolidBrush(Color.Orange))
+            using (var keyframeBrush = new SolidBrush(color))
             using (var font = new Font("Arial", 8))
             {
-                foreach (var keyframe in _keyframes)
+                foreach (var keyframe in keyframes)
                 {
                     // 计算关键帧的X坐标，考虑时间轴的起始位置
                     float timelineStartFrame = _startFrame - (_timelineBounds.Left / _pixelsPerFrame);
                     float x = _timelineBounds.Left + (keyframe.Frame - timelineStartFrame) * _pixelsPerFrame;
-                    float y = MapValueToY(keyframe.Value, displayTop, displayBottom);
+                    float y = MapValueToY(keyframe.Value, displayTop, displayBottom, keyframes);
 
                     // 绘制关键帧点
                     g.FillEllipse(keyframeBrush, x - 4, y - 4, 8, 8);
@@ -441,10 +559,10 @@ namespace Motion.Widget
             }
         }
 
-        private float MapValueToY(double value, float displayTop, float displayBottom)
+        private float MapValueToY(double value, float displayTop, float displayBottom, List<Keyframe> keyframes)
         {
-            double maxValue = _keyframes.Count > 0 ? _keyframes.Max(k => k.Value) : 100.0;
-            double minValue = _keyframes.Count > 0 ? _keyframes.Min(k => k.Value) : 0.0;
+            double maxValue = keyframes.Count > 0 ? keyframes.Max(k => k.Value) : 100.0;
+            double minValue = keyframes.Count > 0 ? keyframes.Min(k => k.Value) : 0.0;
 
             // 添加安全边界
             const double MIN_RANGE = 1e-6;
