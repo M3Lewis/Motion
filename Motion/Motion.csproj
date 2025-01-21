@@ -147,6 +147,9 @@
     <Compile Update="SettingsControl\TimelineWidgetSettingFrontEnd.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Widget\TimelineRightClickMenu.cs">
+      <SubType>Component</SubType>
+    </Compile>
   </ItemGroup>
   
   <ItemGroup>

@@ -5,19 +5,22 @@ namespace Motion.Widget
     internal partial class TimelineWidget
     {
         private readonly SizeF _labelSize = new SizeF(40, 20); // 固定标签大小，足够容纳4位数字
-        private Rectangle GetFrameLabelBounds(Graphics g = null)
+        private Rectangle GetFrameLabelBounds(Graphics g)
         {
-            float currentX = _timelineBounds.Left + (_currentFrame - _startFrame) * _pixelsPerFrame;
+            // 使用与刻度线相同的计算方式
+            float timelineStartFrame = _startFrame - (_timelineBounds.Left / _pixelsPerFrame);
+            float currentX = _timelineBounds.Left + (_currentFrame - timelineStartFrame) * _pixelsPerFrame;
 
-            // 使用固定大小
-            float labelX = currentX - _labelSize.Width / 2;
-            float labelY = _timelineBounds.Top - _labelSize.Height - _timelineBounds.Height;
+            // 计算标签的宽度和高度
+            int labelWidth = 40;
+            int labelHeight = 20;
 
+            // 将标签居中于刻度线
             return new Rectangle(
-                (int)(labelX - 2),
-                (int)(labelY - 2),
-                (int)(_labelSize.Width + 4),
-                (int)(_labelSize.Height + 4)
+                (int)(currentX - labelWidth / 2),  // 水平居中
+                _timelineBounds.Top - _timelineBounds.Height - labelHeight - 5, // 在刻度线上方
+                labelWidth,
+                labelHeight
             );
         }
     }

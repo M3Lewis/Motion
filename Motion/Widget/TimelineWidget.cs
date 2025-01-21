@@ -12,8 +12,9 @@ using System.Windows.Forms;
 
 namespace Motion.Widget
 {
-    internal partial class TimelineWidget : GH_Widget
+    internal partial class TimelineWidget : Control
     {
+        private GH_Canvas Owner => Instances.ActiveCanvas;
         private List<Keyframe> _keyframes = new List<Keyframe>();
         private double _currentValue = 0.0;
 
@@ -51,18 +52,329 @@ namespace Motion.Widget
         private const float MAX_ZOOM = 10.0f;
         private const float ZOOM_SPEED = 0.1f;
 
+        private const int WIDGET_HEIGHT = 200;
+
         public TimelineWidget()
         {
-            _animationTimer = new Timer();
-            _animationTimer.Interval = 50;
-            _animationTimer.Tick += AnimationTimer_Tick;
+            try
+            {
+                // 设置控件基本属性
+                SetStyle(
+                    ControlStyles.AllPaintingInWmPaint |
+                    ControlStyles.UserPaint |
+                    ControlStyles.OptimizedDoubleBuffer |
+                    ControlStyles.ResizeRedraw,
+                    true);
+
+                // 初始化计时器 - 延迟初始化
+                _animationTimer = new Timer
+                {
+                    Interval = 16, // 约60fps
+                    Enabled = false // 默认禁用
+                };
+                _animationTimer.Tick += AnimationTimer_Tick;
+
+                // 添加必要的事件处理
+                HandleCreated += (s, e) => BeginInvoke(new Action(() =>
+                {
+                    InitializeAfterHandleCreated();
+                    Invalidate();
+                }));
+
+                // 设置初始大小
+                Size = new Size(800, WIDGET_HEIGHT);
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"TimelineWidget initialization error: {ex.Message}");
+            }
         }
 
-        public override string Name => "Timeline Widget";
+        private void InitializeAfterHandleCreated()
+        {
+            try
+            {
+                // 添加事件处理器
+                VisibleChanged += TimelineWidget_VisibleChanged;
+                MouseDown += TimelineWidget_MouseDown;
+                MouseMove += TimelineWidget_MouseMove;
+                MouseUp += TimelineWidget_MouseUp;
+                MouseWheel += TimelineWidget_MouseWheel;
+                DoubleClick += TimelineWidget_DoubleClick;
+                DockSideChanged += OnDockSideChanged;
 
-        public override string Description => "Motion Animation Timeline widget";
+                if (Parent != null)
+                {
+                    Parent.SizeChanged += (s, e) => BeginInvoke(new Action(UpdateBounds));
+                }
 
-        public override Bitmap Icon_24x24 => null;
+                UpdateBounds();
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"TimelineWidget post-initialization error: {ex.Message}");
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            BeginInvoke(new Action(() =>
+            {
+                Rhino.RhinoApp.WriteLine("TimelineWidget Handle Created (Override)");
+                Invalidate();
+            }));
+        }
+
+        private void UpdateBounds()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+
+            try
+            {
+                if (Owner?.Viewport == null || Parent == null) return;
+
+                var parentBounds = Parent.ClientRectangle;
+                Size = new Size(parentBounds.Width, WIDGET_HEIGHT);
+                Location = m_dockSide == TimelineWidgetDock.Top
+                    ? new Point(0, WIDGET_HEIGHT + 130)
+                    : new Point(0, parentBounds.Height - WIDGET_HEIGHT);
+
+                _bounds = new Rectangle(Location, Size);
+                CalculateBounds();
+
+                BeginInvoke(new Action(Invalidate));
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"UpdateBounds error: {ex.Message}");
+            }
+        }
+
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+            if (Parent != null)
+            {
+                Parent.SizeChanged += (s, args) => UpdateBounds();
+                UpdateBounds();
+            }
+        }
+
+        private bool IsOverCurrentFrameHandle(Point location)
+        {
+            float currentX = _timelineBounds.Left + (_currentFrame - _startFrame) * _pixelsPerFrame;
+
+            // 获取标签的边界
+            Rectangle labelBounds = GetFrameLabelBounds(null);
+
+            // 只检查标签区域
+            return labelBounds.Contains(location);
+        }
+
+        private void TimelineWidget_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                ShowContextMenu(e.Location);
+                return;
+            }
+
+            if (e.Button != MouseButtons.Left)
+                return;
+
+            // 处理播放按钮点击
+            if (_playButtonBounds.Contains(e.Location))
+            {
+                TogglePlayState();
+                return;
+            }
+
+            // 处理帧计数器点击
+            if (_frameCounterBounds.Contains(e.Location))
+            {
+                HandleFrameCounterClick();
+                return;
+            }
+
+            // 处理起始帧和结束帧边界点击
+            if (_startFrameBounds.Contains(e.Location))
+            {
+                HandleStartFrameClick();
+                return;
+            }
+
+            if (_endFrameBounds.Contains(e.Location))
+            {
+                HandleEndFrameClick();
+                return;
+            }
+
+            // 处理导航按钮点击
+            if (_startFrameJumpBounds.Contains(e.Location))
+            {
+                HandleStartFrameJump();
+                Invalidate();
+                return;
+            }
+
+            if (_prevKeyframeBounds.Contains(e.Location))
+            {
+                HandlePrevKeyframe();
+                Invalidate();
+                return;
+            }
+
+            if (_nextKeyframeBounds.Contains(e.Location))
+            {
+                HandleNextKeyframe();
+                Invalidate();
+                return;
+            }
+
+            if (_endFrameJumpBounds.Contains(e.Location))
+            {
+                HandleEndFrameJump();
+                Invalidate();
+                return;
+            }
+
+            // 处理当前帧指示器拖动
+            if (IsOverCurrentFrameHandle(e.Location))
+            {
+                StartDragging(e.X);
+                return;
+            }
+        }
+
+        // 辅助方法，处理播放状态切换
+        private void TogglePlayState()
+        {
+            _isPlaying = !_isPlaying;
+            if (_isPlaying)
+                _animationTimer.Start();
+            else
+                _animationTimer.Stop();
+            Invalidate();
+        }
+
+        // 辅助方法，处理帧计数器点击
+        private void HandleFrameCounterClick()
+        {
+            CreateEditableTextBox(
+                _frameCounterBounds,
+                _currentFrame,
+                newValue =>
+                {
+                    if (newValue >= _startFrame && newValue <= _endFrame)
+                    {
+                        _currentFrame = newValue;
+                        UpdateCurrentValue();
+                        Invalidate();
+                    }
+                }
+            );
+        }
+
+        // 辅助方法，开始拖动操作
+        private void StartDragging(int mouseX)
+        {
+            _isDragging = true;
+            _dragOffset = mouseX - (_timelineBounds.Left + (_currentFrame - _startFrame) * _pixelsPerFrame);
+            Capture = true;
+            Invalidate();
+        }
+
+        private void TimelineWidget_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDragging)
+            {
+                try
+                {
+                    // 计算新的帧位置
+                    float relativeX = e.X - _dragOffset - _timelineBounds.Left;
+                    int newFrame = _startFrame + (int)(relativeX / _pixelsPerFrame);
+
+                    // 确保在有效范围内
+                    newFrame = Math.Max(_startFrame, Math.Min(_endFrame, newFrame));
+
+                    if (newFrame != _currentFrame)
+                    {
+                        _currentFrame = newFrame;
+                        UpdateCurrentValue();
+                        Invalidate();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Rhino.RhinoApp.WriteLine($"Error in timeline drag: {ex.Message}");
+                }
+            }
+        }
+
+        private void TimelineWidget_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (_isDragging)
+            {
+                _isDragging = false;
+                Capture = false;  // 释放鼠标捕获
+                Invalidate();
+            }
+        }
+
+        private void TimelineWidget_MouseWheel(object sender, MouseEventArgs e)
+        {
+            // 只在按下CTRL键时进行缩放
+            if (ModifierKeys.HasFlag(Keys.Control))
+            {
+                // 计算新的缩放级别
+                float newZoom = e.Delta > 0
+                    ? Math.Max(_timelineZoom / (1 + ZOOM_SPEED), MIN_ZOOM)
+                    : Math.Min(_timelineZoom * (1 + ZOOM_SPEED), MAX_ZOOM);
+
+                // 更新缩放级别
+                _timelineZoom = newZoom;
+
+                // 重新计算像素每帧的值
+                _pixelsPerFrame = _timelineBounds.Width / (float)(_endFrame - _startFrame) * _timelineZoom;
+
+                Invalidate();
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+
+            try
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+                _bounds = ClientRectangle;
+                if (_bounds.IsEmpty) return;
+
+                CalculateBounds();
+
+                DrawBackground(g);
+                DrawPlayButton(g);
+                DrawNavigationButtons(g);
+                DrawFrameCounter(g);
+                DrawTimeline(g);
+                DrawFrameInputs(g);
+                DrawKeyframesAndInterpolation(g);
+
+                // 强制立即更新显示
+                if (_isPlaying)
+                {
+                    Update();
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Timeline Widget rendering error: {ex.Message}");
+            }
+        }
 
         private static TimelineWidgetDock m_dockSide = (TimelineWidgetDock)Instances.Settings.GetValue("Motion.Widget.Timeline.Side", 1);
         private static bool m_showWidget = Instances.Settings.GetValue("Motion.Widget.Timeline.Show", true);
@@ -102,7 +414,7 @@ namespace Motion.Widget
             }
         }
 
-        public override bool Visible
+        public bool Visible
         {
             get
             {
@@ -114,39 +426,9 @@ namespace Motion.Widget
             }
         }
 
-        public override void SetupTooltip(PointF canvasPoint, GH_TooltipDisplayEventArgs e) { }
-
-        // 重写右键菜单方法
-        public override void AppendToMenu(ToolStripDropDownMenu menu)
+        public bool Contains(Point pt_control, PointF pt_canvas)
         {
-            // 如果有选中的关键帧，添加删除选项
-            if (_selectedKeyframe != null)
-            {
-                GH_DocumentObject.Menu_AppendSeparator(menu);
-                GH_DocumentObject.Menu_AppendItem(menu, "Delete Keyframe", Menu_DeleteKeyframe);
-            }
-            else
-            {
-                // 原有的菜单项
-                GH_DocumentObject.Menu_AppendSeparator(menu);
-                GH_DocumentObject.Menu_AppendItem(menu, "Top", Menu_DockTop, enabled: true, m_dockSide == TimelineWidgetDock.Top);
-                GH_DocumentObject.Menu_AppendItem(menu, "Bottom", Menu_DockBottom, enabled: true, m_dockSide == TimelineWidgetDock.Bottom);
-
-                // 添加创建Motion Value参数的选项
-                if (_keyframes.Count > 0)
-                {
-                    GH_DocumentObject.Menu_AppendSeparator(menu);
-                    if (_valueParam != null)
-                    {
-                        GH_DocumentObject.Menu_AppendItem(menu, "Add Motion Value Parameter", Menu_AddMotionValue);
-                    }
-                }
-            }
-        }
-
-        public override bool Contains(Point pt_control, PointF pt_canvas)
-        {
-            if (base.Owner.Document == null)
+            if (Owner.Document == null)
             {
                 return false;
             }
@@ -156,343 +438,142 @@ namespace Motion.Widget
             return area.Contains(pt_control);
         }
 
-        public override void Render(GH_Canvas canvas)
+        private void TimelineWidget_DoubleClick(object sender, EventArgs e)
         {
-            // 初始化检查
-            if (!InitializeRender(canvas)) return;
+            Point mousePoint = PointToClient(Control.MousePosition);
 
-            try
+            // 定义关键帧显示区域
+            float displayTop = _bounds.Top + PADDING + VALUE_DISPLAY_HEIGHT * 0.1f;
+            float displayBottom = _timelineBounds.Top - PADDING;
+            RectangleF keyframeDisplayArea = new RectangleF(
+                _timelineBounds.Left,
+                displayTop,
+                _timelineBounds.Width,
+                displayBottom - displayTop
+            );
+
+            // 检查点击是否在关键帧显示区域内
+            if (!keyframeDisplayArea.Contains(mousePoint))
+                return;
+
+            // 检查是否点击到现有的关键帧
+            var clickedKeyframe = GetKeyframeAtPoint(mousePoint);
+            double initialValue = clickedKeyframe?.Value ?? _currentValue;
+
+            // 显示关键帧编辑对话框
+            using (var dialog = new KeyframeDialog(initialValue))
             {
-                Graphics g = canvas.Graphics;
-                var transform = g.Transform;
-                g.ResetTransform();
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return;
 
-                _bounds = WidgetArea;
-                if (_bounds.IsEmpty) return;
-
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-                // 计算各个区域的边界
-                CalculateBounds();
-
-                // 绘制各个部分
-                DrawBackground(g);
-                DrawPlayButton(g);
-                DrawFrameCounter(g);
-                DrawTimeline(g);
-                DrawFrameInputs(g);
-                DrawKeyframesAndInterpolation(g);
-
-                g.Transform = transform;
-            }
-            catch (Exception ex)
-            {
-                Rhino.RhinoApp.WriteLine($"Timeline Widget rendering error: {ex.Message}");
+                UpdateKeyframe(clickedKeyframe, dialog.Value);
+                UpdateCurrentValue();
+                Invalidate();
             }
         }
 
-
-
-
-        public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
+        private void UpdateKeyframe(Keyframe existingKeyframe, double newValue)
         {
-            // 转换坐标
-            PointF canvasPoint = e.CanvasLocation;
-            Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
-
-            // 右键点击
-            if (e.Button == MouseButtons.Right)
+            if (existingKeyframe != null)
             {
-                // 检查是否点击到关键帧
-                _selectedKeyframe = GetKeyframeAtPoint(screenPoint);
-                if (_selectedKeyframe != null)
-                {
-                    return GH_ObjectResponse.Handled;
-                }
+                // 更新现有关键帧
+                existingKeyframe.Value = newValue;
+                return;
             }
 
-            // 原有的左键点击处理
-            if (e.Button == MouseButtons.Left)
+            // 添加新关键帧
+            var newKeyframe = new Keyframe
             {
-                // 使用转换后的坐标检查点击
-                if (_playButtonBounds.Contains(screenPoint))
-                {
-                    _isPlaying = !_isPlaying;
-                    if (_isPlaying)
-                        _animationTimer.Start();
-                    else
-                        _animationTimer.Stop();
+                Frame = _currentFrame,
+                Value = newValue
+            };
 
-                    sender.Refresh();
-                    return GH_ObjectResponse.Handled;
-                }
-
-                if (_frameCounterBounds.Contains(screenPoint))
-                {
-                    CreateEditableTextBox(
-                        _frameCounterBounds,
-                        _currentFrame,
-                        newValue =>
-                        {
-                            if (newValue >= _startFrame && newValue <= _endFrame)
-                            {
-                                _currentFrame = newValue;
-                                sender.Refresh();
-                            }
-                        }
-                    );
-                    return GH_ObjectResponse.Handled;
-                }
-
-                if (_startFrameBounds.Contains(screenPoint))
-                {
-                    CreateEditableTextBox(
-                        _startFrameBounds,
-                        _startFrame,
-                        newValue =>
-                        {
-                            if (newValue < _endFrame)
-                            {
-                                _startFrame = newValue;
-                                _currentFrame = Math.Max(_startFrame, _currentFrame);
-                                sender.Refresh();
-                            }
-                        }
-                    );
-                    return GH_ObjectResponse.Handled;
-                }
-
-                if (_endFrameBounds.Contains(screenPoint))
-                {
-                    CreateEditableTextBox(
-                        _endFrameBounds,
-                        _endFrame,
-                        newValue =>
-                        {
-                            if (newValue > _startFrame)
-                            {
-                                _endFrame = newValue;
-                                _currentFrame = Math.Min(_endFrame, _currentFrame);
-                                sender.Refresh();
-                            }
-                        }
-                    );
-                    return GH_ObjectResponse.Handled;
-                }
-
-                if (GetFrameLabelBounds().Contains(screenPoint))
-                {
-                    float currentX = _timelineBounds.Left + (_currentFrame - _startFrame) * _pixelsPerFrame;
-                    _isDragging = true;
-                    _dragOffset = screenPoint.X - currentX;
-                    return GH_ObjectResponse.Capture;
-                }
+            // 检查是否已存在该帧的关键帧
+            var frameKeyframe = _keyframes.FirstOrDefault(k => k.Frame == _currentFrame);
+            if (frameKeyframe != null)
+            {
+                frameKeyframe.Value = newValue;
+                return;
             }
-            return base.RespondToMouseDown(sender, e);
+
+            _keyframes.Add(newKeyframe);
+            _keyframes.Sort((a, b) => a.Frame.CompareTo(b.Frame));
         }
 
-        public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
+        private void TimelineWidget_HandleCreated(object sender, EventArgs e)
         {
-            // 转换坐标
-            PointF canvasPoint = e.CanvasLocation;
-            Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
-
-            if (_isDragging)
-            {
-                float pixelsPerFrame = (float)_timelineBounds.Width / (_endFrame - _startFrame);
-                int newFrame = _startFrame + (int)((screenPoint.X - _dragOffset - _timelineBounds.Left) / pixelsPerFrame);
-                newFrame = Math.Max(_startFrame, Math.Min(_endFrame, newFrame));
-
-                if (newFrame != _currentFrame)
-                {
-                    _currentFrame = newFrame;
-                    // 更新当前值
-                    UpdateCurrentValue();
-                    sender.Refresh();
-                }
-                return GH_ObjectResponse.Handled;
-            }
-
-            bool newHoveringState = GetFrameLabelBounds().Contains(screenPoint);
-            if (newHoveringState != _isHoveringIndicator)
-            {
-                _isHoveringIndicator = newHoveringState;
-                sender.Refresh();
-            }
-
-            return base.RespondToMouseMove(sender, e);
+            Rhino.RhinoApp.WriteLine("TimelineWidget Handle Created");
+            Invalidate();
         }
 
-        public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
+        private void TimelineWidget_VisibleChanged(object sender, EventArgs e)
         {
-            if (e.Button == MouseButtons.Right && _selectedKeyframe != null)
+            Rhino.RhinoApp.WriteLine($"TimelineWidget Visibility Changed: {Visible}");
+            if (Visible)
             {
-                // 保持选中状态，等待右键菜单处理
-                return GH_ObjectResponse.Release;
+                Invalidate();
             }
-
-            if (_isDragging)
-            {
-                _isDragging = false;
-                return GH_ObjectResponse.Release;
-            }
-
-            return base.RespondToMouseUp(sender, e);
         }
 
-        // 添加双击响应
-        public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                PointF canvasPoint = e.CanvasLocation;
-                Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
-
-                // 首先检查是否点击到现有的关键帧
-                var clickedKeyframe = GetKeyframeAtPoint(screenPoint);
-                if (clickedKeyframe != null)
-                {
-                    // 如果点击到现有关键帧，使用其值
-                    using (var dialog = new KeyframeDialog(clickedKeyframe.Value))
-                    {
-                        if (dialog.ShowDialog() == DialogResult.OK)
-                        {
-                            clickedKeyframe.Value = dialog.Value;
-                            sender.Refresh();
-                            return GH_ObjectResponse.Handled;
-                        }
-                    }
-                }
-                // 检查是否在时间轴区域内双击（创建新关键帧）
-                else if (_timelineBounds.Contains(screenPoint))
-                {
-                    // 获取当前插值的值作为默认值
-                    UpdateCurrentValue();
-                    using (var dialog = new KeyframeDialog(_currentValue))
-                    {
-                        if (dialog.ShowDialog() == DialogResult.OK)
-                        {
-                            // 添加新关键帧
-                            var newKeyframe = new Keyframe
-                            {
-                                Frame = _currentFrame,
-                                Value = dialog.Value
-                            };
-
-                            // 检查是否已存在该帧的关键帧
-                            var existingKeyframe = _keyframes.FirstOrDefault(k => k.Frame == _currentFrame);
-                            if (existingKeyframe != null)
-                            {
-                                existingKeyframe.Value = dialog.Value;
-                            }
-                            else
-                            {
-                                _keyframes.Add(newKeyframe);
-                                _keyframes.Sort((a, b) => a.Frame.CompareTo(b.Frame));
-                            }
-
-                            sender.Refresh();
-                            return GH_ObjectResponse.Handled;
-                        }
-                    }
-                }
-            }
-            return base.RespondToMouseDoubleClick(sender, e);
-        }
-        public GH_ObjectResponse RespondToMouseWheel(GH_Canvas sender, GH_CanvasMouseEvent e)
-        {
-            // 转换坐标
-            PointF canvasPoint = e.CanvasLocation;
-            Point screenPoint = Point.Round(sender.Viewport.ProjectPoint(canvasPoint));
-
-            // 检查鼠标是否在时间轴区域内
-            if (_timelineBounds.Contains(screenPoint))
-            {
-                // 计算鼠标位置对应的帧
-                float mouseFrame = _startFrame + (screenPoint.X - _timelineBounds.Left) / _pixelsPerFrame;
-
-                // 根据滚轮方向调整缩放
-                if (e.Delta > 0)
-                {
-                    _timelineZoom = Math.Min(_timelineZoom * (1 + ZOOM_SPEED), MAX_ZOOM);
-                }
-                else
-                {
-                    _timelineZoom = Math.Max(_timelineZoom / (1 + ZOOM_SPEED), MIN_ZOOM);
-                }
-
-                // 调整可见帧范围，保持鼠标位置对应的帧不变
-                int visibleFrames = (int)((_endFrame - _startFrame) / _timelineZoom);
-                int newStartFrame = (int)(mouseFrame - (mouseFrame - _startFrame) / _timelineZoom);
-                int newEndFrame = newStartFrame + visibleFrames;
-
-                // 确保范围有效
-                if (newStartFrame < 1)
-                {
-                    newStartFrame = 1;
-                    newEndFrame = newStartFrame + visibleFrames;
-                }
-
-                _startFrame = newStartFrame;
-                _endFrame = newEndFrame;
-
-                sender.Refresh();
-                return GH_ObjectResponse.Handled;
-            }
-
-            return GH_ObjectResponse.Ignore;
-        }
         // 添加值插值计算方法
         private void UpdateCurrentValue()
         {
-            if (_valueParam == null) return;
-
             try
             {
-                double interpolatedValue = 0.0;
-
-                if (_keyframes.Count > 0)
+                // 更新当前值的逻辑
+                if (_valueParam != null)
                 {
-                    // 找到当前帧所在的关键帧区间
-                    var nextKeyframe = _keyframes.FirstOrDefault(k => k.Frame > _currentFrame);
-                    var prevKeyframe = _keyframes.LastOrDefault(k => k.Frame <= _currentFrame);
+                    double interpolatedValue = 0.0;
 
-                    if (prevKeyframe == null)
+                    if (_keyframes.Count > 0)
                     {
-                        interpolatedValue = _keyframes.First().Value;
-                    }
-                    else if (nextKeyframe == null)
-                    {
-                        interpolatedValue = _keyframes.Last().Value;
-                    }
-                    else
-                    {
-                        // 线性插值
-                        double t = (_currentFrame - prevKeyframe.Frame) / (double)(nextKeyframe.Frame - prevKeyframe.Frame);
-                        interpolatedValue = prevKeyframe.Value + (nextKeyframe.Value - prevKeyframe.Value) * t;
-                    }
+                        // 找到当前帧所在的关键帧区间
+                        var nextKeyframe = _keyframes.FirstOrDefault(k => k.Frame > _currentFrame);
+                        var prevKeyframe = _keyframes.LastOrDefault(k => k.Frame <= _currentFrame);
 
-                    // 更新当前值
-                    _currentValue = interpolatedValue;
+                        if (prevKeyframe == null)
+                        {
+                            interpolatedValue = _keyframes.First().Value;
+                        }
+                        else if (nextKeyframe == null)
+                        {
+                            interpolatedValue = _keyframes.Last().Value;
+                        }
+                        else
+                        {
+                            // 线性插值
+                            double t = (_currentFrame - prevKeyframe.Frame) / (double)(nextKeyframe.Frame - prevKeyframe.Frame);
+                            interpolatedValue = prevKeyframe.Value + (nextKeyframe.Value - prevKeyframe.Value) * t;
+                        }
 
-                    // 更新参数值
-                    _valueParam.PersistentData.Clear();
-                    var motionValue = new MotionTimelineValueGoo(_currentValue);
-                    _valueParam.PersistentData.Append(motionValue);
+                        // 更新当前值
+                        _currentValue = interpolatedValue;
 
-                    // 强制参数更新
-                    _valueParam.ExpireSolution(true);
+                        // 更新参数值
+                        _valueParam.PersistentData.Clear();
+                        var motionValue = new MotionTimelineValueGoo(_currentValue);
+                        _valueParam.PersistentData.Append(motionValue);
 
-                    // 请求文档更新
-                    if (Owner?.Document != null)
-                    {
-                        Owner.Document.NewSolution(false);
+                        // 强制参数更新
+                        _valueParam.ExpireSolution(true);
+
+                        // 请求文档更新
+                        if (Owner?.Document != null)
+                        {
+                            Owner.Document.NewSolution(false);
+                        }
                     }
                 }
+
+                // 确保请求重绘
+                Invalidate();
+
+                // 如果需要，也可以强制立即重绘
+                Update();
             }
             catch (Exception ex)
             {
-                Rhino.RhinoApp.WriteLine($"Error in UpdateCurrentValue: {ex.Message}");
+                Rhino.RhinoApp.WriteLine($"Error updating current value: {ex.Message}");
             }
         }
 
@@ -500,6 +581,50 @@ namespace Motion.Widget
         ~TimelineWidget()
         {
             _valueParam = null; // 只清除引用，不删除参数
+            DockSideChanged -= OnDockSideChanged;
+            DoubleClick -= TimelineWidget_DoubleClick;
+        }
+
+        public void RequestRepaint()
+        {
+            Invalidate();  // 只需要这一行就够了
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            Rhino.RhinoApp.WriteLine($"TimelineWidget Resized: {Width}x{Height}");
+            Invalidate();
+        }
+
+        public override void Refresh()
+        {
+            base.Refresh();
+            Rhino.RhinoApp.WriteLine("TimelineWidget Refresh Called");
+            Invalidate();
+        }
+
+        private void OnDockSideChanged()
+        {
+            if (Parent != null)
+            {
+                var parentBounds = Parent.ClientRectangle;
+
+                // 根据停靠位置设置控件位置
+                if (m_dockSide == TimelineWidgetDock.Top)
+                {
+                    Location = new Point(0, 0);
+                }
+                else // Bottom
+                {
+                    Location = new Point(0, parentBounds.Height - WIDGET_HEIGHT);
+                }
+
+                // 更新大小和边界
+                Size = new Size(parentBounds.Width, WIDGET_HEIGHT);
+                UpdateBounds();
+                Invalidate();
+            }
         }
 
 

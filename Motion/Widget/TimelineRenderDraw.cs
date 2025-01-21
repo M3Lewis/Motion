@@ -13,41 +13,30 @@ namespace Motion.Widget
         private const float VALUE_DISPLAY_HEIGHT = 60;
         private const int TEXT_BOX_HEIGHT = 20;
 
-        private bool InitializeRender(GH_Canvas canvas)
-        {
-            if (!Visible || canvas?.Graphics == null) return false;
-
-            // 如果还没有关联参数，尝试查找现有的
-            if (_valueParam == null)
-            {
-                _valueParam = FindExistingMotionValue();
-            }
-
-            // 在第一次渲染时初始化参数
-            InitializeTimelineValueParameter();
-
-            return true;
-        }
+        // 添加新的矩形字段
+        private Rectangle _prevKeyframeBounds;
+        private Rectangle _nextKeyframeBounds;
+        private Rectangle _startFrameJumpBounds;
+        private Rectangle _endFrameJumpBounds;
 
         private void CalculateBounds()
         {
-            // 使用常量替换硬编码值
             _playButtonBounds = new Rectangle(
-                _bounds.Left + PADDING,
-                _bounds.Top + (_bounds.Height - BUTTON_SIZE) / 2,
-                BUTTON_SIZE,
-                BUTTON_SIZE);
+                _timelineBounds.Right - _timelineBounds.Width / 2,
+                _bounds.Top + PADDING,
+                TEXT_BOX_HEIGHT,
+                TEXT_BOX_HEIGHT);
 
             _frameCounterBounds = new Rectangle(
-                _playButtonBounds.Right + PADDING,
-                _bounds.Top + (_bounds.Height - BUTTON_SIZE) / 2,
-                80,
-                BUTTON_SIZE);
+                _timelineBounds.Right - 240,
+                _bounds.Top + PADDING,
+                70,
+                TEXT_BOX_HEIGHT);
 
             _timelineBounds = new Rectangle(
-                _frameCounterBounds.Right + PADDING,
+                _bounds.Left + PADDING,
                 _bounds.Top + _bounds.Height / 2 - 15,
-                _bounds.Right - _frameCounterBounds.Right - PADDING * 3,
+                _bounds.Right - PADDING,
                 30);
 
             _startFrameBounds = new Rectangle(
@@ -61,6 +50,34 @@ namespace Motion.Widget
                 _bounds.Top + PADDING,
                 70,
                 TEXT_BOX_HEIGHT);
+
+            // 计算导航按钮的大小和位置
+            int navButtonSize = BUTTON_SIZE - 10; // 稍微小一点的按钮尺寸
+            int verticalSpacing = 5; // 按钮之间的垂直间距
+
+            _startFrameJumpBounds = new Rectangle(
+                _timelineBounds.Right - _timelineBounds.Width / 2 - 50,
+                _bounds.Top + PADDING,
+                navButtonSize,
+                navButtonSize);
+
+            _prevKeyframeBounds = new Rectangle(
+                _timelineBounds.Right - _timelineBounds.Width / 2 - 25,
+                _bounds.Top + PADDING,
+                navButtonSize,
+                navButtonSize);
+
+            _nextKeyframeBounds = new Rectangle(
+                _timelineBounds.Right - _timelineBounds.Width / 2 + 25,
+                _bounds.Top + PADDING,
+                navButtonSize,
+                navButtonSize);
+
+            _endFrameJumpBounds = new Rectangle(
+                _timelineBounds.Right - _timelineBounds.Width / 2 + 50,
+                _bounds.Top + PADDING,
+                navButtonSize,
+                navButtonSize);
         }
 
         private void DrawBackground(Graphics g)
@@ -73,30 +90,42 @@ namespace Motion.Widget
 
         private void DrawPlayButton(Graphics g)
         {
-            using (var pen = new Pen(Color.White, 2))
-            using (var brush = new SolidBrush(Color.White))
+            try
             {
-                if (!_isPlaying)
+                // 绘制播放/暂停按钮
+                using (var brush = new SolidBrush(Color.FromArgb(255, 255, 255)))
                 {
-                    // 绘制播放三角形
-                    Point[] trianglePoints = new Point[]
+                    if (_isPlaying)
                     {
-                        new Point(_playButtonBounds.Left + 10, _playButtonBounds.Top + 5),
-                        new Point(_playButtonBounds.Left + 10, _playButtonBounds.Bottom - 5),
-                        new Point(_playButtonBounds.Right - 5, _playButtonBounds.Top + BUTTON_SIZE/2)
-                    };
-                    g.FillPolygon(brush, trianglePoints);
+                        // 绘制暂停图标
+                        int padding = 4;
+                        g.FillRectangle(brush,
+                            _playButtonBounds.X + padding,
+                            _playButtonBounds.Y + padding,
+                            (_playButtonBounds.Width - padding * 3) / 2,
+                            _playButtonBounds.Height - padding * 2);
+                        g.FillRectangle(brush,
+                            _playButtonBounds.X + _playButtonBounds.Width / 2 + padding / 2,
+                            _playButtonBounds.Y + padding,
+                            (_playButtonBounds.Width - padding * 3) / 2,
+                            _playButtonBounds.Height - padding * 2);
+                    }
+                    else
+                    {
+                        // 绘制播放图标（三角形）
+                        Point[] points = new Point[]
+                        {
+                            new Point(_playButtonBounds.X + 4, _playButtonBounds.Y + 4),
+                            new Point(_playButtonBounds.X + 4, _playButtonBounds.Bottom - 4),
+                            new Point(_playButtonBounds.Right - 4, _playButtonBounds.Y + _playButtonBounds.Height / 2)
+                        };
+                        g.FillPolygon(brush, points);
+                    }
                 }
-                else
-                {
-                    // 绘制暂停符号
-                    g.DrawLine(pen,
-                        _playButtonBounds.Left + 8, _playButtonBounds.Top + 5,
-                        _playButtonBounds.Left + 8, _playButtonBounds.Bottom - 5);
-                    g.DrawLine(pen,
-                        _playButtonBounds.Right - 8, _playButtonBounds.Top + 5,
-                        _playButtonBounds.Right - 8, _playButtonBounds.Bottom - 5);
-                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error drawing play button: {ex.Message}");
             }
         }
 
@@ -126,26 +155,27 @@ namespace Motion.Widget
 
         private void DrawTimeline(Graphics g)
         {
-            // 添加防御性检查，确保不会出现除零错误
             if (_endFrame <= _startFrame)
             {
                 _pixelsPerFrame = 1.0f;
             }
             else
             {
-                // 限制缩放范围，防止溢出
                 _timelineZoom = Math.Max(0.1f, Math.Min(_timelineZoom, 10.0f));
-                _pixelsPerFrame = (float)_timelineBounds.Width / (Math.Max(1, (_endFrame - _startFrame)) * _timelineZoom);
+                _pixelsPerFrame = (float)_timelineBounds.Width / ((_endFrame - _startFrame) * _timelineZoom);
             }
 
-            using (var pen = new Pen(Color.White, 1))
+            // 绘制主轴线
+            using (var mainLinePen = new Pen(Color.FromArgb(70, 70, 70), 1))
             {
-                // 绘制主轴线
-                g.DrawLine(pen,
-                    _timelineBounds.Left, _timelineBounds.Top + _timelineBounds.Height / 2,
-                    _timelineBounds.Right, _timelineBounds.Top + _timelineBounds.Height / 2);
+                float centerY = _timelineBounds.Top + _timelineBounds.Height / 2;
+                g.DrawLine(mainLinePen,
+                    _timelineBounds.Left,
+                    centerY,
+                    _timelineBounds.Right,
+                    centerY);
 
-                DrawTimelineGraduations(g, pen);
+                DrawTimelineGraduations(g, mainLinePen);
                 DrawCurrentFrameIndicator(g);
             }
         }
@@ -153,22 +183,93 @@ namespace Motion.Widget
         //主轴线刻度线
         private void DrawTimelineGraduations(Graphics g, Pen pen)
         {
-            for (int frame = _startFrame; frame <= _endFrame; frame += 10)
+            if (_pixelsPerFrame <= 0) return;
+
+            // 定义颜色
+            Color backgroundColor = Color.FromArgb(29, 29, 29);      // 最后面的背景色
+            Color frameRangeColor = Color.FromArgb(33, 33, 33);     // 普通帧数范围背景色
+            Color activeRangeColor = Color.FromArgb(48, 48, 48);    // 当前活动范围背景色
+            Color labelColor = Color.FromArgb(128, 128, 128);       // 帧数文字颜色
+
+            // 首先绘制最底层背景
+            using (var bgBrush = new SolidBrush(backgroundColor))
             {
-                float x = _timelineBounds.Left + (frame - _startFrame) * _pixelsPerFrame;
-                int tickHeight = frame % 50 == 0 ? 10 : 5;
+                g.FillRectangle(bgBrush, _timelineBounds.Left,
+                    _timelineBounds.Top - _timelineBounds.Height,
+                    _timelineBounds.Width,
+                    _timelineBounds.Height * 5);
+            }
 
-                g.DrawLine(pen,
-                    x, _timelineBounds.Top + _timelineBounds.Height / 2 - tickHeight,
-                    x, _timelineBounds.Top + _timelineBounds.Height / 2 + tickHeight);
+            // 计算可见区域的起始和结束帧
+            float timelineStartFrame = _startFrame - (_timelineBounds.Left / _pixelsPerFrame);
+            float timelineEndFrame = timelineStartFrame + (_timelineBounds.Width / _pixelsPerFrame);
 
-                if (frame % 50 == 0)
+            // 绘制整个时间轴的背景
+            float startX = _timelineBounds.Left + (_startFrame - timelineStartFrame) * _pixelsPerFrame;
+            float endX = _timelineBounds.Left + (_endFrame - timelineStartFrame) * _pixelsPerFrame;
+
+            // 绘制活动范围背景
+            RectangleF activeRangeRect = new RectangleF(
+                startX,
+                _timelineBounds.Top - _timelineBounds.Height,
+                endX - startX,
+                _timelineBounds.Height * 5);
+
+            using (var brush = new SolidBrush(activeRangeColor))
+            {
+                g.FillRectangle(brush, activeRangeRect);
+            }
+
+            // 根据缩放比例动态计算标签间隔
+            int labelInterval;
+            if (_pixelsPerFrame >= 40) labelInterval = 10;
+            else if (_pixelsPerFrame >= 20) labelInterval = 20;
+            else if (_pixelsPerFrame >= 10) labelInterval = 50;
+            else labelInterval = 100;
+
+            int firstTick = ((int)(timelineStartFrame + labelInterval - 1) / labelInterval) * labelInterval;
+            int lastTick = ((int)timelineEndFrame / labelInterval) * labelInterval;
+
+            // 绘制刻度和标签
+            for (int frame = firstTick; frame <= lastTick; frame += labelInterval)
+            {
+                float x = _timelineBounds.Left + (frame - timelineStartFrame) * _pixelsPerFrame;
+
+                if (x < _timelineBounds.Left || x > _timelineBounds.Right) continue;
+
+                // 绘制帧数标签
+                if (x >= _timelineBounds.Left && x <= _timelineBounds.Right)
                 {
                     using (var font = new Font("Arial", 8))
                     {
-                        g.DrawString(frame.ToString(), font, Brushes.White,
-                            x - 10, _timelineBounds.Top + _timelineBounds.Height / 2 + tickHeight + 2);
+                        string frameText = frame.ToString();
+                        using (var textBrush = new SolidBrush(labelColor))
+                        {
+                            g.DrawString(frameText, font, textBrush,
+                                x + 5,
+                                _timelineBounds.Top - _timelineBounds.Height - 20);
+                        }
                     }
+                }
+            }
+
+            // 绘制网格线
+            using (var activeGridPen = new Pen(Color.FromArgb(33, 33, 33), 1))  // 活动范围内的网格线颜色
+            using (var inactiveGridPen = new Pen(Color.FromArgb(45, 45, 45), 1))  // 活动范围外的网格线颜色
+            {
+                for (int frame = firstTick; frame <= lastTick; frame += 10)
+                {
+                    float x = _timelineBounds.Left + (frame - timelineStartFrame) * _pixelsPerFrame;
+
+                    if (x < _timelineBounds.Left || x > _timelineBounds.Right) continue;
+
+                    // 判断当前刻度是否在活动范围内
+                    bool isInActiveRange = frame >= _startFrame && frame <= _endFrame;
+                    var gridPen = isInActiveRange ? activeGridPen : inactiveGridPen;
+
+                    g.DrawLine(gridPen,
+                        x, _timelineBounds.Top - _timelineBounds.Height,
+                        x, _timelineBounds.Bottom + 3 * _timelineBounds.Height);
                 }
             }
         }
@@ -176,12 +277,14 @@ namespace Motion.Widget
         //当前帧刻度线
         private void DrawCurrentFrameIndicator(Graphics g)
         {
-            float currentX = _timelineBounds.Left + (_currentFrame - _startFrame) * _pixelsPerFrame;
+            float timelineStartFrame = _startFrame - (_timelineBounds.Left / _pixelsPerFrame);
+            float currentX = _timelineBounds.Left + (_currentFrame - timelineStartFrame) * _pixelsPerFrame;
+
             using (var indicatorPen = new Pen(Color.DeepSkyBlue, 2))
             {
                 g.DrawLine(indicatorPen,
                     currentX, _timelineBounds.Top - _timelineBounds.Height,
-                    currentX, _timelineBounds.Bottom + 3*_timelineBounds.Height);
+                    currentX, _timelineBounds.Bottom + 3 * _timelineBounds.Height);
 
                 DrawFrameLabel(g, currentX);
             }
@@ -214,6 +317,8 @@ namespace Motion.Widget
             }
         }
 
+
+
         private void DrawRoundedRectangle(System.Drawing.Drawing2D.GraphicsPath path, Rectangle bounds, int radius)
         {
             path.AddArc(bounds.X, bounds.Y, radius * 2, radius * 2, 180, 90);
@@ -245,8 +350,8 @@ namespace Motion.Widget
         {
             if (_keyframes.Count == 0) return;
 
-            float displayTop = _bounds.Top + PADDING + VALUE_DISPLAY_HEIGHT * 0.1f;
-            float displayBottom = _timelineBounds.Top - PADDING;
+            float displayTop = _timelineBounds.Top - PADDING;
+            float displayBottom = _timelineBounds.Bottom + PADDING;
 
             DrawValueDisplayBoundaries(g, displayTop, displayBottom);
             DrawInterpolationLine(g, displayTop, displayBottom);
@@ -301,8 +406,10 @@ namespace Motion.Widget
                     var k1 = _keyframes[i];
                     var k2 = _keyframes[i + 1];
 
-                    float x1 = _timelineBounds.Left + (k1.Frame - _startFrame) * _pixelsPerFrame;
-                    float x2 = _timelineBounds.Left + (k2.Frame - _startFrame) * _pixelsPerFrame;
+                    // 计算X坐标时考虑时间轴的起始位置
+                    float timelineStartFrame = _startFrame - (_timelineBounds.Left / _pixelsPerFrame);
+                    float x1 = _timelineBounds.Left + (k1.Frame - timelineStartFrame) * _pixelsPerFrame;
+                    float x2 = _timelineBounds.Left + (k2.Frame - timelineStartFrame) * _pixelsPerFrame;
 
                     float y1 = MapValueToY(k1.Value, displayTop, displayBottom);
                     float y2 = MapValueToY(k2.Value, displayTop, displayBottom);
@@ -319,7 +426,9 @@ namespace Motion.Widget
             {
                 foreach (var keyframe in _keyframes)
                 {
-                    float x = _timelineBounds.Left + (keyframe.Frame - _startFrame) * _pixelsPerFrame;
+                    // 计算关键帧的X坐标，考虑时间轴的起始位置
+                    float timelineStartFrame = _startFrame - (_timelineBounds.Left / _pixelsPerFrame);
+                    float x = _timelineBounds.Left + (keyframe.Frame - timelineStartFrame) * _pixelsPerFrame;
                     float y = MapValueToY(keyframe.Value, displayTop, displayBottom);
 
                     // 绘制关键帧点
@@ -354,8 +463,127 @@ namespace Motion.Widget
             normalizedValue = Math.Max(0, Math.Min(1, normalizedValue));
 
             // 确保返回值在有效范围内
-            return Math.Max(displayTop, Math.Min(displayBottom, 
+            return Math.Max(displayTop, Math.Min(displayBottom,
                 displayBottom - (normalizedValue * (displayBottom - displayTop))));
+        }
+
+        private void DrawNavigationButtons(Graphics g)
+        {
+            using (var brush = new SolidBrush(Color.FromArgb(255, 255, 255)))
+            using (var pen = new Pen(Color.White, 1))
+            {
+                // 绘制上一个关键帧按钮
+                g.DrawRectangle(pen, _prevKeyframeBounds);
+                DrawLeftArrowWithBar(g, _prevKeyframeBounds, brush);
+
+                // 绘制下一个关键帧按钮
+                g.DrawRectangle(pen, _nextKeyframeBounds);
+                DrawRightArrowWithBar(g, _nextKeyframeBounds, brush);
+
+                // 绘制跳转到起始帧按钮
+                g.DrawRectangle(pen, _startFrameJumpBounds);
+                DrawDoubleLeftArrow(g, _startFrameJumpBounds, brush);
+
+                // 绘制跳转到结束帧按钮
+                g.DrawRectangle(pen, _endFrameJumpBounds);
+                DrawDoubleRightArrow(g, _endFrameJumpBounds, brush);
+            }
+        }
+
+        // 辅助方法：绘制带竖线的左箭头（上一个关键帧）
+        private void DrawLeftArrowWithBar(Graphics g, Rectangle bounds, Brush brush)
+        {
+            int padding = 4;
+            int arrowSize = bounds.Width - padding * 2;
+
+            // 绘制竖线
+            g.FillRectangle(brush,
+                bounds.X + padding,
+                bounds.Y + padding,
+                2,
+                arrowSize);
+
+            // 绘制箭头
+            Point[] points = new Point[]
+            {
+                new Point(bounds.Right - padding, bounds.Y + padding),
+                new Point(bounds.X + padding + 4, bounds.Y + bounds.Height/2),
+                new Point(bounds.Right - padding, bounds.Bottom - padding)
+            };
+            g.FillPolygon(brush, points);
+        }
+
+        // 辅助方法：绘制带竖线的右箭头（下一个关键帧）
+        private void DrawRightArrowWithBar(Graphics g, Rectangle bounds, Brush brush)
+        {
+            int padding = 4;
+            int arrowSize = bounds.Width - padding * 2;
+
+            // 绘制竖线
+            g.FillRectangle(brush,
+                bounds.Right - padding - 2,
+                bounds.Y + padding,
+                2,
+                arrowSize);
+
+            // 绘制箭头
+            Point[] points = new Point[]
+            {
+                new Point(bounds.X + padding, bounds.Y + padding),
+                new Point(bounds.Right - padding - 4, bounds.Y + bounds.Height/2),
+                new Point(bounds.X + padding, bounds.Bottom - padding)
+            };
+            g.FillPolygon(brush, points);
+        }
+
+        // 辅助方法：绘制双左箭头（跳转到起始帧）
+        private void DrawDoubleLeftArrow(Graphics g, Rectangle bounds, Brush brush)
+        {
+            int padding = 4;
+            int arrowWidth = (bounds.Width - padding * 3) / 2;
+
+            // 第一个箭头
+            Point[] points1 = new Point[]
+            {
+                new Point(bounds.X + padding + arrowWidth, bounds.Y + padding),
+                new Point(bounds.X + padding, bounds.Y + bounds.Height/2),
+                new Point(bounds.X + padding + arrowWidth, bounds.Bottom - padding)
+            };
+            g.FillPolygon(brush, points1);
+
+            // 第二个箭头
+            Point[] points2 = new Point[]
+            {
+                new Point(bounds.Right - padding, bounds.Y + padding),
+                new Point(bounds.X + padding + arrowWidth + padding, bounds.Y + bounds.Height/2),
+                new Point(bounds.Right - padding, bounds.Bottom - padding)
+            };
+            g.FillPolygon(brush, points2);
+        }
+
+        // 辅助方法：绘制双右箭头（跳转到结束帧）
+        private void DrawDoubleRightArrow(Graphics g, Rectangle bounds, Brush brush)
+        {
+            int padding = 4;
+            int arrowWidth = (bounds.Width - padding * 3) / 2;
+
+            // 第一个箭头
+            Point[] points1 = new Point[]
+            {
+                new Point(bounds.X + padding, bounds.Y + padding),
+                new Point(bounds.X + padding + arrowWidth, bounds.Y + bounds.Height/2),
+                new Point(bounds.X + padding, bounds.Bottom - padding)
+            };
+            g.FillPolygon(brush, points1);
+
+            // 第二个箭头
+            Point[] points2 = new Point[]
+            {
+                new Point(bounds.X + padding + arrowWidth + padding, bounds.Y + padding),
+                new Point(bounds.Right - padding, bounds.Y + bounds.Height/2),
+                new Point(bounds.X + padding + arrowWidth + padding, bounds.Bottom - padding)
+            };
+            g.FillPolygon(brush, points2);
         }
     }
 }

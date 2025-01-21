@@ -8,65 +8,68 @@ namespace Motion.Widget
     {
         private void CreateEditableTextBox(Rectangle bounds, int currentValue, Action<int> onValueChanged)
         {
-            // 确保先清理已存在的文本框
-            RemoveActiveTextBox();
-
             try
             {
-                // 创建新的文本框
-                _activeTextBox = new TextBox();
-                _activeTextBox.Location = bounds.Location;
-                _activeTextBox.Size = bounds.Size;
-                _activeTextBox.Text = currentValue.ToString();
-                _activeTextBox.BorderStyle = BorderStyle.FixedSingle;
-                _activeTextBox.TextAlign = HorizontalAlignment.Center;
+                // 如果已经有活动的文本框，先移除它
+                if (_activeTextBox != null)
+                {
+                    Controls.Remove(_activeTextBox);
+                    _activeTextBox.Dispose();
+                    _activeTextBox = null;
+                }
 
-                // 处理按键事件
+                // 创建新的文本框
+                _activeTextBox = new TextBox
+                {
+                    Text = currentValue.ToString(),
+                    Size = bounds.Size,
+                    BorderStyle = BorderStyle.FixedSingle,
+                    TextAlign = HorizontalAlignment.Center
+                };
+
+                // 直接使用bounds的位置，因为这些坐标已经是相对于TimelineWidget的了
+                _activeTextBox.Location = new Point(bounds.X, bounds.Y);
+
+                // 添加事件处理
                 _activeTextBox.KeyDown += (s, e) =>
                 {
                     if (e.KeyCode == Keys.Enter)
                     {
-                        e.Handled = true;
-                        e.SuppressKeyPress = true;
-                        if (int.TryParse(_activeTextBox.Text, out int newValue))
+                        e.SuppressKeyPress = true; // 阻止提示音
+                        if (int.TryParse(_activeTextBox.Text, out int value))
                         {
-                            onValueChanged(newValue);
+                            onValueChanged(value);
                         }
                         RemoveActiveTextBox();
                     }
                     else if (e.KeyCode == Keys.Escape)
                     {
-                        e.Handled = true;
-                        e.SuppressKeyPress = true;
                         RemoveActiveTextBox();
                     }
                 };
 
-                // 处理失去焦点事件
                 _activeTextBox.LostFocus += (s, e) =>
                 {
-                    if (_activeTextBox != null && !_activeTextBox.IsDisposed)
+                    if (_activeTextBox != null)
                     {
-                        if (int.TryParse(_activeTextBox.Text, out int newValue))
+                        if (int.TryParse(_activeTextBox.Text, out int value))
                         {
-                            onValueChanged(newValue);
+                            onValueChanged(value);
                         }
                         RemoveActiveTextBox();
                     }
                 };
 
-                // 添加到画布
-                if (Owner != null && !Owner.IsDisposed)
-                {
-                    Owner.Controls.Add(_activeTextBox);
-                    _activeTextBox.Focus();
-                    _activeTextBox.SelectAll();
-                }
+                // 添加到控件并设置焦点
+                Controls.Add(_activeTextBox);
+                _activeTextBox.BringToFront();
+                _activeTextBox.Focus();
+                _activeTextBox.SelectAll();
             }
             catch (Exception ex)
             {
                 Rhino.RhinoApp.WriteLine($"Error creating text box: {ex.Message}");
-                RemoveActiveTextBox();
+                RemoveActiveTextBox(); // 确保清理任何可能部分创建的文本框
             }
         }
 
@@ -81,10 +84,7 @@ namespace Motion.Widget
 
                 if (!textBox.IsDisposed)
                 {
-                    if (Owner != null && !Owner.IsDisposed && Owner.Controls.Contains(textBox))
-                    {
-                        Owner.Controls.Remove(textBox);
-                    }
+                    Controls.Remove(textBox);
                     textBox.Dispose();
                 }
             }
@@ -95,11 +95,41 @@ namespace Motion.Widget
             finally
             {
                 _activeTextBox = null;
-                if (Owner != null && !Owner.IsDisposed)
-                {
-                    Owner.Refresh();
-                }
+                Invalidate(); // 重绘控件
             }
+        }
+
+        // 在TimelineWidget类中添加处理起始帧和结束帧文本框的点击事件
+        private void HandleStartFrameClick()
+        {
+            CreateEditableTextBox(
+                _startFrameBounds,
+                _startFrame,
+                newValue =>
+                {
+                    if (newValue >= 1 && newValue < _endFrame)
+                    {
+                        _startFrame = newValue;
+                        Invalidate();
+                    }
+                }
+            );
+        }
+
+        private void HandleEndFrameClick()
+        {
+            CreateEditableTextBox(
+                _endFrameBounds,
+                _endFrame,
+                newValue =>
+                {
+                    if (newValue > _startFrame)
+                    {
+                        _endFrame = newValue;
+                        Invalidate();
+                    }
+                }
+            );
         }
     }
 }

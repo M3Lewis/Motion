@@ -17,13 +17,13 @@ namespace Motion.Widget
         private void Menu_DockTop(object sender, EventArgs e)
         {
             DockSide = TimelineWidgetDock.Top;
-            m_owner.Refresh();
+            Owner.Refresh();
         }
 
         private void Menu_DockBottom(object sender, EventArgs e)
         {
             DockSide = TimelineWidgetDock.Bottom;
-            m_owner.Refresh();
+            Owner.Refresh();
         }
     }
 }

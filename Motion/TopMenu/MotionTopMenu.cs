@@ -5,6 +5,7 @@ using Grasshopper.Kernel;
 using Motion.Settings;
 using Motion.Widget;
 using System;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -32,40 +33,60 @@ namespace Motion.TopMenu
 
         public static void ToggleTimelineWidget(bool activate)
         {
-            foreach (Control item in Instances.DocumentEditor?.Controls)
+            try
             {
-                if (!(item is Panel panel))
+                GH_DocumentEditor editor = Instances.DocumentEditor;
+                Rhino.RhinoApp.WriteLine($"ToggleTimelineWidget called with activate={activate}");
+
+                if (activate)
                 {
-                    continue;
-                }
-                foreach (Control control in panel.Controls)
-                {
-                    if (control is GH_Canvas canvas)
+                    var existingWidget = editor.Controls.OfType<TimelineWidget>().FirstOrDefault();
+                    if (existingWidget == null)
                     {
-                        if (activate)
-                        {
-                            var existingWidget = canvas.Widgets.OfType<TimelineWidget>().FirstOrDefault();
-                            if (existingWidget == null)
-                            {
-                                TimelineWidget widget = new TimelineWidget();
-                                canvas.Widgets.Add(widget);
-                                widget.Owner = canvas;
-                            }
-                            foreach (var widget in canvas.Widgets.OfType<TimelineWidget>())
-                            {
-                                widget.Visible = true;
-                            }
-                        }
-                        else
-                        {
-                            foreach (var widget in canvas.Widgets.OfType<TimelineWidget>())
-                            {
-                                widget.Visible = false;
-                            }
-                        }
-                        canvas.Invalidate();
+                        Rhino.RhinoApp.WriteLine("Creating new TimelineWidget");
+                        TimelineWidget widget = new TimelineWidget();
+                        
+                        // 确保控件位置和尺寸正确
+                        widget.Size = new Size(800, 100);
+                        widget.Location = new Point(10, 10);
+                        widget.Visible = true;
+                        widget.Enabled = true;
+                        
+                        editor.Controls.Add(widget);
+                        widget.BringToFront();
+                        
+                        // 强制布局更新
+                        editor.PerformLayout();
+                        widget.Invalidate(true);
+                        widget.Update();
+                        
+                        Rhino.RhinoApp.WriteLine("TimelineWidget created and added to controls");
+                    }
+                    else
+                    {
+                        Rhino.RhinoApp.WriteLine("Using existing TimelineWidget");
+                        existingWidget.Visible = true;
+                        existingWidget.BringToFront();
+                        existingWidget.Invalidate(true);
+                        existingWidget.Update();
                     }
                 }
+                else
+                {
+                    foreach (var widget in editor.Controls.OfType<TimelineWidget>())
+                    {
+                        widget.Visible = false;
+                    }
+                }
+                
+                // 刷新整个界面
+                editor.PerformLayout();
+                editor.Refresh();
+                Instances.ActiveCanvas?.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"ToggleTimelineWidget error: {ex.Message}");
             }
         }
 
@@ -96,7 +117,7 @@ namespace Motion.TopMenu
             };
             motionTimelineWidgetToggleMenuItem.Click += MotionTimelineWidgetToggleMenuItem_Click;
             toolStripMenuItem.DropDownItems.Add(motionTimelineWidgetToggleMenuItem);
-           
+
             toolStripMenuItem.DropDownOpened += SgMenu_DropDownOpened;
             docEdit.MainMenuStrip.ResumeLayout(performLayout: false);
             docEdit.MainMenuStrip.PerformLayout();
