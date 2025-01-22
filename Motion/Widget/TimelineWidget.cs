@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using Grasshopper;
+﻿﻿using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.GUI.Widgets;
@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 namespace Motion.Widget
 {
-    internal partial class TimelineWidget : Control
+    internal partial class TimelineWidget : ScrollableControl
     {
         private GH_Canvas Owner => Instances.ActiveCanvas;
         private Dictionary<string, List<Keyframe>> _keyframeGroups = new Dictionary<string, List<Keyframe>>();
@@ -57,43 +57,88 @@ namespace Motion.Widget
         private const float ZOOM_SPEED = 0.1f;
 
         private const int WIDGET_HEIGHT = 200;
+        private const int MAX_HEIGHT = 800; // Maximum expanded height
         private const float GROUP_SPACING = 30f;
         private const float GROUP_HEADER_HEIGHT = 20f;
+        private int _scrollOffset = 0;
+        private int _totalHeight = 0;
+
+        private static readonly object _initializationLock = new object();
+        private bool _isInitialized = false;
 
         public TimelineWidget()
         {
-            try
+            lock (_initializationLock)
             {
-                // 设置控件基本属性
-                SetStyle(
-                    ControlStyles.AllPaintingInWmPaint |
-                    ControlStyles.UserPaint |
-                    ControlStyles.OptimizedDoubleBuffer |
-                    ControlStyles.ResizeRedraw,
-                    true);
-
-                // 初始化计时器 - 延迟初始化
-                _animationTimer = new Timer
+                if (_isInitialized) return;
+                
+                try
                 {
-                    Interval = 16, // 约60fps
-                    Enabled = false // 默认禁用
-                };
-                _animationTimer.Tick += AnimationTimer_Tick;
+                    // 设置控件基本属性
+                    SetStyle(
+                        ControlStyles.AllPaintingInWmPaint |
+                        ControlStyles.UserPaint |
+                        ControlStyles.OptimizedDoubleBuffer |
+                        ControlStyles.ResizeRedraw,
+                        true);
 
-                // 添加必要的事件处理
-                HandleCreated += (s, e) => BeginInvoke(new Action(() =>
+                    // 初始化计时器 - 延迟初始化
+                    _animationTimer = new Timer
+                    {
+                        Interval = 16, // 约60fps
+                        Enabled = false // 默认禁用
+                    };
+                    _animationTimer.Tick += AnimationTimer_Tick;
+
+                    // 添加必要的事件处理
+                    HandleCreated += (s, e) => BeginInvoke(new Action(() =>
+                    {
+                        InitializeAfterHandleCreated();
+                        Invalidate();
+                    }));
+
+                    // 设置初始大小
+                    Size = new Size(800, WIDGET_HEIGHT);
+                    
+                    // 启用滚动功能
+                    this.AutoScroll = true;
+                    this.DoubleBuffered = true;
+                    this.ResizeRedraw = true;
+                    
+                    // 注册鼠标滚轮事件
+                    this.MouseWheel += TimelineWidget_MouseWheel;
+                    
+                    // 确保控件可以获得焦点以接收鼠标滚轮事件
+                    this.SetStyle(ControlStyles.Selectable | 
+                                 ControlStyles.UserMouse | 
+                                 ControlStyles.StandardClick |
+                                 ControlStyles.StandardDoubleClick, true);
+                    
+                    _isInitialized = true;
+                }
+                catch (Exception ex)
                 {
-                    InitializeAfterHandleCreated();
-                    Invalidate();
-                }));
-
-                // 设置初始大小
-                Size = new Size(800, WIDGET_HEIGHT);
+                    Rhino.RhinoApp.WriteLine($"TimelineWidget initialization error: {ex.Message}");
+                    Cleanup();
+                    throw;
+                }
             }
-            catch (Exception ex)
+        }
+
+        private void Cleanup()
+        {
+            if (_animationTimer != null)
             {
-                Rhino.RhinoApp.WriteLine($"TimelineWidget initialization error: {ex.Message}");
+                _animationTimer.Stop();
+                _animationTimer.Dispose();
+                _animationTimer = null;
             }
+            
+            HandleCreated -= (s, e) => BeginInvoke(new Action(() =>
+            {
+                InitializeAfterHandleCreated();
+                Invalidate();
+            }));
         }
 
         private void InitializeAfterHandleCreated()
@@ -132,6 +177,30 @@ namespace Motion.Widget
             }));
         }
 
+        private int CalculateTotalHeight()
+        {
+            int totalHeight = (int)GROUP_HEADER_HEIGHT;
+            
+            foreach (var group in _keyframeGroups)
+            {
+                // 如果组是可见的
+                if (_groupVisibility[group.Key])
+                {
+                    // 添加组标题的高度
+                    totalHeight += (int)GROUP_HEADER_HEIGHT;
+                    
+                    // 如果组未折叠，添加组内容的高度
+                    if (!(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
+                    {
+                        totalHeight += (int)VALUE_DISPLAY_HEIGHT + (int)GROUP_SPACING;
+                    }
+                }
+            }
+            
+            // 确保总高度至少等于最小高度
+            return Math.Max(totalHeight, WIDGET_HEIGHT);
+        }
+
         private void UpdateBounds()
         {
             if (IsDisposed || !IsHandleCreated) return;
@@ -141,11 +210,20 @@ namespace Motion.Widget
                 if (Owner?.Viewport == null || Parent == null) return;
 
                 var parentBounds = Parent.ClientRectangle;
-                int height = _isCollapsed ? 30 : WIDGET_HEIGHT;
-                Size = new Size(parentBounds.Width, height);
+                
+                // 计算所需的总高度
+                int totalHeight = CalculateTotalHeight();
+                
+                // 设置控件的最小尺寸（用于滚动）
+                this.AutoScrollMinSize = new Size(parentBounds.Width, totalHeight);
+                
+                // 设置控件的实际尺寸
+                Size = new Size(parentBounds.Width, Math.Min(totalHeight, parentBounds.Height));
+                
+                // 更新位置
                 Location = m_dockSide == TimelineWidgetDock.Top
                     ? new Point(0, WIDGET_HEIGHT + 130)
-                    : new Point(0, parentBounds.Height - height);
+                    : new Point(0, parentBounds.Height - Height);
 
                 _bounds = new Rectangle(Location, Size);
                 CalculateBounds();
@@ -156,6 +234,14 @@ namespace Motion.Widget
             {
                 Rhino.RhinoApp.WriteLine($"UpdateBounds error: {ex.Message}");
             }
+        }
+
+        private void UpdateScrollPosition(int delta)
+        {
+            int newOffset = this.AutoScrollPosition.Y - delta;
+            newOffset = Math.Max(0, Math.Min(_totalHeight - ClientSize.Height, newOffset));
+            this.AutoScrollPosition = new Point(0, newOffset);
+            Invalidate();
         }
 
         protected override void OnParentChanged(EventArgs e)
@@ -190,23 +276,46 @@ namespace Motion.Widget
             if (e.Button != MouseButtons.Left)
                 return;
 
-            // Check if clicked on collapse/expand button
-            var collapseButtonRect = new Rectangle(
-                _bounds.Right - 30,
-                _bounds.Top + 5,
-                20,
-                20
-            );
-
-            if (collapseButtonRect.Contains(e.Location))
+            // 处理组和按钮的点击
+            var (clickedGroup, isCollapseButton, isVisibilityButton) = GetClickedGroupWithButtons(e.Location);
+            if (clickedGroup != null)
             {
-                _isCollapsed = !_isCollapsed;
-                UpdateBounds();
+                if (isCollapseButton)
+                {
+                    // 切换组的折叠状态
+                    if (!_groupCollapsed.ContainsKey(clickedGroup))
+                    {
+                        _groupCollapsed[clickedGroup] = false;
+                    }
+                    _groupCollapsed[clickedGroup] = !_groupCollapsed[clickedGroup];
+                    Invalidate();
+                    return;
+                }
+                
+                if (isVisibilityButton)
+                {
+                    // 切换组的可见性
+                    _groupVisibility[clickedGroup] = !_groupVisibility[clickedGroup];
+                    Invalidate();
+                    return;
+                }
+
+                // 设置活动组
+                _activeGroup = clickedGroup;
                 Invalidate();
                 return;
             }
 
-            // 处理播放按钮点击
+            // 处理关键帧点击
+            var clickedKeyframe = GetKeyframeAtPoint(e.Location);
+            if (clickedKeyframe != null)
+            {
+                _selectedKeyframe = clickedKeyframe;
+                Invalidate();
+                return;
+            }
+
+            // 其他控件的点击处理保持不变
             if (_playButtonBounds.Contains(e.Location))
             {
                 TogglePlayState();
@@ -262,15 +371,6 @@ namespace Motion.Widget
                 return;
             }
 
-            // 处理组头部点击
-            string clickedGroup = GetClickedGroup(e.Location);
-            if (clickedGroup != null)
-            {
-                ToggleGroupVisibility(clickedGroup);
-                Invalidate();
-                return;
-            }
-
             // 处理当前帧指示器拖动
             if (IsOverCurrentFrameHandle(e.Location))
             {
@@ -279,61 +379,57 @@ namespace Motion.Widget
             }
         }
 
-        private string GetClickedGroup(Point location)
+        private (string group, bool isCollapseButton, bool isVisibilityButton) GetClickedGroupWithButtons(Point location)
         {
-            float yOffset = 0;
+            float yOffset = _timelineBounds.Top;
             foreach (var group in _keyframeGroups)
             {
-                var headerRect = new RectangleF(
+                // 计算组的总高度
+                float groupHeight = GROUP_HEADER_HEIGHT;
+                if (!(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
+                {
+                    groupHeight += GROUP_SPACING;
+                }
+                
+                // 组的整体区域
+                var groupRect = new RectangleF(
                     _timelineBounds.Left,
-                    _timelineBounds.Top + yOffset,
+                    yOffset,
                     _timelineBounds.Width,
-                    GROUP_HEADER_HEIGHT
+                    groupHeight
                 );
 
-                // Check if clicked on collapse/expand button
-                var collapseRect = new RectangleF(
-                    headerRect.Right - 50,
-                    headerRect.Top + (headerRect.Height - 15) / 2,
-                    15,
-                    15
-                );
-
-                if (collapseRect.Contains(location))
+                if (groupRect.Contains(location))
                 {
-                    // Toggle collapsed state
-                    if (_groupCollapsed.ContainsKey(group.Key))
-                    {
-                        _groupCollapsed[group.Key] = !_groupCollapsed[group.Key];
-                    }
-                    else
-                    {
-                        _groupCollapsed[group.Key] = true;
-                    }
-                    return group.Key;
+                    // 检查折叠按钮（左侧）
+                    var collapseRect = new RectangleF(
+                        groupRect.Left + 5,
+                        yOffset + (GROUP_HEADER_HEIGHT - 15) / 2,
+                        15,
+                        15
+                    );
+
+                    // 检查可见性按钮（右侧）
+                    var visibilityRect = new RectangleF(
+                        groupRect.Right - 25,
+                        yOffset + (GROUP_HEADER_HEIGHT - 15) / 2,
+                        15,
+                        15
+                    );
+
+                    return (
+                        group.Key,
+                        collapseRect.Contains(location),
+                        visibilityRect.Contains(location)
+                    );
                 }
 
-                // Check if clicked on visibility toggle
-                var visibilityRect = new RectangleF(
-                    headerRect.Right - 25,
-                    headerRect.Top + (headerRect.Height - 15) / 2,
-                    15,
-                    15
-                );
-
-                if (visibilityRect.Contains(location))
-                {
-                    return group.Key;
-                }
-
-                yOffset += GROUP_HEADER_HEIGHT;
-                if (_groupVisibility[group.Key] && !(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
-                {
-                    yOffset += GROUP_SPACING;
-                }
+                yOffset += groupHeight;
             }
-            return null;
+            return (null, false, false);
         }
+
+        
 
         // 辅助方法，处理播放状态切换
         private void TogglePlayState()
@@ -410,59 +506,94 @@ namespace Motion.Widget
         }
         private void TimelineWidget_MouseWheel(object sender, MouseEventArgs e)
         {
-            // 只在按下CTRL键时进行缩放
-            if (ModifierKeys.HasFlag(Keys.Control))
+            // 如果按住Ctrl键，则进行缩放
+            if (ModifierKeys == Keys.Control)
             {
-                // 计算新的缩放级别
-                float newZoom = e.Delta > 0
-                    ? Math.Max(_timelineZoom / (1 + ZOOM_SPEED), MIN_ZOOM)
-                    : Math.Min(_timelineZoom * (1 + ZOOM_SPEED), MAX_ZOOM);
-
-                // 更新缩放级别
-                _timelineZoom = newZoom;
-
-                // 重新计算像素每帧的值
-                _pixelsPerFrame = _timelineBounds.Width / (float)(_endFrame - _startFrame) * _timelineZoom;
-
+                float zoomDelta = e.Delta > 0 ? ZOOM_SPEED : -ZOOM_SPEED;
+                _timelineZoom = Math.Max(MIN_ZOOM, Math.Min(_timelineZoom + zoomDelta, MAX_ZOOM));
                 Invalidate();
             }
+            // 否则进行垂直滚动
+            else
+            {
+                int scrollValue = -e.Delta / 120 * SystemInformation.MouseWheelScrollLines * 20; // 调整滚动速度
+                int newY = -AutoScrollPosition.Y + scrollValue;
+                
+                // 确保不会滚动超出范围
+                newY = Math.Max(0, Math.Min(newY, AutoScrollMinSize.Height - ClientSize.Height));
+                
+                AutoScrollPosition = new Point(0, newY);
+                Invalidate();
+            }
+
+            // 阻止事件继续传播
+            ((HandledMouseEventArgs)e).Handled = true;
+        }
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            base.OnMouseEnter(e);
+            this.Focus();
         }
         private void TimelineWidget_DoubleClick(object sender, EventArgs e)
         {
             Point mousePoint = PointToClient(Control.MousePosition);
 
-            // 检查是否双击在某个组区域内
-            string groupName = GetClickedGroup(mousePoint);
-            if (groupName == null)
+            // 获取点击位置所在的组
+            float yOffset = _timelineBounds.Top;
+            string clickedGroupName = null;
+            float clickedAreaTop = 0;
+
+            foreach (var group in _keyframeGroups)
+            {
+                float groupHeight = GROUP_HEADER_HEIGHT;
+                if (!(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
+                {
+                    groupHeight += GROUP_SPACING;
+                }
+
+                var groupArea = new RectangleF(
+                    _timelineBounds.Left,
+                    yOffset,
+                    _timelineBounds.Width,
+                    groupHeight
+                );
+
+                if (groupArea.Contains(mousePoint))
+                {
+                    clickedGroupName = group.Key;
+                    clickedAreaTop = yOffset;
+                    break;
+                }
+
+                yOffset += groupHeight;
+            }
+
+            if (clickedGroupName == null)
                 return;
 
-            // 定义关键帧显示区域
-            float displayTop = _bounds.Top + PADDING + VALUE_DISPLAY_HEIGHT * 0.1f;
-            float displayBottom = _timelineBounds.Top - PADDING;
-            RectangleF keyframeDisplayArea = new RectangleF(
-                _timelineBounds.Left,
-                displayTop,
-                _timelineBounds.Width,
-                displayBottom - displayTop
-            );
-
-            // 检查点击是否在关键帧显示区域内
-            if (!keyframeDisplayArea.Contains(mousePoint))
+            // 确保点击在关键帧区域而不是标题区域
+            if (mousePoint.Y < clickedAreaTop + GROUP_HEADER_HEIGHT)
                 return;
 
-            // 检查是否点击到现有的关键帧
+            // 计算点击位置对应的帧
+            float relativeX = mousePoint.X - _timelineBounds.Left;
+            int clickedFrame = _startFrame + (int)(relativeX / _pixelsPerFrame);
+
+            // 查找是否点击了现有关键帧
             var clickedKeyframe = GetKeyframeAtPoint(mousePoint);
             double initialValue = clickedKeyframe?.Value ?? _currentValue;
 
             // 显示关键帧编辑对话框
             using (var dialog = new KeyframeDialog(initialValue))
             {
-                if (dialog.ShowDialog() != DialogResult.OK)
-                    return;
-
-                UpdateKeyframe(clickedKeyframe, dialog.Value);
-                UpdateCurrentValue();
-                Invalidate();
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    _currentFrame = clickedFrame;
+                    UpdateKeyframe(clickedKeyframe, dialog.Value);
+                    UpdateCurrentValue();
+                    Invalidate();
+                }
             }
         }
         protected override void OnPaint(PaintEventArgs e)
@@ -796,6 +927,17 @@ namespace Motion.Widget
                 Size = new Size(parentBounds.Width, WIDGET_HEIGHT);
                 UpdateBounds();
                 Invalidate();
+            }
+        }
+
+        // 重写 CreateParams 以确保滚动条正确显示
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= 0x200000;  // WS_VSCROLL
+                return cp;
             }
         }
     }

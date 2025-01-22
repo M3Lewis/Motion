@@ -8,7 +8,7 @@
         Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
     -->
 	<UseWindowsForms>true</UseWindowsForms>
-    <TargetFrameworks>net7.0-windows;net48</TargetFrameworks>
+    <TargetFrameworks><!--net7.0-windows;-->net48</TargetFrameworks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TargetExt>.gha</TargetExt>
     <NoWarn>NU1701</NoWarn>

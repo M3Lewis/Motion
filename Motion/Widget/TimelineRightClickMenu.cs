@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using System.Drawing;
+﻿﻿using System.Drawing;
 using System.Windows.Forms;
 
 namespace Motion.Widget
@@ -11,6 +11,9 @@ namespace Motion.Widget
 
             // 检查是否点击到关键帧
             _selectedKeyframe = GetKeyframeAtPoint(location);
+
+            // 获取点击的组信息
+            var (clickedGroup, _, _) = GetClickedGroupWithButtons(location);
 
             // 如果有选中的关键帧，添加删除选项
             if (_selectedKeyframe != null)
@@ -36,7 +39,6 @@ namespace Motion.Widget
                 addGroupItem.Click += (s, e) => AddGroup("新组 " + (_keyframeGroups.Count + 1));
     
                 // 如果有选中的组，添加重命名和删除选项
-                string clickedGroup = GetClickedGroup(location);
                 if (clickedGroup != null)
                 {
                     var renameGroupItem = menu.Items.Add("重命名组");

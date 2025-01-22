@@ -10,29 +10,47 @@ namespace Motion.Widget
     internal partial class TimelineWidget
     {
         // 添加方法来检查是否点击到关键帧
-        private Keyframe GetKeyframeAtPoint(Point point)
+        private Keyframe GetKeyframeAtPoint(Point location)
         {
-            if (_keyframeGroups.Count == 0 || !_keyframeGroups.ContainsKey(_activeGroup)) 
-                return null;
-
-            var activeKeyframes = _keyframeGroups[_activeGroup];
-            if (activeKeyframes.Count == 0) return null;
-
-            // 检查当前活动组中的每个关键帧
-            foreach (var keyframe in activeKeyframes)
+            float yOffset = _timelineBounds.Top;
+            foreach (var group in _keyframeGroups)
             {
-                float x = _timelineBounds.Left + (keyframe.Frame - _startFrame) * _pixelsPerFrame;
-                float y = MapValueToY(keyframe.Value, activeKeyframes);
-
-                // 创建关键帧点的矩形区域（8x8像素）
-                RectangleF keyframeRect = new RectangleF(x - 4, y - 4, 8, 8);
-
-                if (keyframeRect.Contains(point))
+                if (!_groupVisibility[group.Key] ||
+                    (_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
                 {
-                    return keyframe;
+                    yOffset += GROUP_HEADER_HEIGHT;
+                    continue;
                 }
-            }
 
+                float keyframeAreaTop = yOffset + GROUP_HEADER_HEIGHT;
+                float keyframeAreaHeight = GROUP_SPACING;
+
+                // 检查是否在关键帧区域内
+                var keyframeArea = new RectangleF(
+                    _timelineBounds.Left,
+                    keyframeAreaTop,
+                    _timelineBounds.Width,
+                    keyframeAreaHeight
+                );
+
+                if (keyframeArea.Contains(location))
+                {
+                    // 计算点击位置对应的帧
+                    float relativeX = location.X - _timelineBounds.Left;
+                    int clickedFrame = _startFrame + (int)(relativeX / _pixelsPerFrame);
+
+                    // 查找最近的关键帧（允许5像素的误差）
+                    const float CLICK_TOLERANCE = 5f;
+                    return group.Value
+                        .FirstOrDefault(k =>
+                        {
+                            float keyframeX = (k.Frame - _startFrame) * _pixelsPerFrame;
+                            return Math.Abs(keyframeX - relativeX) <= CLICK_TOLERANCE;
+                        });
+                }
+
+                yOffset += GROUP_HEADER_HEIGHT + keyframeAreaHeight;
+            }
             return null;
         }
 

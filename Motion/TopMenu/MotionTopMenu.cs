@@ -1,4 +1,4 @@
-﻿using Grasshopper;
+﻿﻿using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
@@ -7,6 +7,7 @@ using Motion.Widget;
 using System;
 using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Motion.TopMenu
@@ -44,21 +45,33 @@ namespace Motion.TopMenu
                     if (existingWidget == null)
                     {
                         Rhino.RhinoApp.WriteLine("Creating new TimelineWidget");
-                        TimelineWidget widget = new TimelineWidget();
+                        // Create widget asynchronously to prevent UI blocking
+                        Task.Run(() => {
+                            try {
+                                TimelineWidget widget = new TimelineWidget();
+                                
+                                // Ensure UI operations happen on UI thread
+                                editor.BeginInvoke(new Action(() => {
+                                    // Set control properties
+                                    widget.Size = new Size(800, 100);
+                                    widget.Location = new Point(10, 10);
+                                    widget.Visible = true;
+                                    widget.Enabled = true;
 
-                        // 先设置控件的位置和尺寸
-                        widget.Size = new Size(800, 100);
-                        widget.Location = new Point(10, 10);
-                        widget.Visible = true;
-                        widget.Enabled = true;
+                                    // Add to controls
+                                    editor.Controls.Add(widget);
+                                    widget.BringToFront();
 
-                        // 然后再将控件添加到 editor.Controls
-                        editor.Controls.Add(widget);
-                        widget.BringToFront();
-
-                        editor.PerformLayout();
-                        widget.Invalidate(true);
-                        widget.Update();
+                                    // Perform layout
+                                    editor.PerformLayout();
+                                    widget.Invalidate(true);
+                                    widget.Update();
+                                }));
+                            }
+                            catch (Exception ex) {
+                                Rhino.RhinoApp.WriteLine($"Error creating TimelineWidget: {ex.Message}");
+                            }
+                        });
 
                         Rhino.RhinoApp.WriteLine("TimelineWidget created and added to controls");
                     }
