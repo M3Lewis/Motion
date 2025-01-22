@@ -58,7 +58,7 @@ namespace Motion.Widget
 
         private const int WIDGET_HEIGHT = 200;
         private const int MAX_HEIGHT = 800; // Maximum expanded height
-        private const float GROUP_SPACING = 30f;
+        private const float GROUP_SPACING = 20f;
         private const float GROUP_HEADER_HEIGHT = 20f;
         private int _scrollOffset = 0;
         private int _totalHeight = 0;
@@ -611,33 +611,7 @@ namespace Motion.Widget
                 CalculateBounds();
 
                 DrawBackground(g);
-                
-                // Draw collapse/expand button
-                var collapseButtonRect = new Rectangle(
-                    _bounds.Right - 30,
-                    _bounds.Top + 5,
-                    20,
-                    20
-                );
-                
-                using (var pen = new Pen(Color.White, 2))
-                {
-                    // Draw minus/plus sign based on collapsed state
-                    g.DrawLine(pen,
-                        collapseButtonRect.Left + 2,
-                        collapseButtonRect.Top + collapseButtonRect.Height/2,
-                        collapseButtonRect.Right - 2,
-                        collapseButtonRect.Top + collapseButtonRect.Height/2);
-                    
-                    if (_isCollapsed)
-                    {
-                        g.DrawLine(pen,
-                            collapseButtonRect.Left + collapseButtonRect.Width/2,
-                            collapseButtonRect.Top + 2,
-                            collapseButtonRect.Left + collapseButtonRect.Width/2,
-                            collapseButtonRect.Bottom - 2);
-                    }
-                }
+               
 
                 if (!_isCollapsed)
                 {
@@ -654,7 +628,6 @@ namespace Motion.Widget
                 {
                     if (_groupVisibility[group.Key])
                     {
-                        DrawGroupHeader(g, group.Key, ref groupOffset);
                         DrawKeyframesAndInterpolation(g);
                         groupOffset += GROUP_SPACING;
                     }
@@ -776,11 +749,27 @@ namespace Motion.Widget
 
         private void AddGroup(string groupName)
         {
-            if (!_keyframeGroups.ContainsKey(groupName))
+            // 确保组名唯一
+            string uniqueName = groupName;
+            int counter = 1;
+            while (_keyframeGroups.ContainsKey(uniqueName))
             {
-                _keyframeGroups[groupName] = new List<Keyframe>();
-                _groupVisibility[groupName] = true;
+                uniqueName = $"{groupName}{counter}";
+                counter++;
             }
+
+            // 添加新组
+            _keyframeGroups[uniqueName] = new List<Keyframe>();
+            _groupVisibility[uniqueName] = true;
+            _groupCollapsed[uniqueName] = false;
+            _activeGroup = uniqueName;
+
+            // 更新滚动范围
+            _totalHeight = CalculateTotalHeight();
+            this.AutoScrollMinSize = new Size(0, _totalHeight);
+            
+            // 强制重绘
+            Invalidate();
         }
 
         private void RemoveGroup(string groupName)

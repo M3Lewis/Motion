@@ -349,10 +349,7 @@ namespace Motion.Widget
         {
             if (_keyframeGroups.Count == 0) return;
 
-            float groupOffset = 0;
-            // 修改显示区域的计算，为每个组预留更多空间
-            float displayTop = _timelineBounds.Top + GROUP_HEADER_HEIGHT + PADDING;
-            float displayBottom = displayTop + VALUE_DISPLAY_HEIGHT;
+            float yOffset = _timelineBounds.Top;
 
             // Define colors for different groups
             var groupColors = new Dictionary<string, Color>
@@ -367,28 +364,29 @@ namespace Motion.Widget
             // 先绘制所有组的关键帧和插值线
             foreach (var group in _keyframeGroups)
             {
-                if (!_groupVisibility[group.Key] || group.Value.Count == 0) continue;
-
-                // Calculate group display area
-                float groupDisplayTop = displayTop + groupOffset;
-                float groupDisplayBottom = groupDisplayTop + VALUE_DISPLAY_HEIGHT;
+                if (!_groupVisibility[group.Key]) continue;
 
                 // Draw group header
-                DrawGroupHeader(g, group.Key, ref groupOffset);
+                DrawGroupHeader(g, group.Key, ref yOffset);
 
                 // Only draw keyframes and interpolation if group is visible and not collapsed
                 if (_groupVisibility[group.Key] && !(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
                 {
+                    float displayTop = yOffset;
+                    float displayBottom = displayTop + VALUE_DISPLAY_HEIGHT;
+
                     // Draw value boundaries for this group
-                    DrawValueDisplayBoundaries(g, groupDisplayTop, groupDisplayBottom, group.Value);
+                    DrawValueDisplayBoundaries(g, displayTop, displayBottom, group.Value);
 
                     var color = groupColors.ContainsKey(group.Key) ? groupColors[group.Key] : Color.Orange;
-                    DrawInterpolationLine(g, groupDisplayTop, groupDisplayBottom, group.Value, color);
-                    DrawKeyframePoints(g, groupDisplayTop, groupDisplayBottom, group.Value, color);
+                    DrawInterpolationLine(g, displayTop, displayBottom, group.Value, color);
+                    DrawKeyframePoints(g, displayTop, displayBottom, group.Value, color);
 
-                    // 增加组之间的间距
-                    groupOffset += VALUE_DISPLAY_HEIGHT + GROUP_SPACING;
+                    // 只有在展开状态下才增加VALUE_DISPLAY_HEIGHT的空间
+                    yOffset += VALUE_DISPLAY_HEIGHT;
                 }
+                
+                // 不再添加固定的组间距
             }
 
             // 最后绘制当前帧指示线，确保它在最上层
@@ -397,38 +395,47 @@ namespace Motion.Widget
 
         private void DrawGroupHeader(Graphics g, string groupName, ref float yOffset)
         {
-            float headerHeight = GROUP_HEADER_HEIGHT;
+            // 组标题区域
             var headerRect = new RectangleF(
                 _timelineBounds.Left,
-                _timelineBounds.Top + yOffset,
+                yOffset,
                 _timelineBounds.Width,
-                headerHeight
+                GROUP_HEADER_HEIGHT
             );
 
             // 绘制组标题背景
-            using (var brush = new SolidBrush(Color.FromArgb(60, 60, 60)))
+            using (var headerBrush = new SolidBrush(Color.FromArgb(40, Color.White)))
             {
-                g.FillRectangle(brush, headerRect);
+                g.FillRectangle(headerBrush, headerRect);
             }
 
-            // 绘制折叠按钮（移到最左侧）
+            // 绘制组名
+            using (var font = new Font("Arial", 10))
+            using (var brush = new SolidBrush(Color.White))
+            {
+                g.DrawString(groupName, font, brush, 
+                    headerRect.Left + 25, 
+                    headerRect.Top + (GROUP_HEADER_HEIGHT - font.Height) / 2);
+            }
+
+            // 绘制折叠/展开按钮
             var collapseButtonRect = new RectangleF(
-                headerRect.Left + 5, // 左侧留出5像素间距
-                headerRect.Top + (headerHeight - 15) / 2,
+                headerRect.Left + 5,
+                headerRect.Top + (GROUP_HEADER_HEIGHT - 15) / 2,
                 15,
                 15
             );
 
-            using (var pen = new Pen(Color.White, 2))
+            using (var pen = new Pen(Color.White, 1))
             {
-                // 绘制横线
+                // 绘制 - 横线
                 g.DrawLine(pen,
                     collapseButtonRect.Left + 2,
                     collapseButtonRect.Top + collapseButtonRect.Height / 2,
                     collapseButtonRect.Right - 2,
                     collapseButtonRect.Top + collapseButtonRect.Height / 2);
 
-                // 如果组是展开的，不绘制竖线
+                // 如果是折叠状态，绘制 + 竖线
                 if (_groupCollapsed.ContainsKey(groupName) && _groupCollapsed[groupName])
                 {
                     g.DrawLine(pen,
@@ -439,67 +446,8 @@ namespace Motion.Widget
                 }
             }
 
-            // 绘制组名（在折叠按钮右侧）
-            using (var brush = new SolidBrush(Color.White))
-            {
-                g.DrawString(groupName, SystemFonts.DefaultFont, brush,
-                    collapseButtonRect.Right + 5,
-                    headerRect.Top + (headerHeight - SystemFonts.DefaultFont.Height) / 2);
-            }
-
-            // 绘制可见性切换按钮（保持在右侧）
-            var visibilityRect = new RectangleF(
-                headerRect.Right - 25,
-                headerRect.Top + (headerHeight - 15) / 2,
-                15,
-                15
-            );
-
-            using (var pen = new Pen(Color.White, 1))
-            {
-                g.DrawRectangle(pen, visibilityRect.X, visibilityRect.Y, visibilityRect.Width, visibilityRect.Height);
-                if (_groupVisibility[groupName])
-                {
-                    g.DrawLine(pen,
-                        visibilityRect.Left + 3,
-                        visibilityRect.Top + visibilityRect.Height / 2,
-                        visibilityRect.Left + 6,
-                        visibilityRect.Bottom - 3);
-                    g.DrawLine(pen,
-                        visibilityRect.Left + 6,
-                        visibilityRect.Bottom - 3,
-                        visibilityRect.Right - 3,
-                        visibilityRect.Top + 3);
-                }
-            }
-
-            // 如果组未折叠，则绘制关键帧
-            if (!(_groupCollapsed.ContainsKey(groupName) && _groupCollapsed[groupName]))
-            {
-                DrawGroupKeyframes(g, groupName, headerRect.Bottom);
-            }
-        }
-
-        private void DrawGroupKeyframes(Graphics g, string groupName, float startY)
-        {
-            if (!_keyframeGroups.ContainsKey(groupName) || !_groupVisibility[groupName])
-                return;
-
-            var keyframes = _keyframeGroups[groupName];
-            float keyframeAreaHeight = VALUE_DISPLAY_HEIGHT;
-
-            // 绘制关键帧区域背景
-            var keyframeAreaRect = new RectangleF(
-                _timelineBounds.Left,
-                startY,
-                _timelineBounds.Width,
-                keyframeAreaHeight
-            );
-
-            using (var brush = new SolidBrush(Color.FromArgb(40, 40, 40)))
-            {
-                g.FillRectangle(brush, keyframeAreaRect);
-            }
+            // 更新yOffset，移动到组标题下方
+            yOffset += GROUP_HEADER_HEIGHT;
         }
 
         private void DrawValueDisplayBoundaries(Graphics g, float displayTop, float displayBottom, List<Keyframe> keyframes)
