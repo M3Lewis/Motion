@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 namespace Motion.Widget
 {
-    internal partial class TimelineWidget : ScrollableControl
+    internal partial class TimelineWidget : Panel
     {
         private GH_Canvas Owner => Instances.ActiveCanvas;
         private Dictionary<string, List<Keyframe>> _keyframeGroups = new Dictionary<string, List<Keyframe>>();
@@ -74,13 +74,22 @@ namespace Motion.Widget
                 
                 try
                 {
-                    // 设置控件基本属性
+                    // 添加这些样式以确保控件可以获得焦点和正确处理滚动
                     SetStyle(
                         ControlStyles.AllPaintingInWmPaint |
                         ControlStyles.UserPaint |
                         ControlStyles.OptimizedDoubleBuffer |
-                        ControlStyles.ResizeRedraw,
+                        ControlStyles.ResizeRedraw |
+                        ControlStyles.Selectable |
+                        ControlStyles.EnableNotifyMessage,  // 添加这个样式
                         true);
+
+                    this.TabStop = true;
+                    this.AutoScroll = true;
+                    this.VerticalScroll.Enabled = true;
+                    this.VerticalScroll.Visible = true;
+                    this.HorizontalScroll.Enabled = false;
+                    this.HorizontalScroll.Visible = false;
 
                     // 初始化计时器 - 延迟初始化
                     _animationTimer = new Timer
@@ -267,6 +276,8 @@ namespace Motion.Widget
 
         private void TimelineWidget_MouseDown(object sender, MouseEventArgs e)
         {
+            this.Focus();  // 当鼠标点击时获取焦点
+            
             if (e.Button == MouseButtons.Right)
             {
                 ShowContextMenu(e.Location);
@@ -381,22 +392,34 @@ namespace Motion.Widget
 
         private (string group, bool isCollapseButton, bool isVisibilityButton) GetClickedGroupWithButtons(Point location)
         {
-            float yOffset = _timelineBounds.Top;
+            // 计算固定区域的高度
+            float fixedAreaHeight = _timelineBounds.Top + 40;
+            
+            // 如果点击在固定区域上方，直接返回
+            if (location.Y < fixedAreaHeight)
+            {
+                return (null, false, false);
+            }
+
+            // 考虑滚动偏移的实际位置
+            float yOffset = fixedAreaHeight - _scrollOffset;
+            
             foreach (var group in _keyframeGroups)
             {
                 // 计算组的总高度
                 float groupHeight = GROUP_HEADER_HEIGHT;
                 if (!(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
                 {
-                    groupHeight += GROUP_SPACING;
+                    groupHeight += VALUE_DISPLAY_HEIGHT;
                 }
+                groupHeight += GROUP_SPACING;
                 
-                // 组的整体区域
+                // 组的整体区域（考虑滚动偏移）
                 var groupRect = new RectangleF(
                     _timelineBounds.Left,
                     yOffset,
                     _timelineBounds.Width,
-                    groupHeight
+                    GROUP_HEADER_HEIGHT  // 只检测标题区域的点击
                 );
 
                 if (groupRect.Contains(location))
@@ -506,34 +529,37 @@ namespace Motion.Widget
         }
         private void TimelineWidget_MouseWheel(object sender, MouseEventArgs e)
         {
-            // 如果按住Ctrl键，则进行缩放
-            if (ModifierKeys == Keys.Control)
-            {
-                float zoomDelta = e.Delta > 0 ? ZOOM_SPEED : -ZOOM_SPEED;
-                _timelineZoom = Math.Max(MIN_ZOOM, Math.Min(_timelineZoom + zoomDelta, MAX_ZOOM));
-                Invalidate();
-            }
-            // 否则进行垂直滚动
-            else
-            {
-                int scrollValue = -e.Delta / 120 * SystemInformation.MouseWheelScrollLines * 20; // 调整滚动速度
-                int newY = -AutoScrollPosition.Y + scrollValue;
-                
-                // 确保不会滚动超出范围
-                newY = Math.Max(0, Math.Min(newY, AutoScrollMinSize.Height - ClientSize.Height));
-                
-                AutoScrollPosition = new Point(0, newY);
-                Invalidate();
-            }
+            // 计算固定区域的高度
+            float fixedAreaHeight = _timelineBounds.Top + 40;
 
-            // 阻止事件继续传播
-            ((HandledMouseEventArgs)e).Handled = true;
+            // 获取鼠标位置
+            Point mousePos = PointToClient(Control.MousePosition);
+
+            // 只有当鼠标在关键帧组区域内时才处理滚动
+            if (mousePos.Y >= fixedAreaHeight)
+            {
+                if (ModifierKeys == Keys.Control)
+                {
+                    // 处理缩放
+                    float zoomDelta = e.Delta > 0 ? ZOOM_SPEED : -ZOOM_SPEED;
+                    _timelineZoom = Math.Max(MIN_ZOOM, Math.Min(_timelineZoom + zoomDelta, MAX_ZOOM));
+                }
+                else
+                {
+                    // 处理滚动
+                    int scrollDelta = e.Delta > 0 ? 5 : -5; // 调整滚动速度
+                    _scrollOffset = (int)Math.Max(0, Math.Min(_totalHeight - (_bounds.Height - fixedAreaHeight), _scrollOffset - scrollDelta));
+                }
+                
+                Invalidate();
+                ((HandledMouseEventArgs)e).Handled = true;
+            }
         }
 
         protected override void OnMouseEnter(EventArgs e)
         {
             base.OnMouseEnter(e);
-            this.Focus();
+            this.Focus();  // 当鼠标进入控件时获取焦点
         }
         private void TimelineWidget_DoubleClick(object sender, EventArgs e)
         {
@@ -928,6 +954,15 @@ namespace Motion.Widget
                 cp.Style |= 0x200000;  // WS_VSCROLL
                 return cp;
             }
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            // 确保基类的滚动行为被调用
+            base.OnMouseWheel(e);
+            
+            // 手动调用我们的滚轮处理方法
+            TimelineWidget_MouseWheel(this, e);
         }
     }
 }
