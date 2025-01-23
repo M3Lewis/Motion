@@ -1,4 +1,4 @@
-﻿﻿using Grasshopper;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.GUI.Widgets;
@@ -245,14 +245,6 @@ namespace Motion.Widget
             }
         }
 
-        private void UpdateScrollPosition(int delta)
-        {
-            int newOffset = this.AutoScrollPosition.Y - delta;
-            newOffset = Math.Max(0, Math.Min(_totalHeight - ClientSize.Height, newOffset));
-            this.AutoScrollPosition = new Point(0, newOffset);
-            Invalidate();
-        }
-
         protected override void OnParentChanged(EventArgs e)
         {
             base.OnParentChanged(e);
@@ -392,8 +384,8 @@ namespace Motion.Widget
 
         private (string group, bool isCollapseButton, bool isVisibilityButton) GetClickedGroupWithButtons(Point location)
         {
-            // 计算固定区域的高度
-            float fixedAreaHeight = _timelineBounds.Top + 40;
+            // 计算固定区域的高度，与绘制时保持一致
+            float fixedAreaHeight = _timelineBounds.Top + 10;
             
             // 如果点击在固定区域上方，直接返回
             if (location.Y < fixedAreaHeight)
@@ -401,54 +393,69 @@ namespace Motion.Widget
                 return (null, false, false);
             }
 
-            // 考虑滚动偏移的实际位置
-            float yOffset = fixedAreaHeight - _scrollOffset;
-            
+            // 计算实际点击位置（考虑滚动）
+            float clickY = location.Y - this.AutoScrollPosition.Y;
+            float yOffset = fixedAreaHeight;
+
             foreach (var group in _keyframeGroups)
             {
-                // 计算组的总高度
-                float groupHeight = GROUP_HEADER_HEIGHT;
-                if (!(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
-                {
-                    groupHeight += VALUE_DISPLAY_HEIGHT;
-                }
-                groupHeight += GROUP_SPACING;
-                
-                // 组的整体区域（考虑滚动偏移）
-                var groupRect = new RectangleF(
-                    _timelineBounds.Left,
+                if (!_groupVisibility[group.Key]) continue;
+
+                // 组标题区域
+                var headerRect = new RectangleF(
+                    _bounds.Left+20,
                     yOffset,
-                    _timelineBounds.Width,
-                    GROUP_HEADER_HEIGHT  // 只检测标题区域的点击
+                    _bounds.Width,
+                    GROUP_HEADER_HEIGHT
                 );
 
-                if (groupRect.Contains(location))
+                // 检查点击是否在当前组的标题区域内（考虑滚动位置）
+                if (clickY >= headerRect.Top && clickY <= headerRect.Bottom)
                 {
-                    // 检查折叠按钮（左侧）
+                    // 折叠按钮区域
                     var collapseRect = new RectangleF(
-                        groupRect.Left + 5,
-                        yOffset + (GROUP_HEADER_HEIGHT - 15) / 2,
+                        headerRect.Left + 5,
+                        headerRect.Top + (GROUP_HEADER_HEIGHT - 15) / 2,
                         15,
                         15
                     );
 
-                    // 检查可见性按钮（右侧）
+                    // 可见性按钮区域
                     var visibilityRect = new RectangleF(
-                        groupRect.Right - 25,
-                        yOffset + (GROUP_HEADER_HEIGHT - 15) / 2,
+                        headerRect.Right - 25,
+                        headerRect.Top + (GROUP_HEADER_HEIGHT - 15) / 2,
                         15,
                         15
                     );
 
-                    return (
-                        group.Key,
-                        collapseRect.Contains(location),
-                        visibilityRect.Contains(location)
+                    // 转换回实际屏幕坐标进行点击检测
+                    var screenCollapseRect = new RectangleF(
+                        collapseRect.X,
+                        collapseRect.Y + this.AutoScrollPosition.Y,
+                        collapseRect.Width,
+                        collapseRect.Height
                     );
+
+                    var screenVisibilityRect = new RectangleF(
+                        visibilityRect.X,
+                        visibilityRect.Y + this.AutoScrollPosition.Y,
+                        visibilityRect.Width,
+                        visibilityRect.Height
+                    );
+
+                    return (group.Key, 
+                           screenCollapseRect.Contains(location), 
+                           screenVisibilityRect.Contains(location));
                 }
 
-                yOffset += groupHeight;
+                // 更新下一个组的位置
+                yOffset += GROUP_HEADER_HEIGHT;
+                if (!(_groupCollapsed.ContainsKey(group.Key) && _groupCollapsed[group.Key]))
+                {
+                    yOffset += VALUE_DISPLAY_HEIGHT + GROUP_SPACING;
+                }
             }
+            
             return (null, false, false);
         }
 
@@ -530,7 +537,7 @@ namespace Motion.Widget
         private void TimelineWidget_MouseWheel(object sender, MouseEventArgs e)
         {
             // 计算固定区域的高度
-            float fixedAreaHeight = _timelineBounds.Top + 40;
+            float fixedAreaHeight = _timelineBounds.Top + 10;
 
             // 获取鼠标位置
             Point mousePos = PointToClient(Control.MousePosition);

@@ -13,7 +13,7 @@ namespace Motion.Widget
             _selectedKeyframe = GetKeyframeAtPoint(location);
 
             // 获取点击的组信息
-            var (clickedGroup, _, _) = GetClickedGroupWithButtons(location);
+            var (clickedGroup, _,_) = GetClickedGroupWithButtons(location);
 
             // 如果有选中的关键帧，添加删除选项
             if (_selectedKeyframe != null)
