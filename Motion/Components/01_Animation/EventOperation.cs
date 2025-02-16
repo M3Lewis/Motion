@@ -181,19 +181,43 @@ namespace Motion.Animation
                 var source = sources[i];
                 if (source == null) continue;
 
-                var graphMapper = source.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                if (graphMapper == null) continue;
+                // 获取顶层对象
+                var topLevelObj = source.Attributes.GetTopLevel.DocObject;
+                
+                // 处理 Graph Mapper 的情况
+                var graphMapper = topLevelObj as GH_GraphMapper;
+                EventComponent eventComponent = null;
 
-                // 查找包含这个 Graph Mapper 的 Group
-                var containingGroup = allGroups.FirstOrDefault(g => g.ObjectIDs.Contains(graphMapper.InstanceGuid));
+                if (graphMapper != null)
+                {
+                    // Graph Mapper 情况
+                    graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
+                    eventComponent = graphMapper.Sources[0]?.Attributes.GetTopLevel.DocObject as EventComponent;
+                }
+                else
+                {
+                    // GH_Component 情况
+                    var component = topLevelObj as GH_Component;
+                    if (component != null && component.Params.Input.Count > 0)
+                    {
+                        var firstInput = component.Params.Input[0];
+                        if (firstInput.SourceCount > 0)
+                        {
+                            eventComponent = firstInput.Sources[0]?.Attributes.GetTopLevel.DocObject as EventComponent;
+                        }
+                        component.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
+                    }
+                }
+
+                if (eventComponent == null) continue;
+
+                // 查找包含这个组件的 Group
+                var containingGroup = allGroups.FirstOrDefault(g => 
+                    g.ObjectIDs.Contains(graphMapper?.InstanceGuid ?? topLevelObj.InstanceGuid));
                 if (containingGroup != null && !string.IsNullOrEmpty(containingGroup.NickName))
                 {
                     groupNames.Add(containingGroup.NickName);
                 }
-
-                graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
-                var eventComponent = graphMapper.Sources[0]?.Attributes.GetTopLevel.DocObject as EventComponent;
-                if (eventComponent == null) continue;
 
                 // 4. 使用 Split 的重载版本避免创建新数组
                 string[] timeDomainExtremes = eventComponent.NickName.Split(new char[] { '-' }, 2);
@@ -274,42 +298,50 @@ namespace Motion.Animation
             List<double> mappedEventValues,
             List<double> eventValues,
             List<bool> isReversedIntervals,
-            List<Interval> valueDomains,  // 新增：值域列表参数
+            List<Interval> valueDomains,
             out Interval currentInterval,
             out double currentEventValue,
             out int currentIndex,
             out Interval currentDomain)
         {
-            bool sign = true;
+            // 初始化为第一个值
             double currentValue = mappedEventValues[0];
             currentInterval = new Interval(0, 1);
             currentEventValue = isReversedIntervals[0] ? 1 - eventValues[0] : eventValues[0];
             currentIndex = 0;
-            currentDomain = valueDomains[0];  // 使用传入的值域
+            currentDomain = valueDomains[0];
 
-            for (int i = 0; i < eventInterval.Count - 1; i++)
+            // 找到最后一个小于当前时间的区间
+            int lastValidIndex = -1;
+            for (int i = 0; i < eventInterval.Count; i++)
             {
-                Interval dom = new Interval(eventInterval[i].T0, eventInterval[i].T1);
+                Interval dom = eventInterval[i];
                 if (dom.IncludesParameter(time, false))
                 {
+                    // 如果时间在区间内，直接使用该区间
                     currentValue = mappedEventValues[i];
                     currentInterval = dom;
                     currentEventValue = isReversedIntervals[i] ? 1 - eventValues[i] : eventValues[i];
                     currentIndex = i;
-                    currentDomain = valueDomains[i];  // 使用传入的值域
-                    sign = false;
-                    break;
+                    currentDomain = valueDomains[i];
+                    return currentValue;
+                }
+                
+                // 记录最后一个结束时间小于当前时间的区间
+                if (dom.T1 <= time)
+                {
+                    lastValidIndex = i;
                 }
             }
 
-            if (sign && time >= eventInterval[eventInterval.Count - 1].T0)
+            // 如果没有找到包含当前时间的区间，使用最后一个有效区间的值
+            if (lastValidIndex != -1)
             {
-                int lastIndex = eventInterval.Count - 1;
-                currentValue = mappedEventValues[lastIndex];
-                currentInterval = eventInterval[lastIndex];
-                currentEventValue = isReversedIntervals[lastIndex] ? 1 - eventValues[lastIndex] : eventValues[lastIndex];
-                currentIndex = lastIndex;
-                currentDomain = valueDomains[lastIndex];  // 使用传入的值域
+                currentValue = mappedEventValues[lastValidIndex];
+                currentInterval = eventInterval[lastValidIndex];
+                currentEventValue = isReversedIntervals[lastValidIndex] ? 1 - eventValues[lastValidIndex] : eventValues[lastValidIndex];
+                currentIndex = lastValidIndex;
+                currentDomain = valueDomains[lastValidIndex];
             }
 
             return currentValue;

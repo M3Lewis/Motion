@@ -225,15 +225,34 @@ namespace Motion.Animation
 
             foreach (var recipient in Params.Output[0].Recipients)
             {
-                var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                if (graphMapper?.Recipients.Count == 0) continue;
+                var topLevelObj = recipient.Attributes.GetTopLevel.DocObject;
+                IGH_DocumentObject targetOperation = null;
 
-                var eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
-                if (eventOperation == null) continue;
+                // 处理 Graph Mapper 的情况
+                var graphMapper = topLevelObj as GH_GraphMapper;
+                if (graphMapper != null)
+                {
+                    if (graphMapper.Recipients.Count > 0)
+                    {
+                        targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                    }
+                }
+                // 处理 Component 的情况
+                else
+                {
+                    var component = topLevelObj as GH_Component;
+                    if (component != null)
+                    {
+                        targetOperation = component;
+                    }
+                }
 
-                // 跳转到 EventOperation
-                GoComponent(eventOperation);
-                break;
+                if (targetOperation != null)
+                {
+                    // 跳转到目标组件
+                    GoComponent(targetOperation);
+                    break;
+                }
             }
         }
         private void UpdateMessage()
@@ -291,14 +310,31 @@ namespace Motion.Animation
 
             foreach (var recipient in Params.Output[0].Recipients)
             {
-                var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                if (graphMapper?.Recipients.Count == 0)
+                var topLevelObj = recipient.Attributes.GetTopLevel.DocObject;
+
+                // 处理 Graph Mapper 的情况
+                var graphMapper = topLevelObj as GH_GraphMapper;
+                if (graphMapper != null)
                 {
-                    _hasEventOperation = false;
-                    continue;
+                    if (graphMapper.Recipients.Count > 0)
+                    {
+                        targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                    }
+                }
+                // 处理 Component 的情况
+                else
+                {
+                    var component = topLevelObj as GH_Component;
+                    if (component != null && component.Params.Input.Count > 0)
+                    {
+                        // 假设第一个输入端连接到 Event Component
+                        if (component.Params.Input[0].Sources.Contains(this.Params.Output[0]))
+                        {
+                            targetOperation = component;
+                        }
+                    }
                 }
 
-                targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
                 if (targetOperation == null)
                 {
                     _hasEventOperation = false;

@@ -36,9 +36,9 @@ namespace Motion
         //Return a string representing your preferred contact details.
         public override string AuthorContact => "997629445@qq.com";
 
-        public override string Version => "0.7.6";
+        public override string Version => "0.7.8";
 
         //Return a string representing the version.  This returns the same version as the assembly.
-        public override string AssemblyVersion => "0.7.6";
+        public override string AssemblyVersion => "0.7.8";
     }
 }

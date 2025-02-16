@@ -53,6 +53,33 @@ namespace Motion.Toolbar
             button.Click += ConnectToEventOperation;
         }
 
+        // 添加一个新的类来表示可连接的对象
+        private class ConnectableObject
+        {
+            public IGH_DocumentObject Object { get; set; }
+            public bool IsGraphMapper => Object is GH_GraphMapper;
+            public bool IsComponent => Object is GH_Component;
+
+            public ConnectableObject(IGH_DocumentObject obj)
+            {
+                Object = obj;
+            }
+
+            public IEnumerable<IGH_Param> GetRecipients()
+            {
+                if (IsGraphMapper)
+                    return (Object as GH_GraphMapper).Recipients;
+                else if (IsComponent)
+                    return (Object as GH_Component).Params.Output[0].Recipients;
+                return Enumerable.Empty<IGH_Param>();
+            }
+
+            public bool IsConnectedToEventOperation()
+            {
+                return GetRecipients().Any(r => r.Attributes.GetTopLevel.DocObject is EventOperation);
+            }
+        }
+
         public void ConnectToEventOperation(object sender, EventArgs e)
         {
             try
@@ -61,54 +88,74 @@ namespace Motion.Toolbar
                 var canvas = Instances.ActiveCanvas;
                 var selectedObjects = doc.SelectedObjects();
 
-                // 分别获取选中的 Graph Mappers 和 Event Operation
-                var selectedMappers = selectedObjects.OfType<GH_GraphMapper>().ToList();
+                // 获取选中的 Graph Mappers 和 Components
+                var selectedConnectables = selectedObjects
+                    .Where(obj => obj is GH_GraphMapper || 
+                                 (obj is GH_Component comp && 
+                                  comp.Params.Input.Any(p => p.Sources.Any(s => s.Attributes.GetTopLevel.DocObject is EventComponent))))
+                    .Select(obj => new ConnectableObject(obj))
+                    .ToList();
+
                 var selectedEventOp = selectedObjects.OfType<EventOperation>().FirstOrDefault();
 
-                if (selectedMappers.Count == 0)
+                if (selectedConnectables.Count == 0)
                 {
-                    ShowTemporaryMessage(canvas, "请选择至少一个Graph Mapper");
+                    ShowTemporaryMessage(canvas, "请选择至少一个Graph Mapper或组件");
                     return;
                 }
 
-                // 检查是否所有选中的 Graph Mapper 都已经连接到同一个 EventOperation
-                var connectedEventOp = GetCommonConnectedEventOperation(selectedMappers);
+                // 检查是否所有选中的对象都已经连接到同一个 EventOperation
+                var connectedEventOp = GetCommonConnectedEventOperation(selectedConnectables);
                 
                 if (connectedEventOp != null)
                 {
-                    ShowTemporaryMessage(canvas, "Graph Mapper已连接至Event Operation");
+                    ShowTemporaryMessage(canvas, "选中的对象已连接至Event Operation");
                     return;
                 }
 
                 if (selectedEventOp == null)
                 {
                     // 尝试从同组中查找已连接的 EventOperation
-                    var group = GetCommonGroup(selectedMappers, new List<EventComponent>());
+                    var group = GetCommonGroup(selectedConnectables);
                     if (group != null)
                     {
-                        // 获取组内所有的 Graph Mappers
-                        var groupMappers = doc.Objects
+                        // 获取组内所有的可连接对象
+                        var groupConnectables = doc.Objects
                             .Where(obj => group.ObjectIDs.Contains(obj.InstanceGuid))
-                            .OfType<GH_GraphMapper>()
+                            .Where(obj => obj is GH_GraphMapper || 
+                                         (obj is GH_Component comp && 
+                                          comp.Params.Input.Any(p => p.Sources.Any(s => s.Attributes.GetTopLevel.DocObject is EventComponent))))
+                            .Select(obj => new ConnectableObject(obj))
                             .ToList();
 
-                        // 查找组内已连接到 EventOperation 的 Graph Mapper
-                        foreach (var mapper in groupMappers)
+                        // 查找组内已连接到 EventOperation 的对象
+                        foreach (var connectable in groupConnectables)
                         {
-                            var existingEventOp = mapper.Recipients
+                            var existingEventOp = connectable.GetRecipients()
                                 .Select(r => r.Attributes.GetTopLevel.DocObject)
                                 .OfType<EventOperation>()
                                 .FirstOrDefault();
 
                             if (existingEventOp != null)
                             {
-                                // 将选中的 Graph Mappers 连接到找到的 EventOperation
-                                foreach (var selectedMapper in selectedMappers)
+                                // 将选中的对象连接到找到的 EventOperation
+                                foreach (var selected in selectedConnectables)
                                 {
-                                    if (!selectedMapper.Recipients.Any(r => 
-                                        r.Attributes.GetTopLevel.DocObject == existingEventOp))
+                                    if (!selected.IsConnectedToEventOperation())
                                     {
-                                        existingEventOp.Params.Input[0].AddSource(selectedMapper);
+                                        if (selected.IsGraphMapper)
+                                        {
+                                            var graphMapper = selected.Object as GH_GraphMapper;
+                                            existingEventOp.Params.Input[0].AddSource(graphMapper);
+                                        }
+                                        else if (selected.IsComponent)
+                                        {
+                                            var component = selected.Object as GH_Component;
+                                            if (component.Params.Output.Count > 0)
+                                            {
+                                                existingEventOp.Params.Input[0].AddSource(component.Params.Output[0]);
+                                            }
+                                        }
                                     }
                                 }
                                 doc.NewSolution(true);
@@ -121,37 +168,61 @@ namespace Motion.Toolbar
                     var eventOp = new EventOperation();
                     eventOp.CreateAttributes();
 
-                    // 计算新组件的位置（在选中的Graph Mappers的最右侧
-                    float rightmostX = selectedMappers[0].Attributes.Bounds.Right;
-                    float avgY = selectedMappers[0].Attributes.Bounds.Y + selectedMappers[0].Attributes.Bounds.Height / 2;
+                    // 计算新组件的位置
+                    float rightmostX = selectedConnectables[0].Object.Attributes.Bounds.Right;
+                    float avgY = selectedConnectables[0].Object.Attributes.Bounds.Y + 
+                                selectedConnectables[0].Object.Attributes.Bounds.Height / 2;
 
-                    // 在最右侧Graph Mapper右边留出50个单位的间距
-                    PointF newPos = new PointF(rightmostX + 200, avgY+10);
+                    PointF newPos = new PointF(rightmostX + 200, avgY + 10);
                     eventOp.Attributes.Pivot = newPos;
 
                     // 添加组件到文档
                     doc.AddObject(eventOp, false);
 
-                    // 连接所有选中的 Graph Mapper 到 Event Operation 的第一个输入端
-                    foreach (var mapper in selectedMappers)
+                    // 连接所有选中的对象到 Event Operation
+                    foreach (var connectable in selectedConnectables)
                     {
-                        eventOp.Params.Input[0].AddSource(mapper);
+                        if (connectable.IsGraphMapper)
+                        {
+                            var graphMapper = connectable.Object as GH_GraphMapper;
+                            eventOp.Params.Input[0].AddSource(graphMapper);
+                        }
+                        else if (connectable.IsComponent)
+                        {
+                            var component = connectable.Object as GH_Component;
+                            if (component.Params.Output.Count > 0)
+                            {
+                                eventOp.Params.Input[0].AddSource(component.Params.Output[0]);
+                            }
+                        }
                     }
 
                     // 创建新组
-                    CreateOrUpdateGroup(eventOp, selectedMappers);
+                    CreateOrUpdateGroup(eventOp, selectedConnectables);
 
                     doc.NewSolution(true);
                 }
                 else
                 {
-                    // 如果选中了 Event Operation，直接连接到现有组件
-                    foreach (var mapper in selectedMappers)
+                    // 连接到现有的 Event Operation
+                    foreach (var connectable in selectedConnectables)
                     {
-                        selectedEventOp.Params.Input[0].AddSource(mapper);
+                        if (connectable.IsGraphMapper)
+                        {
+                            var graphMapper = connectable.Object as GH_GraphMapper;
+                            selectedEventOp.Params.Input[0].AddSource(graphMapper);
+                        }
+                        else if (connectable.IsComponent)
+                        {
+                            var component = connectable.Object as GH_Component;
+                            if (component.Params.Output.Count > 0)
+                            {
+                                selectedEventOp.Params.Input[0].AddSource(component.Params.Output[0]);
+                            }
+                        }
                     }
-                    // 将新组件添加到现有组或创建新组
-                    AddToExistingGroupOrCreate(selectedEventOp, selectedMappers);
+                    // 更新组
+                    AddToExistingGroupOrCreate(selectedEventOp, selectedConnectables);
                 }
             }
             catch (Exception ex)
@@ -161,20 +232,37 @@ namespace Motion.Toolbar
         }
 
         // 新增方法：将新组件添加到现有组或创建新组
-        private void AddToExistingGroupOrCreate(EventOperation eventOp, List<GH_GraphMapper> mappers)
+        private void AddToExistingGroupOrCreate(EventOperation eventOp, List<ConnectableObject> connectables)
         {
             var doc = Instances.ActiveCanvas.Document;
             
             // 获取所有相关的Event组件
             var relatedEvents = new List<EventComponent>();
-            foreach (var mapper in mappers)
+            foreach (var connectable in connectables)
             {
-                var sources = mapper.Sources;
-                foreach (var source in sources)
+                if (connectable.IsComponent)
                 {
-                    if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                    var component = connectable.Object as GH_Component;
+                    foreach (var input in component.Params.Input)
                     {
-                        relatedEvents.Add(eventComp);
+                        foreach (var source in input.Sources)
+                        {
+                            if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                            {
+                                relatedEvents.Add(eventComp);
+                            }
+                        }
+                    }
+                }
+                else if (connectable.IsGraphMapper)
+                {
+                    var mapper = connectable.Object as GH_GraphMapper;
+                    foreach (var source in mapper.Sources)
+                    {
+                        if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                        {
+                            relatedEvents.Add(eventComp);
+                        }
                     }
                 }
             }
@@ -193,18 +281,17 @@ namespace Motion.Toolbar
             if (existingGroup == null)
             {
                 existingGroup = doc.Objects.OfType<GH_Group>()
-                    .FirstOrDefault(g => mappers.Any(m => g.ObjectIDs.Contains(m.InstanceGuid)) || 
-                                       relatedEvents.Any(e => g.ObjectIDs.Contains(e.InstanceGuid)));
+                    .FirstOrDefault(g => relatedEvents.Any(e => g.ObjectIDs.Contains(e.InstanceGuid)));
             }
 
             if (existingGroup != null)
             {
                 // 将新的Graph Mappers添加到现有组
-                foreach (var mapper in mappers)
+                foreach (var connectable in connectables)
                 {
-                    if (!existingGroup.ObjectIDs.Contains(mapper.InstanceGuid))
+                    if (!existingGroup.ObjectIDs.Contains(connectable.Object.InstanceGuid))
                     {
-                        existingGroup.AddObject(mapper.InstanceGuid);
+                        existingGroup.AddObject(connectable.Object.InstanceGuid);
                     }
                 }
 
@@ -220,31 +307,48 @@ namespace Motion.Toolbar
             else
             {
                 // 如果没有找到现有组，创建新组
-                CreateOrUpdateGroup(eventOp, mappers);
+                CreateOrUpdateGroup(eventOp, connectables);
             }
         }
 
         // 添加辅助方法来检查组件是否在组内并创建/更新组
-        private void CreateOrUpdateGroup(EventOperation eventOp, List<GH_GraphMapper> mappers)
+        private void CreateOrUpdateGroup(EventOperation eventOp, List<ConnectableObject> connectables)
         {
             var doc = Instances.ActiveCanvas.Document;
             
             // 获取所有相关的Event组件
             var relatedEvents = new List<EventComponent>();
-            foreach (var mapper in mappers)
+            foreach (var connectable in connectables)
             {
-                var sources = mapper.Sources;
-                foreach (var source in sources)
+                if (connectable.IsComponent)
                 {
-                    if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                    var component = connectable.Object as GH_Component;
+                    foreach (var input in component.Params.Input)
                     {
-                        relatedEvents.Add(eventComp);
+                        foreach (var source in input.Sources)
+                        {
+                            if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                            {
+                                relatedEvents.Add(eventComp);
+                            }
+                        }
+                    }
+                }
+                else if (connectable.IsGraphMapper)
+                {
+                    var mapper = connectable.Object as GH_GraphMapper;
+                    foreach (var source in mapper.Sources)
+                    {
+                        if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
+                        {
+                            relatedEvents.Add(eventComp);
+                        }
                     }
                 }
             }
             
             // 检查是否所有组件都已经在同一个组内
-            var existingGroup = GetCommonGroup(mappers, relatedEvents);
+            var existingGroup = GetCommonGroup(connectables);
             if (existingGroup != null)
             {
                 // 如果已经在同一个组内，不需要进行操作
@@ -259,10 +363,10 @@ namespace Motion.Toolbar
             group.NickName = "Events";  // 使用EventOperation的nickname
             group.Colour = Color.FromArgb(60, 150, 150, 150);
 
-            // 添加所有Graph Mappers到组
-            foreach (var mapper in mappers)
+            // 添加所有对象到组
+            foreach (var connectable in connectables)
             {
-                group.AddObject(mapper.InstanceGuid);
+                group.AddObject(connectable.Object.InstanceGuid);
             }
 
             // 添加所有相关的Event组件到组
@@ -276,7 +380,7 @@ namespace Motion.Toolbar
         }
 
         // 添加辅助方法来获取组件共同所在的组
-        private GH_Group GetCommonGroup(List<GH_GraphMapper> mappers, List<EventComponent> events)
+        private GH_Group GetCommonGroup(List<ConnectableObject> connectables)
         {
             var doc = Instances.ActiveCanvas.Document;
             var allGroups = doc.Objects.OfType<GH_Group>().ToList();
@@ -285,26 +389,13 @@ namespace Motion.Toolbar
             {
                 bool containsAll = true;
 
-                // 检查组是否包含所有Graph Mappers
-                foreach (var mapper in mappers)
+                // 检查组是否包含所有对象
+                foreach (var connectable in connectables)
                 {
-                    if (!group.ObjectIDs.Contains(mapper.InstanceGuid))
+                    if (!group.ObjectIDs.Contains(connectable.Object.InstanceGuid))
                     {
                         containsAll = false;
                         break;
-                    }
-                }
-
-                // 检查组是否包含所有Event组件
-                if (containsAll && events.Any())
-                {
-                    foreach (var evt in events)
-                    {
-                        if (!group.ObjectIDs.Contains(evt.InstanceGuid))
-                        {
-                            containsAll = false;
-                            break;
-                        }
                     }
                 }
 
@@ -317,26 +408,25 @@ namespace Motion.Toolbar
             return null;
         }
 
-        // 新增辅助方法：检查是否所有 Graph Mapper 都连接到同一个 EventOperation
-        private EventOperation GetCommonConnectedEventOperation(List<GH_GraphMapper> mappers)
+        // 新增辅助方法：检查是否所有对象都连接到同一个 EventOperation
+        private EventOperation GetCommonConnectedEventOperation(List<ConnectableObject> connectables)
         {
-            if (!mappers.Any()) return null;
+            if (!connectables.Any()) return null;
 
-            // 获取第一个 mapper 连接的所有 EventOperation
-            var firstMapperRecipients = mappers[0].Recipients
+            var firstConnectable = connectables[0];
+            var firstRecipients = firstConnectable.GetRecipients()
                 .Select(r => r.Attributes.GetTopLevel.DocObject)
                 .OfType<EventOperation>()
                 .ToList();
 
-            if (!firstMapperRecipients.Any()) return null;
+            if (!firstRecipients.Any()) return null;
 
-            // 检查其他 mapper 是否都连接到相同的 EventOperation
-            foreach (var eventOp in firstMapperRecipients)
+            foreach (var eventOp in firstRecipients)
             {
-                bool allMappersConnected = mappers.All(m => 
-                    m.Recipients.Any(r => r.Attributes.GetTopLevel.DocObject == eventOp));
+                bool allConnected = connectables.All(c => 
+                    c.GetRecipients().Any(r => r.Attributes.GetTopLevel.DocObject == eventOp));
 
-                if (allMappersConnected)
+                if (allConnected)
                 {
                     return eventOp;
                 }

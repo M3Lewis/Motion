@@ -8,7 +8,7 @@
         Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
     -->
 	<UseWindowsForms>true</UseWindowsForms>
-    <TargetFrameworks><!--net7.0-windows;-->net48</TargetFrameworks>
+    <TargetFrameworks>net7.0-windows;net48</TargetFrameworks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TargetExt>.gha</TargetExt>
     <NoWarn>NU1701</NoWarn>
@@ -18,7 +18,7 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>0.7.6</Version>
+    <Version>0.7.8</Version>
     <Title>Motion</Title>
     <Company>M3_Lewis</Company>
     <Description>Make GH Animation much easier</Description>
@@ -47,7 +47,6 @@
     <Compile Remove="Components\01_Animation\MergeCameraData.cs" />
     <Compile Remove="Components\01_Animation\SliderControlWinform.cs" />
     <Compile Remove="Components\01_Animation\SliderControlWPF.cs" />
-    <Compile Remove="Components\01_Animation\SliderInterval.cs" />
     <Compile Remove="Components\01_Animation\SliderLocker.cs" />
     <Compile Remove="Components\03_Utils\AddScribble.cs" />
     <Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
@@ -74,10 +73,9 @@
     <Compile Remove="Components\OBSOLETE\Motion_ValueListItem.cs" />
     <Compile Remove="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
     <Compile Remove="Components\OBSOLETE\RangeSelector.cs" />
+    <Compile Remove="Components\OBSOLETE\SliderInterval.cs" />
     <Compile Remove="Components\OBSOLETE\SliderLockButton.cs" />
     <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
-    <Compile Remove="SettingsControl\GH_MarkovWidgetSettingFrontEnd.cs" />
-    <Compile Remove="SettingsControl\GH_MarkovWidgetSettingsUI.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
   </ItemGroup>
   
@@ -121,8 +119,6 @@
     <None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
     <None Include="Components\OBSOLETE\TimelineRange.cs" />
     <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
-    <None Include="SettingsControl\GH_MarkovWidgetSettingFrontEnd.cs" />
-    <None Include="SettingsControl\GH_MarkovWidgetSettingsUI.cs" />
   </ItemGroup>
   
   <ItemGroup>
@@ -143,12 +139,6 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-    <Compile Update="SettingsControl\TimelineWidgetSettingFrontEnd.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Update="Widget\TimelineRightClickMenu.cs">
-      <SubType>Component</SubType>
     </Compile>
   </ItemGroup>
   
