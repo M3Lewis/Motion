@@ -2,7 +2,6 @@
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
-using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
 using Rhino;
 using Rhino.Display;
@@ -11,7 +10,6 @@ using Rhino.Geometry.Intersect;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 
 namespace Motion.Toolbar

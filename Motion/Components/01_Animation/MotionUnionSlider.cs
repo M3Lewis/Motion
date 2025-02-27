@@ -21,7 +21,6 @@ namespace Motion.Animation
         private CancellationTokenSource _updateCancellation;
         private bool _isUpdating = false;
         private decimal _pendingValue;
-        private const int UPDATE_DELAY = 16; // 约60fps的更新频率
         public override Guid ComponentGuid => new Guid("1a76afcb-c799-42d1-9a52-5f09ba073362");
         public override GH_Exposure Exposure => GH_Exposure.hidden;
         public static MotionUnionSlider Instance

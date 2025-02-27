@@ -220,7 +220,7 @@ namespace Motion.Animation
                     eventComponentBounds.Top + eventComponentBounds.Height / 2
                 );
 
-                
+
                 // 计算终点（受影响组件的中心点）
                 PointF endPoint = new PointF(
                     affectComponentBounds.Left + affectComponentBounds.Width / 2,
@@ -232,13 +232,13 @@ namespace Motion.Animation
 
                 // 可选：添加一个小圆点在线的起点和终点
                 float dotSize = 4f;
-                graphics.FillEllipse(new SolidBrush(color), 
-                    startPoint.X - dotSize/2, 
-                    startPoint.Y - dotSize/2, 
+                graphics.FillEllipse(new SolidBrush(color),
+                    startPoint.X - dotSize / 2,
+                    startPoint.Y - dotSize / 2,
                     dotSize, dotSize);
-                graphics.FillEllipse(new SolidBrush(color), 
-                    endPoint.X - dotSize/2, 
-                    endPoint.Y - dotSize/2, 
+                graphics.FillEllipse(new SolidBrush(color),
+                    endPoint.X - dotSize / 2,
+                    endPoint.Y - dotSize / 2,
                     dotSize, dotSize);
             }
         }
@@ -356,20 +356,39 @@ namespace Motion.Animation
 
                 foreach (var recipient in owner.Params.Output[0].Recipients)
                 {
-                    var graphMapper = recipient.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                    if (graphMapper?.Recipients.Count == 0) continue;
+                    var topLevelObj = recipient.Attributes.GetTopLevel.DocObject;
+                    IGH_DocumentObject eventOperation = null;
+                    GH_Component mapperComp = null;
+                    // 处理 GraphMapper 的情况
+                    var graphMapper = topLevelObj as GH_GraphMapper;
+                    if (graphMapper != null)
+                    {
+                        if (graphMapper.Recipients.Count > 0)
+                        {
+                            eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
+                            owner.GoComponent(eventOperation);
+                            return GH_ObjectResponse.Handled;
+                        }
+                    }
+                    // 处理 Component 的情况
+                    else
+                    {
+                        var component = topLevelObj as GH_Component;
+                        if (component == null) return GH_ObjectResponse.Ignore;
 
-                    var eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
-                    if (eventOperation == null) continue;
+                        mapperComp = component;
 
-                    // 跳转到 EventOperation
-                    owner.GoComponent(eventOperation);
-                    return GH_ObjectResponse.Handled;
+                        if (mapperComp == null) return GH_ObjectResponse.Ignore;
+                        eventOperation = mapperComp.Params.Output[0].Recipients[0].Attributes.GetTopLevel.DocObject;
+                        owner.GoComponent(eventOperation);
+                        return GH_ObjectResponse.Handled;
+                    }
                 }
+
             }
             return base.RespondToMouseDoubleClick(sender, e);
         }
-        
+
         public void SetCollapsedState(bool state)
         {
             _isCollapsed = state;

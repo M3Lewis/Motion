@@ -1,4 +1,4 @@
-﻿using Grasshopper.Kernel;
+using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
@@ -13,7 +13,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Controls;
 using System.Windows.Forms;
 
 namespace Motion.Export
@@ -23,8 +22,6 @@ namespace Motion.Export
         protected override System.Drawing.Bitmap Icon => Properties.Resources.ExportSliderAnimation;
         public override GH_Exposure Exposure => GH_Exposure.primary;
         public override Guid ComponentGuid => new Guid("7b8d5ff6-c766-4ae3-a832-95861edb9fde");
-
-
 
         public ExportSliderAnimation()
             : base(
@@ -42,38 +39,33 @@ namespace Motion.Export
             {
                 if (isExport)
                 {
-                    // 直接执行渲染，不通过 Run 输入端
                     await ExecuteRenderingAsync();
+                    return;
                 }
-                else
-                {
-                    // 从输入端获取路径
-                    string pathString = "";
-                    if (this.Params.Input[3].SourceCount > 0)
-                    {
-                        var pathData = this.Params.Input[3].VolatileData.AllData(true).FirstOrDefault();
-                        if (pathData != null)
-                        {
-                            pathString = pathData.ToString();
-                        }
-                    }
-                    else
-                    {
-                        // 如果没有连接源，使用默认值
-                        pathString = this.Params.Input[3].VolatileData.AllData(true).FirstOrDefault()?.ToString();
-                    }
 
-                    // 执行打开文件夹功能
-                    if (!string.IsNullOrEmpty(pathString) && Directory.Exists(pathString))
-                    {
-                        OpenDirectoryWithDirectoryOpus(pathString);
-                    }
-                    else
-                    {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"找不到路径文件夹。");
-                    }
+                // 从输入端获取路径
+                string pathString = GetOutputPath();
+                
+                // 执行打开文件夹功能
+                if (string.IsNullOrEmpty(pathString) || !Directory.Exists(pathString))
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "找不到路径文件夹。");
+                    return;
                 }
+                
+                OpenDirectoryWithDirectoryOpus(pathString);
             });
+        }
+
+        private string GetOutputPath()
+        {
+            if (this.Params.Input[3].SourceCount <= 0)
+            {
+                return this.Params.Input[3].VolatileData.AllData(true).FirstOrDefault()?.ToString();
+            }
+
+            var pathData = this.Params.Input[3].VolatileData.AllData(true).FirstOrDefault();
+            return pathData?.ToString();
         }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
@@ -84,7 +76,7 @@ namespace Motion.Export
 
             // 添加文件路径参数
             Param_FilePath pathParam = new Param_FilePath();
-            pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\Motion");  // 设置默认为桌面路径
+            pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\Motion");
             pManager.AddParameter(pathParam, "Full Path", "P", "输出路径", GH_ParamAccess.item);
 
             pManager.AddBooleanParameter("IsTransparent", "T", "图片是否透明", GH_ParamAccess.item, true);
@@ -100,6 +92,7 @@ namespace Motion.Export
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
+            // 输出端不需要，已被注释掉
             // pManager.AddTextParameter("Output Path", "Op", "·", GH_ParamAccess.list);
         }
 
@@ -108,8 +101,6 @@ namespace Motion.Export
             // 获取所有输入参数
             if (!GetInputParams(DA, out RenderParameters parameters))
                 return;
-
-            //currentPath = parameters.FullPath;
 
             if (!parameters.Run)
                 return;
@@ -131,44 +122,37 @@ namespace Motion.Export
         {
             try
             {
-                // 获取并转换每个输入参数
-                var viewNameGoo = this.Params.Input[0].VolatileData.AllData(true).First();
-                parameters.ViewName = viewNameGoo.ToString();
+                // 获取并转换每个输入参数，使用索引数组简化代码
+                var inputs = new object[]
+                {
+                    this.Params.Input[0].VolatileData.AllData(true).First(),
+                    this.Params.Input[1].VolatileData.AllData(true).First(),
+                    this.Params.Input[2].VolatileData.AllData(true).First(),
+                    this.Params.Input[3].VolatileData.AllData(true).First(),
+                    this.Params.Input[4].VolatileData.AllData(true).First(),
+                    this.Params.Input[5].VolatileData.AllData(true).First(),
+                    this.Params.Input[6].VolatileData.AllData(true).First(),
+                    this.Params.Input[9].VolatileData.AllData(true).First()
+                };
 
-                var widthGoo = this.Params.Input[1].VolatileData.AllData(true).First();
-                parameters.Width = Convert.ToInt32(widthGoo.ToString());
-
-                var heightGoo = this.Params.Input[2].VolatileData.AllData(true).First();
-                parameters.Height = Convert.ToInt32(heightGoo.ToString());
-
-                var pathGoo = this.Params.Input[3].VolatileData.AllData(true).First();
-                parameters.FullPath = pathGoo.ToString();
-
-                var transparentGoo = this.Params.Input[4].VolatileData.AllData(true).First();
-                parameters.IsTransparent = Convert.ToBoolean(transparentGoo.ToString());
-
-                var cyclesGoo = this.Params.Input[5].VolatileData.AllData(true).First();
-                parameters.IsCycles = Convert.ToBoolean(cyclesGoo.ToString());
-
-                var passesGoo = this.Params.Input[6].VolatileData.AllData(true).First();
-                parameters.RealtimeRenderPasses = Convert.ToInt32(passesGoo.ToString());
+                parameters.ViewName = inputs[0].ToString();
+                parameters.Width = Convert.ToInt32(inputs[1].ToString());
+                parameters.Height = Convert.ToInt32(inputs[2].ToString());
+                parameters.FullPath = inputs[3].ToString();
+                parameters.IsTransparent = Convert.ToBoolean(inputs[4].ToString());
+                parameters.IsCycles = Convert.ToBoolean(inputs[5].ToString());
+                parameters.RealtimeRenderPasses = Convert.ToInt32(inputs[6].ToString());
+                parameters.Frame = Convert.ToDouble(inputs[7].ToString());
 
                 // 处理可选的区间参数
                 var rangeGoo = this.Params.Input[7].VolatileData.AllData(true).FirstOrDefault();
-                if (rangeGoo != null)
+                if (rangeGoo != null && rangeGoo is GH_Interval ghInterval)
                 {
-                    if (rangeGoo is GH_Interval ghInterval)
-                    {
-                        parameters.Range = ghInterval.Value;
-                        parameters.IsCustomRange = true;
-                    }
+                    parameters.Range = ghInterval.Value;
+                    parameters.IsCustomRange = true;
                 }
 
                 parameters.Run = true;  // 按钮点击时总是为 true
-
-                var frameGoo = this.Params.Input[9].VolatileData.AllData(true).First();
-                parameters.Frame = Convert.ToDouble(frameGoo.ToString());
-
                 return true;
             }
             catch (Exception ex)
@@ -183,7 +167,8 @@ namespace Motion.Export
             if (this.Params.Input[9].Sources.Count == 0)
                 return;
 
-            if (!(this.Params.Input[9].Sources[0] is GH_NumberSlider unionSlider))
+            var source = this.Params.Input[9].Sources[0];
+            if (!(source is GH_NumberSlider unionSlider))
                 return;
 
             var views = RhinoDoc.ActiveDoc.Views;
@@ -195,27 +180,24 @@ namespace Motion.Export
             views.RedrawEnabled = true;
 
             // 添加计时器
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
+            var stopwatch = Stopwatch.StartNew();
+            using var cts = new CancellationTokenSource();
+            bool wasAborted = false;
 
             try 
             {
-                bool wasAborted = false;
-                CancellationTokenSource cts = new CancellationTokenSource();
-
                 Action<int, int> updateProgress = (frame, total) =>
                 {
                     this.Message = $"Rendering Frame.. {frame + 1}/{total}";
                     this.OnDisplayExpired(true);
                     
                     // 检查ESC键
-                    if (System.Windows.Forms.Control.ModifierKeys == Keys.Escape)
+                    if (Control.ModifierKeys == Keys.Escape)
                     {
                         cts.Cancel();
                         wasAborted = true;
                     }
                     
-                    // 处理Windows消息队列
                     Application.DoEvents();
                 };
 
@@ -223,17 +205,25 @@ namespace Motion.Export
                 {
                     RhinoApp.InvokeOnUiThread(new Action(() =>
                     {
+                        // 检查渲染模式
+                        if (parameters.IsCycles && !isRaytracedMode)
+                        {
+                            this.Message = "请打开光线跟踪(Raytraced)模式!";
+                            return;
+                        }
+                        
                         var sliderAnimator = new MotionSliderAnimator(unionSlider)
                         {
                             Width = parameters.Width,
                             Height = parameters.Height,
-                            Folder = parameters.FullPath
+                            Folder = parameters.FullPath,
                         };
 
+                        // 设置范围
                         if (parameters.IsCustomRange)
                         {
                             sliderAnimator.CustomRange = parameters.Range;
-                            sliderAnimator.FrameCount = (int)(parameters.Range.Max - parameters.Range.Min + 1);
+                            sliderAnimator.FrameCount = (int)(parameters.Range.Length + 1);
                             sliderAnimator.UseCustomRange = true;
                         }
                         else
@@ -245,13 +235,6 @@ namespace Motion.Export
                         if (!sliderAnimator.SetupAnimationProperties())
                             return;
 
-                        if (parameters.IsCycles && !isRaytracedMode)
-                        {
-                            this.Message = "请打开光线跟踪(Raytraced)模式!";
-                            return;
-                        }
-
-                        sliderAnimator.CancellationToken = cts.Token;  // 传递取消令牌
                         sliderAnimator.MotionStartAnimation(
                             parameters.IsTransparent,
                             parameters.ViewName,
@@ -262,16 +245,14 @@ namespace Motion.Export
                             updateProgress
                         );
 
-                        if (wasAborted)
-                        {
-                            this.Message = $"Render Cancelled!\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
-                            RhinoApp.WriteLine($"Render cancelled at {DateTime.Now:HH:mm:ss}");
-                        }
-                        else
-                        {
-                            this.Message = $"Render Finished!\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
-                            RhinoApp.WriteLine($"Render finished at {DateTime.Now:HH:mm:ss}");
-                        }
+                        stopwatch.Stop();
+                        string elapsedTime = FormatTimeSpan(stopwatch.Elapsed);
+                        
+                        this.Message = wasAborted 
+                            ? $"Render Cancelled!\nTime: {elapsedTime}"
+                            : $"Render Finished!\nTime: {elapsedTime}";
+                            
+                        RhinoApp.WriteLine($"Render {(wasAborted ? "cancelled" : "finished")} at {DateTime.Now:HH:mm:ss}");
                     }));
                 });
             }
@@ -329,28 +310,24 @@ namespace Motion.Export
         {
             try
             {
-                // 检查系统环境变量 Path 中是否包含 dopus.exe
-                bool hasDOpus = Environment.GetEnvironmentVariable("PATH")
-                    ?.Split(';')
-                    .Any(p => !string.IsNullOrEmpty(p) && 
-                             File.Exists(Path.Combine(p.Trim(), "dopus.exe"))) ?? false;
-
+                // 检查系统是否安装了Directory Opus
+                bool hasDOpus = IsDirectoryOpusInstalled();
+                
                 if (hasDOpus)
                 {
                     // 使用 Directory Opus 打开目录
                     Process.Start("dopus.exe", $"/cmd \"{path}\"");
+                    return;
                 }
-                else
-                {
-                    // 使用系统默认的资源管理器打开目录
-                    Process.Start("explorer.exe", path);
-                }
+                
+                // 使用系统默认的资源管理器打开目录
+                Process.Start("explorer.exe", path);
             }
             catch (Exception ex)
             {
                 RhinoApp.WriteLine($"无法打开目录: {ex.Message}");
                 
-                // 如果上述方法都失败，尝试使用最基本的方式打开目录
+                // 尝试使用最基本的方式打开目录
                 try
                 {
                     Process.Start(new ProcessStartInfo
@@ -365,6 +342,17 @@ namespace Motion.Export
                     RhinoApp.WriteLine($"备用方法也无法打开目录: {innerEx.Message}");
                 }
             }
+        }
+        
+        private static bool IsDirectoryOpusInstalled()
+        {
+            string path = Environment.GetEnvironmentVariable("PATH");
+            if (string.IsNullOrEmpty(path))
+                return false;
+                
+            return path.Split(';')
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Any(p => File.Exists(Path.Combine(p.Trim(), "dopus.exe")));
         }
 
         public override void AddedToDocument(GH_Document document)
@@ -382,37 +370,27 @@ namespace Motion.Export
                 .OfType<GH_NumberSlider>()
                 .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
 
-            if (timelineSlider != null)
-            {
-                // 获取 Frame 输入参数
-                var frameParam = Params.Input[9];
-                
-                // 添加数据连接
-                frameParam.AddSource(timelineSlider);
-                
-                // 设置连线显示类型为隐藏
-                frameParam.WireDisplay = GH_ParamWireDisplay.faint;
-                
-                // 强制更新组件
-                ExpireSolution(true);
-            }
+            if (timelineSlider == null) return;
+            
+            // 获取 Frame 输入参数并添加数据连接
+            var frameParam = Params.Input[9];
+            frameParam.AddSource(timelineSlider);
+            frameParam.WireDisplay = GH_ParamWireDisplay.faint;
+            
+            // 强制更新组件
+            ExpireSolution(true);
         }
 
-        // 添加格式化时间的辅助方法
+        // 格式化时间的辅助方法
         private string FormatTimeSpan(TimeSpan timeSpan)
         {
             if (timeSpan.TotalHours >= 1)
-            {
                 return $"{(int)timeSpan.TotalHours}h{timeSpan.Minutes}m{timeSpan.Seconds}s";
-            }
-            else if (timeSpan.TotalMinutes >= 1)
-            {
+            
+            if (timeSpan.TotalMinutes >= 1)
                 return $"{timeSpan.Minutes}m{timeSpan.Seconds}s";
-            }
-            else
-            {
-                return $"{timeSpan.Seconds}s";
-            }
+            
+            return $"{timeSpan.Seconds}s";
         }
     }
 }

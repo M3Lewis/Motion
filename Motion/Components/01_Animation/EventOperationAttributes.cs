@@ -20,7 +20,7 @@ namespace Motion.Animation
             Owner = owner;
         }
         public new EventOperation Owner;
-        
+
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
             base.RespondToMouseDoubleClick(sender, e);
@@ -31,24 +31,45 @@ namespace Motion.Animation
             var menuItems = new List<(EventComponent component, string nickname, double minValue, double maxValue)>();
             foreach (var source in Owner.Params.Input[0].Sources)
             {
-                var graphMapper = source.Attributes.GetTopLevel.DocObject as GH_GraphMapper;
-                if (graphMapper?.Sources.Count > 0)
+                var graphMapperObject = source.Attributes.GetTopLevel.DocObject;
+                switch (graphMapperObject)
                 {
-                    var eventComponent = graphMapper.Sources[0].Attributes.GetTopLevel.DocObject as EventComponent;
-                    if (eventComponent != null)
-                    {
-                        // 解析区间最小值和最大值
-                        string[] parts = eventComponent.NickName.Split('-');
-                        if (parts.Length == 2 && 
-                            double.TryParse(parts[0], out double minValue) && 
-                            double.TryParse(parts[1], out double maxValue))
+                    case GH_GraphMapper graphMapper:
+                        if (graphMapper?.Sources.Count > 0)
                         {
-                            menuItems.Add((eventComponent, eventComponent.NickName, minValue, maxValue));
+                            var eventComponent = graphMapper.Sources[0].Attributes.GetTopLevel.DocObject as EventComponent;
+                            if (eventComponent != null)
+                            {
+                                // 解析区间最小值和最大值
+                                string[] parts = eventComponent.NickName.Split('-');
+                                if (parts.Length == 2 &&
+                                    double.TryParse(parts[0], out double minValue) &&
+                                    double.TryParse(parts[1], out double maxValue))
+                                {
+                                    menuItems.Add((eventComponent, eventComponent.NickName, minValue, maxValue));
+                                }
+                            }
                         }
-                    }
+                        break;
+                    case GH_Component mapperComp:
+                        if (mapperComp?.Params.Input[0].Sources.Count > 0)
+                        {
+                            var eventComponent = mapperComp.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject as EventComponent;
+                            if (eventComponent != null)
+                            {
+                                // 解析区间最小值和最大值
+                                string[] parts = eventComponent.NickName.Split('-');
+                                if (parts.Length == 2 &&
+                                    double.TryParse(parts[0], out double minValue) &&
+                                    double.TryParse(parts[1], out double maxValue))
+                                {
+                                    menuItems.Add((eventComponent, eventComponent.NickName, minValue, maxValue));
+                                }
+                            }
+                        }
+                        break;
                 }
             }
-
             if (!menuItems.Any()) return GH_ObjectResponse.Ignore;
 
             // 按区间最小值排序，如果最小值相同则按最大值排序
@@ -77,8 +98,10 @@ namespace Motion.Animation
             menu.Show(sender, new System.Drawing.Point((int)screenPoint.X, (int)screenPoint.Y));
 
             return GH_ObjectResponse.Handled;
+
         }
-        
+
+
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
             base.Render(canvas, graphics, channel);
@@ -92,10 +115,10 @@ namespace Motion.Animation
 
                     double eventValue = eventOperation.CurrentEventValue;
                     string valueLabel = $"{eventValue:F2}";
-                    
+
                     var valueLabelBounds = new RectangleF(
                         Bounds.Left - 30,
-                        Bounds.Top- 5,
+                        Bounds.Top - 5,
                         30,
                         labelFont.Height
                     );
@@ -107,13 +130,13 @@ namespace Motion.Animation
 
                     double currentMappedEventValue = eventOperation.CurrentMappedEventValue;
                     // 根据数值大小决定显示格式，使用Math.Round进行四舍五入
-                    string currentMappedEventValueLabel = currentMappedEventValue > 1000 
-                        ? $"{(int)Math.Round(currentMappedEventValue)}" 
+                    string currentMappedEventValueLabel = currentMappedEventValue > 1000
+                        ? $"{(int)Math.Round(currentMappedEventValue)}"
                         : $"{currentMappedEventValue:F2}";
 
                     var currentMappedEventValueBounds = new RectangleF(
                         Bounds.Right + 5,
-                        Bounds.Top -5,
+                        Bounds.Top - 5,
                         100,
                         labelFont.Height
                     );
