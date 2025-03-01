@@ -9,8 +9,7 @@
     -->
 	<UseWindowsForms>true</UseWindowsForms>
     <TargetFrameworks>net7.0-windows;net48</TargetFrameworks>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <TargetExt>.gha</TargetExt>
+    <EnableDynamicLoading>true</EnableDynamicLoading>    <TargetExt>.gha</TargetExt>
     <NoWarn>NU1701</NoWarn>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
 	<LangVersion>9.0</LangVersion>
@@ -18,7 +17,7 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>0.7.9</Version>
+    <Version>0.7.10</Version>
     <Title>Motion</Title>
     <Company>M3_Lewis</Company>
     <Description>Make GH Animation much easier</Description>
