@@ -27,7 +27,7 @@ namespace Motion.Toolbar
             button = new ToolStripButton();
             Instantiate();
             LoadNamedViews();
-            AddButtonToGroup(button);
+            AddButtonToToolbars(button);
             
             ClickedButton(null, EventArgs.Empty);
         }

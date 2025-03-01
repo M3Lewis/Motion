@@ -36,7 +36,7 @@ namespace Motion.Toolbar
             InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            AddButtonToGroup(button);
+            AddButtonToToolbars(button);
         }
 
         private void Instantiate()

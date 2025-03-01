@@ -35,5 +35,7 @@ namespace Motion.UI
                 motionButton.Active = false;
             }
         }
+
+        protected virtual void Dispose() { }
     }
 }

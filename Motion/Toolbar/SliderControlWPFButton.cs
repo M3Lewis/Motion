@@ -23,7 +23,7 @@ namespace Motion.Toolbar
             InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            AddButtonToGroup(button); // 使用基类方法添加按钮
+            AddButtonToToolbars(button); // 使用基类方法添加按钮
         }
 
         public override GH_LoadingInstruction PriorityLoad()

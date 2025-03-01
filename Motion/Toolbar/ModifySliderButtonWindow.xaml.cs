@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace Motion.UI
 {
@@ -31,6 +32,10 @@ namespace Motion.UI
                                           .Distinct()
                                           .OrderBy(x => x);
                 ReplaceValues.Text = string.Join(",", ranges);
+                
+                // 初始化调整值的文本框
+                MinValueAdjustment.Text = "0";
+                MaxValueAdjustment.Text = "0";
             }
 
             if (HasSingleSliderSelected)
@@ -76,11 +81,72 @@ namespace Motion.UI
             var mapping = oldRanges.Zip(values, (old, @new) => new { Old = old, New = @new })
                                   .ToDictionary(x => x.Old, x => x.New);
 
+            // 检查是否有负值
+            if (mapping.Values.Any(v => v < 0))
+            {
+                MessageBox.Show("不允许设置负数值，最小值必须大于或等于0！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             // 更新所有选中的slider
             foreach (var slider in _selectedSliders)
             {
                 slider.Slider.Minimum = mapping[slider.Slider.Minimum];
                 slider.Slider.Maximum = mapping[slider.Slider.Maximum];
+                slider.ExpireSolution(true);
+            }
+
+            Close();
+        }
+
+        private void AdjustRanges_Click(object sender, RoutedEventArgs e)
+        {
+            if (!HasSelectedSliders) return;
+
+            // 解析最小值和最大值的调整量
+            decimal minAdjustment = 0;
+            decimal maxAdjustment = 0;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(MinValueAdjustment.Text))
+                    minAdjustment = decimal.Parse(MinValueAdjustment.Text.Trim());
+
+                if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text))
+                    maxAdjustment = decimal.Parse(MaxValueAdjustment.Text.Trim());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"输入格式错误：{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // 检查调整是否会使任何slider的最小值变为负数
+            foreach (var slider in _selectedSliders)
+            {
+                if (slider.Slider.Minimum + minAdjustment < 0)
+                {
+                    MessageBox.Show("调整后的最小值不能小于0！", "错误",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+
+            // 更新所有选中的slider
+            foreach (var slider in _selectedSliders)
+            {
+                slider.Slider.Minimum += minAdjustment;
+                slider.Slider.Maximum += maxAdjustment;
+                
+                // 确保最小值始终小于最大值
+                if (slider.Slider.Minimum >= slider.Slider.Maximum)
+                {
+                    MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                
                 slider.ExpireSolution(true);
             }
 
@@ -133,6 +199,10 @@ namespace Motion.UI
                 if (values.Count < 2)
                     throw new Exception("至少需要输入两个数值！");
 
+                // 检查是否有负值
+                if (values.Any(v => v < 0))
+                    throw new Exception("不允许使用负数值，所有值必须大于或等于0！");
+
                 return values;
             }
             catch (Exception ex)
@@ -156,9 +226,6 @@ namespace Motion.UI
                 // 确保最小值小于最大值
                 if (values[i] < maxValue)
                 {
-                    // 使用yield return可以实现延迟计算,只有在实际需要值的时候才会计算和返回结果
-                    // 这样可以提高性能,避免一次性生成所有结果占用大量内存
-                    // 特别是当输入数值很多时,yield return的方式更高效
                     yield return (values[i], maxValue);
                 }
             }
@@ -175,13 +242,27 @@ namespace Motion.UI
                     {
                         maxValue -= 1;
                     }
-                    yield return (values[i], maxValue);
+                    
+                    // 确保最小值小于最大值
+                    if (values[i] < maxValue)
+                    {
+                        yield return (values[i], maxValue);
+                    }
                 }
             }
         }
 
         private void CreateMotionSliders(IEnumerable<(decimal min, decimal max)> ranges)
         {
+            // 过滤掉任何包含负值的区间
+            var validRanges = ranges.Where(r => r.min >= 0 && r.max >= 0).ToList();
+            
+            if (validRanges.Count == 0)
+            {
+                MessageBox.Show("没有有效的非负区间可以创建！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             var doc = Instances.ActiveCanvas.Document;
 
             // 获取当前视图中心点
@@ -195,14 +276,14 @@ namespace Motion.UI
             const double verticalSpacing = 50;
 
             // 计算总数以确定起始Y坐标
-            int totalSliders = ranges.Count();
+            int totalSliders = validRanges.Count;
             startY -= (totalSliders - 1) * verticalSpacing / 2;
 
             // 查找现有的 MotionUnionSlider
             var existingUnionSlider = doc.Objects.OfType<MotionUnionSlider>().FirstOrDefault();
 
             int index = 0;
-            foreach (var (min, max) in ranges)
+            foreach (var (min, max) in validRanges)
             {
                 var slider = new Motion.Animation.MotionSlider();
                 doc.AddObject(slider, false);

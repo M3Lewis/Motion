@@ -30,7 +30,7 @@ namespace Motion.Toolbar
             InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            AddButtonToGroup(button);
+            AddButtonToToolbars(button);
         }
 
         public override GH_LoadingInstruction PriorityLoad()

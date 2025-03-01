@@ -27,7 +27,7 @@ namespace Motion.Toolbar
             InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            AddButtonToGroup(button);
+            AddButtonToToolbars(button);
         }
 
         public override GH_LoadingInstruction PriorityLoad()
@@ -88,15 +88,27 @@ namespace Motion.Toolbar
 
         public static bool IsSecondsInputMode()
         {
-            Type typeFromHandle = typeof(GH_DocumentEditor);
-            BindingFlags bindingAttr = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField;
-            FieldInfo field = typeFromHandle.GetField("_CanvasToolbar", bindingAttr);
-            object objectValue = RuntimeHelpers.GetObjectValue(field.GetValue(Instances.DocumentEditor));
+            CustomMotionToolbar customToolbar = CustomMotionToolbar.Instance;
+            ToolStrip targetToolbar;
 
-            if (objectValue is ToolStrip toolStrip)
+            if (customToolbar.Items.Count == 0)
             {
-                // 遍历所有工具栏项查找 MotionSliderSettings 按钮
-                foreach (ToolStripItem item in toolStrip.Items)
+                // 如果位置是 OnToolbar，检查 Grasshopper 的工具栏
+                Type typeFromHandle = typeof(GH_DocumentEditor);
+                BindingFlags bindingAttr = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField;
+                FieldInfo field = typeFromHandle.GetField("_CanvasToolbar", bindingAttr);
+                object objectValue = RuntimeHelpers.GetObjectValue(field.GetValue(Instances.DocumentEditor));
+                targetToolbar = objectValue as ToolStrip;
+            }
+            else
+            {
+                // 否则，检查 CustomMotionToolbar
+                targetToolbar = customToolbar;
+            }
+
+            if (targetToolbar != null)
+            {
+                foreach (ToolStripItem item in targetToolbar.Items)
                 {
                     if (item.Name == "Motion Slider Settings" && item is ToolStripButton button)
                     {

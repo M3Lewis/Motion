@@ -26,7 +26,7 @@ namespace Motion.Toolbar
             InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            AddButtonToGroup(button);
+            AddButtonToToolbars(button);
         }
 
         public override GH_LoadingInstruction PriorityLoad()
@@ -55,8 +55,14 @@ namespace Motion.Toolbar
 
         private void Button_Click(object sender, EventArgs e)
         {
+            OnButtonClicked(sender, e);
+        }
+
+        // Add this method to your ModifySliderButton class
+        protected override void OnButtonClicked(object sender, EventArgs e)
+        {
             var window = new ModifySliderWindow();
-            
+
             // 获取选中的Motion Slider组件
             List<MotionSlider> selectedSliders = Instances.ActiveCanvas.Document.SelectedObjects()
                 .OfType<MotionSlider>()
@@ -65,9 +71,19 @@ namespace Motion.Toolbar
             window.Initialize(selectedSliders);
 
             // 设置窗口位置
-            var screenPoint = button.Owner.PointToScreen(button.Bounds.Location);
+            // For cloned buttons we need to get position differently
+            Point screenPoint;
+            if (sender is ToolStripItem item && item.Owner != null)
+            {
+                screenPoint = item.Owner.PointToScreen(item.Bounds.Location);
+            }
+            else
+            {
+                screenPoint = button.Owner.PointToScreen(button.Bounds.Location);
+            }
+
             window.Left = screenPoint.X;
-            window.Top = screenPoint.Y + button.Height;
+            window.Top = screenPoint.Y + (sender is ToolStripItem ? ((ToolStripItem)sender).Height : button.Height);
 
             window.ShowDialog();
         }

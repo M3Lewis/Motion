@@ -23,6 +23,9 @@ namespace Motion.Export
         public override GH_Exposure Exposure => GH_Exposure.primary;
         public override Guid ComponentGuid => new Guid("7b8d5ff6-c766-4ae3-a832-95861edb9fde");
 
+        // 添加CancellationTokenSource作为类成员，便于在需要时取消和释放
+        private CancellationTokenSource _cancellationTokenSource;
+
         public ExportSliderAnimation()
             : base(
                 "Export Slider Animation",
@@ -32,6 +35,34 @@ namespace Motion.Export
                 "02_Export"
             )
         { }
+
+        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        {
+            pManager.AddTextParameter("View Name", "V", "视图名称", GH_ParamAccess.item, "Perspective");
+            pManager.AddIntegerParameter("Image Width", "W", "图片宽度", GH_ParamAccess.item, 1920);
+            pManager.AddIntegerParameter("Image Height", "H", "图片高度", GH_ParamAccess.item, 1080);
+
+            // 添加文件路径参数
+            Param_FilePath pathParam = new Param_FilePath();
+            pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\Motion");
+            pManager.AddParameter(pathParam, "Full Path", "P", "输出路径", GH_ParamAccess.item);
+
+            pManager.AddBooleanParameter("IsTransparent", "T", "图片是否透明", GH_ParamAccess.item, true);
+            pManager.AddBooleanParameter("IsCycles", "Cy", "是否使用Cycles渲染", GH_ParamAccess.item, false);
+            pManager.AddIntegerParameter("Passes", "Pa", "Cycles渲染次数", GH_ParamAccess.item, 500);
+            pManager.AddIntervalParameter("Range Domain", "D", "导出范围（可选）", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Run", "R", "运行", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Frame", "F", "当前帧", GH_ParamAccess.item);
+
+            pManager[7].Optional = true;
+            pManager[8].Optional = true;
+        }
+
+        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        {
+            // 输出端不需要，已被注释掉
+            // pManager.AddTextParameter("Output Path", "Op", "·", GH_ParamAccess.list);
+        }
 
         public override void CreateAttributes()
         {
@@ -66,34 +97,6 @@ namespace Motion.Export
 
             var pathData = this.Params.Input[3].VolatileData.AllData(true).FirstOrDefault();
             return pathData?.ToString();
-        }
-
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
-        {
-            pManager.AddTextParameter("View Name", "V", "视图名称", GH_ParamAccess.item, "Perspective");
-            pManager.AddIntegerParameter("Image Width", "W", "图片宽度", GH_ParamAccess.item, 1920);
-            pManager.AddIntegerParameter("Image Height", "H", "图片高度", GH_ParamAccess.item, 1080);
-
-            // 添加文件路径参数
-            Param_FilePath pathParam = new Param_FilePath();
-            pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\Motion");
-            pManager.AddParameter(pathParam, "Full Path", "P", "输出路径", GH_ParamAccess.item);
-
-            pManager.AddBooleanParameter("IsTransparent", "T", "图片是否透明", GH_ParamAccess.item, true);
-            pManager.AddBooleanParameter("IsCycles", "Cy", "是否使用Cycles渲染", GH_ParamAccess.item, false);
-            pManager.AddIntegerParameter("Passes", "Pa", "Cycles渲染次数", GH_ParamAccess.item, 500);
-            pManager.AddIntervalParameter("Range Domain", "D", "导出范围（可选）", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Run", "R", "运行", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Frame", "F", "当前帧", GH_ParamAccess.item);
-
-            pManager[7].Optional = true;
-            pManager[8].Optional = true;
-        }
-
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
-        {
-            // 输出端不需要，已被注释掉
-            // pManager.AddTextParameter("Output Path", "Op", "·", GH_ParamAccess.list);
         }
 
         protected override async void SolveInstance(IGH_DataAccess DA)
@@ -181,7 +184,15 @@ namespace Motion.Export
 
             // 添加计时器
             var stopwatch = Stopwatch.StartNew();
-            using var cts = new CancellationTokenSource();
+            
+            // 确保在使用之前初始化CancellationTokenSource
+            if (_cancellationTokenSource != null)
+            {
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = null;
+            }
+            _cancellationTokenSource = new CancellationTokenSource();
+            
             bool wasAborted = false;
 
             try 
@@ -192,9 +203,9 @@ namespace Motion.Export
                     this.OnDisplayExpired(true);
                     
                     // 检查ESC键
-                    if (Control.ModifierKeys == Keys.Escape)
+                    if (Control.ModifierKeys == Keys.Escape && _cancellationTokenSource != null)
                     {
-                        cts.Cancel();
+                        _cancellationTokenSource.Cancel();
                         wasAborted = true;
                     }
                     
@@ -212,38 +223,50 @@ namespace Motion.Export
                             return;
                         }
                         
-                        var sliderAnimator = new MotionSliderAnimator(unionSlider)
+                        using (var sliderAnimator = new MotionSliderAnimator(unionSlider))
                         {
-                            Width = parameters.Width,
-                            Height = parameters.Height,
-                            Folder = parameters.FullPath,
-                        };
+                            sliderAnimator.Width = parameters.Width;
+                            sliderAnimator.Height = parameters.Height;
+                            sliderAnimator.Folder = parameters.FullPath;
+                            
+                            // 确保_cancellationTokenSource不为null再访问Token属性
+                            if (_cancellationTokenSource != null)
+                            {
+                                sliderAnimator.CancellationToken = _cancellationTokenSource.Token;
+                            }
+                            else
+                            {
+                                // 如果为null，创建一个新的CancellationTokenSource
+                                _cancellationTokenSource = new CancellationTokenSource();
+                                sliderAnimator.CancellationToken = _cancellationTokenSource.Token;
+                            }
 
-                        // 设置范围
-                        if (parameters.IsCustomRange)
-                        {
-                            sliderAnimator.CustomRange = parameters.Range;
-                            sliderAnimator.FrameCount = (int)(parameters.Range.Length + 1);
-                            sliderAnimator.UseCustomRange = true;
+                            // 设置范围
+                            if (parameters.IsCustomRange)
+                            {
+                                sliderAnimator.CustomRange = parameters.Range;
+                                sliderAnimator.FrameCount = (int)(parameters.Range.Length + 1);
+                                sliderAnimator.UseCustomRange = true;
+                            }
+                            else
+                            {
+                                sliderAnimator.FrameCount = (int)unionSlider.Slider.Maximum;
+                                sliderAnimator.UseCustomRange = false;
+                            }
+
+                            if (!sliderAnimator.SetupAnimationProperties())
+                                return;
+
+                            sliderAnimator.MotionStartAnimation(
+                                parameters.IsTransparent,
+                                parameters.ViewName,
+                                parameters.IsCycles,
+                                parameters.RealtimeRenderPasses,
+                                out _,
+                                out wasAborted,
+                                updateProgress
+                            );
                         }
-                        else
-                        {
-                            sliderAnimator.FrameCount = (int)unionSlider.Slider.Maximum;
-                            sliderAnimator.UseCustomRange = false;
-                        }
-
-                        if (!sliderAnimator.SetupAnimationProperties())
-                            return;
-
-                        sliderAnimator.MotionStartAnimation(
-                            parameters.IsTransparent,
-                            parameters.ViewName,
-                            parameters.IsCycles,
-                            parameters.RealtimeRenderPasses,
-                            out _,
-                            out wasAborted,
-                            updateProgress
-                        );
 
                         stopwatch.Stop();
                         string elapsedTime = FormatTimeSpan(stopwatch.Elapsed);
@@ -268,6 +291,15 @@ namespace Motion.Export
                 this.Message = $"Error: {ex.Message}\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
                 RhinoApp.WriteLine($"Render error occured at {DateTime.Now:HH:mm:ss}");
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Render error occured: {ex.Message}");
+            }
+            finally
+            {
+                // 确保在任何情况下都释放CancellationTokenSource
+                if (_cancellationTokenSource != null)
+                {
+                    _cancellationTokenSource.Dispose();
+                    _cancellationTokenSource = null;
+                }
             }
         }
 
@@ -391,6 +423,17 @@ namespace Motion.Export
                 return $"{timeSpan.Minutes}m{timeSpan.Seconds}s";
             
             return $"{timeSpan.Seconds}s";
+        }
+        
+        // 重写基类的析构方法，确保所有资源被释放
+        protected override void Dispose()
+        {
+            if (_cancellationTokenSource != null)
+            {
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = null;
+            }
+            base.Dispose();
         }
     }
 }

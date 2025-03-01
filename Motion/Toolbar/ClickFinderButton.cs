@@ -1,4 +1,4 @@
-﻿using Grasshopper;
+using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
@@ -38,7 +38,7 @@ namespace Motion.Toolbar
             InitializeToolbarGroup();
             button = new ToolStripButton();
             Instantiate();
-            AddButtonToGroup(button); // 使用基类方法添加按钮
+            AddButtonToToolbars(button); // 使用基类方法添加按钮
         }
 
         public override GH_LoadingInstruction PriorityLoad()
@@ -66,11 +66,11 @@ namespace Motion.Toolbar
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.ClickFinder;
             button.ToolTipText = "单击Rhino视口中显示的GH物件以查找组件";
-            button.Click += OpenControlWindow;
+            button.Click += ToggleClickFinderMode;
             button.CheckOnClick = true;
         }
 
-        public void OpenControlWindow(object sender, EventArgs e)
+        public void ToggleClickFinderMode(object sender, EventArgs e)
         {
             isActive = button.Checked;
             if (isActive)

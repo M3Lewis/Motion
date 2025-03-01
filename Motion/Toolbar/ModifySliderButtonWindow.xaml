@@ -1,10 +1,11 @@
 <Window x:Class="Motion.UI.ModifySliderWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Modify Slider" Height="480" Width="300"
+        Title="Modify Slider" Height="570" Width="300"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -32,14 +33,38 @@
             </StackPanel>
         </GroupBox>
 
+        <!-- 调整最小值和最大值部分 -->
+        <GroupBox Grid.Row="2" Header="调整Slider区间值" Margin="0,0,0,10">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                        <TextBlock Text="最小值增减:" Margin="0,5,0,0"/>
+                        <TextBox x:Name="MinValueAdjustment" Margin="0,5"
+                                 IsEnabled="{Binding HasSelectedSliders}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                        <TextBlock Text="最大值增减:" Margin="0,5,0,0"/>
+                        <TextBox x:Name="MaxValueAdjustment" Margin="0,5"
+                                 IsEnabled="{Binding HasSelectedSliders}"/>
+                    </StackPanel>
+                </Grid>
+                <Button Content="调整" Click="AdjustRanges_Click" Margin="0,5"
+                        IsEnabled="{Binding HasSelectedSliders}"/>
+            </StackPanel>
+        </GroupBox>
+
         <!-- 合并部分 -->
-        <GroupBox Grid.Row="2" Header="合并Slider" Margin="0,0,0,10">
+        <GroupBox Grid.Row="3" Header="合并Slider" Margin="0,0,0,10">
             <Button Content="合并" Click="MergeSliders_Click"
                     IsEnabled="{Binding HasSelectedSliders}"/>
         </GroupBox>
 
         <!-- 拆分部分 -->
-        <GroupBox Grid.Row="3" Header="拆分Slider" Margin="0,0,0,10">
+        <GroupBox Grid.Row="4" Header="拆分Slider" Margin="0,0,0,10">
             <StackPanel>
                 <TextBox x:Name="SplitValues" Margin="0,5"
                          IsEnabled="{Binding HasSingleSliderSelected}"/>
@@ -52,4 +77,4 @@
             </StackPanel>
         </GroupBox>
     </Grid>
-</Window> 
+</Window>

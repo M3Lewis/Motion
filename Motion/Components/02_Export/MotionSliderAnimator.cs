@@ -14,8 +14,9 @@ using System.Windows.Forms;
 
 namespace Motion.Export
 {
-    public class MotionSliderAnimator : GH_SliderAnimator
+    public class MotionSliderAnimator : GH_SliderAnimator,IDisposable
     {
+        private bool _disposed = false; // 跟踪是否已经释放资源
         public Interval CustomRange { get; set; }
         public bool UseCustomRange { get; set; }
         public CancellationToken CancellationToken { get; set; }
@@ -32,59 +33,62 @@ namespace Motion.Export
             int realtimeRenderPasses, out List<string> outputPathList, out bool wasAborted, 
             Action<int, int> progressCallback = null)
         {
-            outputPathList = null;
+            outputPathList = new List<string>();
             wasAborted = false;
-            StoreSettingsAsDefault();
-
-            // 验证参数
-            ValidateParameters();
+            Bitmap bitmap = null;
+            RealtimeDisplayMode cycles = null;
+            int oldPasses = -1;
             
-            // 确保目标目录存在
-            EnsureDirectoryExists();
-
-            // 设置分辨率
-            m_resolution.Width = Math.Max(m_resolution.Width, 24);
-            m_resolution.Height = Math.Max(m_resolution.Height, 24);
-            m_frameIndex = 0;
-
-            // 获取文档
-            GH_Document gH_Document = m_owner.OnPingDocument();
-            if (gH_Document == null)
-                return;
-
-            // 开始时间
-            long startTicks = DateTime.Now.Ticks;
-
-            // 设置范围
-            double currentValue, maxValue, minValue;
-            SetRangeValues(out currentValue, out maxValue, out minValue);
-            m_currentValue = currentValue;
-            
-            var doc = RhinoDoc.ActiveDoc;
-            var myView = doc.Views.Find(viewName, true);
-            if (myView == null)
-            {
-                RhinoApp.WriteLine("Could not find specified view: " + viewName);
-                wasAborted = true;
-                return;
-            }
-            
-            var activeView = doc.Views.ActiveView;
-            var displayMode = activeView.ActiveViewport.DisplayMode;
-            string modeName = displayMode.EnglishName;
-            bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
-
-            // 检查渲染模式兼容性
-            if (!CheckRenderModeCompatibility(isCycles, isRaytracedMode))
-            {
-                wasAborted = true;
-                return;
-            }
-
             try
             {
-                RealtimeDisplayMode cycles = myView.RealtimeDisplayMode;
-                int oldPasses = -1;
+                StoreSettingsAsDefault();
+
+                // 验证参数
+                ValidateParameters();
+                
+                // 确保目标目录存在
+                EnsureDirectoryExists();
+
+                // 设置分辨率
+                m_resolution.Width = Math.Max(m_resolution.Width, 24);
+                m_resolution.Height = Math.Max(m_resolution.Height, 24);
+                m_frameIndex = 0;
+
+                // 获取文档
+                GH_Document gH_Document = m_owner.OnPingDocument();
+                if (gH_Document == null)
+                    return;
+
+                // 开始时间
+                long startTicks = DateTime.Now.Ticks;
+
+                // 设置范围
+                double currentValue, maxValue, minValue;
+                SetRangeValues(out currentValue, out maxValue, out minValue);
+                m_currentValue = currentValue;
+                
+                var doc = RhinoDoc.ActiveDoc;
+                var myView = doc.Views.Find(viewName, true);
+                if (myView == null)
+                {
+                    RhinoApp.WriteLine("Could not find specified view: " + viewName);
+                    wasAborted = true;
+                    return;
+                }
+                
+                var activeView = doc.Views.ActiveView;
+                var displayMode = activeView.ActiveViewport.DisplayMode;
+                string modeName = displayMode.EnglishName;
+                bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
+
+                // 检查渲染模式兼容性
+                if (!CheckRenderModeCompatibility(isCycles, isRaytracedMode))
+                {
+                    wasAborted = true;
+                    return;
+                }
+
+                cycles = myView.RealtimeDisplayMode;
                 
                 while (m_currentValue <= maxValue)
                 {
@@ -107,25 +111,23 @@ namespace Motion.Export
                     progressCallback?.Invoke(m_frameIndex, totalFrames);
 
                     // 创建并保存帧
-                    Bitmap bitmap = MotionCreateFrame(isTransparent, myView, isCycles, isRaytracedMode, realtimeRenderPasses, cycles, oldPasses);
-                    if (bitmap != null)
+                    using (bitmap = MotionCreateFrame(isTransparent, myView, isCycles, isRaytracedMode, realtimeRenderPasses, cycles, ref oldPasses))
                     {
-                        SaveFrameToDisk(bitmap);
-                        bitmap.Dispose();
-                        
-                        // 重置Cycles设置
-                        if (cycles != null)
+                        if (bitmap != null)
                         {
-                            cycles.MaxPasses = oldPasses;
-                            cycles.Paused = false;
+                            string filePath = SaveFrameToDisk(bitmap);
+                            if (!string.IsNullOrEmpty(filePath))
+                            {
+                                outputPathList.Add(filePath);
+                            }
                         }
-                    }
-                    else
-                    {
-                        // 处理创建帧失败的情况
-                        HandleFrameCreationFailure(isCycles, isRaytracedMode);
-                        wasAborted = true;
-                        break;
+                        else
+                        {
+                            // 处理创建帧失败的情况
+                            HandleFrameCreationFailure(isCycles, isRaytracedMode);
+                            wasAborted = true;
+                            break;
+                        }
                     }
 
                     m_currentValue += 1.0;
@@ -141,12 +143,21 @@ namespace Motion.Export
                 RhinoApp.WriteLine($"Error during animation: {ex.Message}");
                 wasAborted = true;
             }
-
-            // 输出完成消息
-            RhinoApp.WriteLine(wasAborted ?
-                "Animation cancelled by user." :
-                $"Animation saved to disk: {m_folder}\\");
-            RhinoApp.CommandPrompt = string.Empty;
+            finally
+            {
+                // 重置Cycles设置
+                if (cycles != null && oldPasses >= 0)
+                {
+                    cycles.MaxPasses = oldPasses;
+                    cycles.Paused = false;
+                }
+                
+                // 输出完成消息
+                RhinoApp.WriteLine(wasAborted ?
+                    "Animation cancelled by user." :
+                    $"Animation saved to disk: {m_folder}\\");
+                RhinoApp.CommandPrompt = string.Empty;
+            }
         }
 
         private bool CheckRenderModeCompatibility(bool isCycles, bool isRaytracedMode)
@@ -230,13 +241,25 @@ namespace Motion.Export
             Grasshopper.Instances.RedrawAll();
         }
 
-        private void SaveFrameToDisk(Bitmap bitmap)
+        private string SaveFrameToDisk(Bitmap bitmap)
         {
+            if (bitmap == null)
+                return null;
+                
             string arg = string.Format(m_fileTemplate, m_frameIndex + (UseCustomRange ? (int)CustomRange.Min : 0));
             string filePath = string.Format("{0}{2}{1}", m_folder, arg, Path.DirectorySeparatorChar);
-            bitmap.Save(filePath, ImageFormat.Png);
-            RhinoApp.WriteLine($"Frame {m_frameIndex} saved to disk: {filePath}");
-            m_frameIndex++;
+            try
+            {
+                bitmap.Save(filePath, ImageFormat.Png);
+                RhinoApp.WriteLine($"Frame {m_frameIndex} saved to disk: {filePath}");
+                m_frameIndex++;
+                return filePath;
+            }
+            catch (Exception ex)
+            {
+                RhinoApp.WriteLine($"Error saving frame {m_frameIndex}: {ex.Message}");
+                return null;
+            }
         }
 
         private void HandleFrameCreationFailure(bool isCycles, bool isRaytracedMode)
@@ -251,41 +274,59 @@ namespace Motion.Export
                     RhinoApp.WriteLine("Please enable isCycles to render！");
                     break;
                 default:
-                    RhinoApp.WriteLine($"Frame {m_frameIndex + (int)CustomRange.Min} failed to render");
+                    RhinoApp.WriteLine($"Frame {m_frameIndex + (UseCustomRange ? (int)CustomRange.Min : 0)} failed to render");
                     break;
             }
         }
 
         public Bitmap MotionCreateFrame(bool isTransparent, RhinoView myView, bool isCycles,
-            bool isRaytracedMode, int realtimeRenderPasses, RealtimeDisplayMode cycles, int oldPasses)
+            bool isRaytracedMode, int realtimeRenderPasses, RealtimeDisplayMode cycles, ref int oldPasses)
         {
             if (myView == null)
                 return null;
 
-            ViewCapture viewCapture;
-            cycles = myView.RealtimeDisplayMode;
+            ViewCapture viewCapture = null;
             
-            // 使用switch语句替代嵌套if-else结构
-            switch (true)
+            try
             {
-                case true when isCycles && isRaytracedMode:
-                    oldPasses = cycles.MaxPasses;
-                    cycles.PostEffectsOn = true;
-                    cycles.MaxPasses = 2;
-                    cycles.Paused = true;
-                    viewCapture = CreateCyclesViewCapture(isTransparent, realtimeRenderPasses);
-                    break;
-                    
-                case true when !isCycles && isRaytracedMode:
-                case true when isCycles && !isRaytracedMode:
-                    return null;
-                    
-                default:
-                    viewCapture = CreateStandardViewCapture(isTransparent);
-                    break;
-            }
+                // 使用switch语句替代嵌套if-else结构
+                switch (true)
+                {
+                    case true when isCycles && isRaytracedMode:
+                        if (cycles != null)
+                        {
+                            oldPasses = cycles.MaxPasses;
+                            cycles.PostEffectsOn = true;
+                            cycles.MaxPasses = 2;
+                            cycles.Paused = true;
+                        }
+                        viewCapture = CreateCyclesViewCapture(isTransparent, realtimeRenderPasses);
+                        break;
+                        
+                    case true when !isCycles && isRaytracedMode:
+                    case true when isCycles && !isRaytracedMode:
+                        return null;
+                        
+                    default:
+                        viewCapture = CreateStandardViewCapture(isTransparent);
+                        break;
+                }
 
-            return viewCapture.CaptureToBitmap(myView);
+                return viewCapture?.CaptureToBitmap(myView);
+            }
+            catch (Exception ex)
+            {
+                RhinoApp.WriteLine($"Error creating frame: {ex.Message}");
+                
+                // 确保在异常情况下重置Cycles设置
+                if (cycles != null && oldPasses >= 0)
+                {
+                    cycles.MaxPasses = oldPasses;
+                    cycles.Paused = false;
+                }
+                
+                return null;
+            }
         }
         
         private ViewCapture CreateCyclesViewCapture(bool isTransparent, int realtimeRenderPasses)
@@ -319,7 +360,7 @@ namespace Motion.Export
 
         private string EstimateTimeLeftFormatted(long startTicks)
         {
-            checked
+            try
             {
                 // 使用缓存变量减少重复计算
                 long elapsedTicks = DateTime.Now.Ticks - startTicks;
@@ -333,6 +374,36 @@ namespace Motion.Export
                 int minutes = (int)(totalSeconds / 60);
                 int seconds = (int)(totalSeconds % 60);
                 return $"{minutes}m{seconds}s";
+            }
+            catch (Exception)
+            {
+                // 如果计算出错，返回默认值
+                return "计算中...";
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        // 受保护的Dispose方法，允许子类重写
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // 释放托管资源
+                    // 如果有任何需要释放的托管资源，在此处释放
+                    // 例如，如果类持有任何实现IDisposable的对象，这里应该调用它们的Dispose方法
+                }
+
+                // 释放非托管资源
+                // 如果有任何需要释放的非托管资源（如文件句柄、数据库连接等），在此处释放
+
+                _disposed = true;
             }
         }
     }
