@@ -88,7 +88,7 @@ namespace Motion.Toolbar
 
         public static bool IsSecondsInputMode()
         {
-            CustomMotionToolbar customToolbar = CustomMotionToolbar.Instance;
+            ToolStrip customToolbar = CustomMotionToolbar.customMotionToolbar;
             ToolStrip targetToolbar;
 
             if (customToolbar.Items.Count == 0)

@@ -72,7 +72,7 @@ namespace Motion.Toolbar
             if (PreferredToolbarType == ToolbarType.CustomMotion)
             {
                 // 获取或创建自定义工具栏实例
-                CustomMotionToolbar.Instance.Visible = true;
+                CustomMotionToolbar.customMotionToolbar.Visible = true;
             }
         }
 
@@ -85,7 +85,6 @@ namespace Motion.Toolbar
 
         // 子类可以重写此方法来处理按钮点击
         protected virtual void OnButtonClicked(object sender, EventArgs e) { }
-
         protected void AddButtonToToolbars(ToolStripItem originalButton)
         {
             // 根据设置添加到不同的工具栏
@@ -100,7 +99,6 @@ namespace Motion.Toolbar
                     break;
             }
         }
-
         protected void AddButtonToGrasshopperToolbar(ToolStripItem button)
         {
             if (grasshopperToolStripItems == null) return;
@@ -147,7 +145,6 @@ namespace Motion.Toolbar
             // 在正确位置插入按钮
             grasshopperToolStripItems.Insert(insertIndex, button);
         }
-
         protected void AddButtonToCustomToolbar(ToolStripItem button)
         {
             // 设置按钮的Tag为当前实例
@@ -155,9 +152,9 @@ namespace Motion.Toolbar
 
             // 按照顺序添加到自定义工具栏
             int insertIndex = 0;
-            for (int i = 0; i < CustomMotionToolbar.Instance.Items.Count; i++)
+            for (int i = 0; i < CustomMotionToolbar.customMotionToolbar.Items.Count; i++)
             {
-                var item = CustomMotionToolbar.Instance.Items[i];
+                var item = CustomMotionToolbar.customMotionToolbar.Items[i];
                 if (item.Tag is MotionToolbarButton existingButton
                     && existingButton.ToolbarOrder > this.ToolbarOrder)
                 {
@@ -167,10 +164,8 @@ namespace Motion.Toolbar
                 insertIndex = i + 1;
             }
 
-            CustomMotionToolbar.Instance.Items.Insert(insertIndex, button);
+            CustomMotionToolbar.customMotionToolbar.Items.Insert(insertIndex, button);
         }
-
-
         protected void ShowTemporaryMessage(GH_Canvas canvas, string message)
         {
             GH_Canvas.CanvasPostPaintObjectsEventHandler canvasRepaint = null;

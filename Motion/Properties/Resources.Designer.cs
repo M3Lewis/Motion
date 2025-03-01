@@ -473,6 +473,56 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap ToolbarPositionManagerBottom {
+            get {
+                object obj = ResourceManager.GetObject("ToolbarPositionManagerBottom", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ToolbarPositionManagerLeft {
+            get {
+                object obj = ResourceManager.GetObject("ToolbarPositionManagerLeft", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ToolbarPositionManagerOnToolbar {
+            get {
+                object obj = ResourceManager.GetObject("ToolbarPositionManagerOnToolbar", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ToolbarPositionManagerRight {
+            get {
+                object obj = ResourceManager.GetObject("ToolbarPositionManagerRight", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ToolbarPositionManagerTop {
+            get {
+                object obj = ResourceManager.GetObject("ToolbarPositionManagerTop", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap UpdateSender {
             get {
                 object obj = ResourceManager.GetObject("UpdateSender", resourceCulture);

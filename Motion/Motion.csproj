@@ -76,6 +76,7 @@
     <Compile Remove="Components\OBSOLETE\SliderInterval.cs" />
     <Compile Remove="Components\OBSOLETE\SliderLockButton.cs" />
     <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
+    <Compile Remove="Toolbar\ExtraButton.cs" />
     <Compile Remove="Toolbar\ViewSwitchButton.cs" />
   </ItemGroup>
   

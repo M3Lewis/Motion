@@ -241,6 +241,21 @@
   <data name="TimelineRange" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\TimelineRange.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="ToolbarPositionManagerBottom" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\ToolbarPositionManagerBottom.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ToolbarPositionManagerLeft" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\ToolbarPositionManagerLeft.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ToolbarPositionManagerOnToolbar" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\ToolbarPositionManagerOnToolbar.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ToolbarPositionManagerRight" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\ToolbarPositionManagerRight.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ToolbarPositionManagerTop" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\ToolbarPositionManagerTop.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="UpdateSender" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\UpdateSender.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
