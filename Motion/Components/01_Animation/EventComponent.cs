@@ -195,21 +195,54 @@ namespace Motion.Animation
             Menu_AppendSeparator(menu);
 
             ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "选择区间");
-            foreach (string key in MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
-                .OrderBy(s =>
-                {
-                    var parts = s.Split('-');
-                    if (parts.Length == 2 && double.TryParse(parts[0], out double first) && double.TryParse(parts[1], out double second))
+            
+            // 获取所有区间并排序
+            var sortedKeys = MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
+                .Where(k => !string.IsNullOrEmpty(k))
+                .Select(k => {
+                    var parts = k.Split('-');
+                    if (parts.Length == 2 && 
+                        double.TryParse(parts[0], out double start) && 
+                        double.TryParse(parts[1], out double end))
                     {
-                        return first * 1000000 + second; // 使用大数字来确保排序正确
+                        return new { Key = k, Start = start, End = end };
                     }
-                    return 0;
-                }))
+                    return new { Key = k, Start = double.MaxValue, End = double.MaxValue };
+                })
+                .OrderBy(x => x.Start)
+                .ToList();
+
+            // 创建多列布局
+            const int maxItemsPerColumn = 20;
+            int totalItems = sortedKeys.Count;
+            int columnsNeeded = (int)Math.Ceiling((double)totalItems / maxItemsPerColumn);
+
+            // 创建列菜单
+            for (int col = 0; col < columnsNeeded; col++)
             {
-                if (!string.IsNullOrEmpty(key))
+                int startIdx = col * maxItemsPerColumn;
+                int endIdx = Math.Min(startIdx + maxItemsPerColumn, totalItems);
+                
+                if (endIdx <= startIdx) break;
+
+                var columnItems = sortedKeys.GetRange(startIdx, endIdx - startIdx);
+                var firstItem = columnItems.First();
+                var lastItem = columnItems.Last();
+
+                // 创建列标题
+                string columnTitle = $"{firstItem.Start:0}-{lastItem.End:0}";
+                var columnMenu = new ToolStripMenuItem(columnTitle);
+
+                // 添加区间项
+                foreach (var item in columnItems)
                 {
-                    ToolStripMenuItem keyitem = Menu_AppendItem(recentKeyMenu.DropDown, key, new EventHandler(Menu_KeyClicked));
+                    var menuItem = new ToolStripMenuItem(item.Key);
+                    menuItem.Click += Menu_KeyClicked;
+                    columnMenu.DropDownItems.Add(menuItem);
                 }
+
+                // 将列添加到主菜单
+                recentKeyMenu.DropDownItems.Add(columnMenu);
             }
         }
 

@@ -195,6 +195,5 @@
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
   <Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;" />
   <Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />
-  <Exec Command="start /B &quot;&quot; &quot;$(ProjectDir)simulate_key.ahk&quot;" />
 </Target>
 </Project>
