@@ -1,10 +1,14 @@
+using Eto.Forms;
 using Grasshopper;
+using Grasshopper.Kernel;
 using Motion.Animation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
+using Window = System.Windows.Window;
+using MessageBox = System.Windows.MessageBox; 
+
 
 namespace Motion.UI
 {
@@ -55,6 +59,52 @@ namespace Motion.UI
                 : GenerateSequentialRanges(values, NoOverlap.IsChecked == true);
 
             CreateMotionSliders(ranges);
+            Close();
+        }
+
+        // Add this method to the ModifySliderWindow class
+        private void CreateOffsetSlider_Click(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(OffsetFrames.Text, out int offsetFrames))
+            {
+                MessageBox.Show("请输入有效的偏移帧数值", "输入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            if (_selectedSliders.Count != 1)
+            {
+                MessageBox.Show("请选择一个Motion Slider", "选择错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            MotionSlider selectedSlider = _selectedSliders[0];
+
+            // 获取所选Slider的当前区间
+            double currentMin = (double)selectedSlider.Slider.Minimum;
+            double currentMax = (double)selectedSlider.Slider.Maximum;
+
+            // 根据偏移量计算新的区间
+            double newMin, newMax;
+
+            if (offsetFrames >= 0)
+            {
+                // 正偏移：新区间在原区间之后
+                newMin = currentMax + 1;
+                newMax = newMin + offsetFrames - 1;
+            }
+            else
+            {
+                // 负偏移：新区间在原区间之前
+                newMax = currentMin - 1;
+                newMin = newMax + offsetFrames + 1; // +1 是因为负偏移量
+            }
+
+
+            List<decimal> values = new List<decimal> { (decimal)newMin, (decimal)newMax };
+            var ranges = GenerateAllRanges(values, NoOverlap.IsChecked == true);
+
+            CreateMotionSliders(ranges);
+            // 关闭窗口
             Close();
         }
 
@@ -212,6 +262,7 @@ namespace Motion.UI
                 return null;
             }
         }
+
 
         private IEnumerable<(decimal min, decimal max)> GenerateSequentialRanges(List<decimal> values, bool noOverlap)
         {
