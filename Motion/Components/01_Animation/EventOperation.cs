@@ -1,3 +1,4 @@
+using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
@@ -7,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace Motion.Animation
 {
@@ -16,6 +18,8 @@ namespace Motion.Animation
         private double _currentEventValue = 0;
         private double _currentMappedEventValue = 0;
         private int _currentEventIndex = 0;
+
+        public string GroupMessage { get; private set; }
         public EventOperation() : base(
             "Event Operation",
             "Event Operation",
@@ -31,6 +35,21 @@ namespace Motion.Animation
 
         protected override Bitmap Icon => Properties.Resources.EventOperation;
 
+        protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
+        {
+            base.AppendAdditionalComponentMenuItems(menu);
+            Menu_AppendSeparator(menu);
+            ToolStripMenuItem namingCurrentGroup = Menu_AppendItem(menu, "命名当前组名称为Event名称");
+            namingCurrentGroup.Click += (sender, e) =>
+            {
+                // 获取组件所在的组
+                var currentGroup = Instances.ActiveCanvas.Document.Objects
+                    .OfType<GH_Group>()
+                    .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
+                currentGroup.NickName = GroupMessage.Trim();
+            };
+        }
+        
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddNumberParameter("Events", "E", "事件值列表", GH_ParamAccess.list);
@@ -276,6 +295,7 @@ namespace Motion.Animation
                 ? $"\n{string.Join("\n", groupNames.Distinct())}" 
                 : "";
 
+            GroupMessage = groupMessage;
             this.Message = intervalMessage + groupMessage;
 
             // 9. 优化输出赋值
@@ -430,7 +450,9 @@ namespace Motion.Animation
 
         public double CurrentEventValue => _currentEventValue;
         public double CurrentMappedEventValue => _currentMappedEventValue;
-        public int CurrentEventIndex => _currentEventIndex;
+
+        
+
         public override void CreateAttributes()
         {
             m_attributes = new EventOperationAttributes(this);

@@ -1,8 +1,10 @@
 ﻿using GH_IO.Serialization;
+using Grasshopper;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
+using Motion.General;
 using Rhino.Geometry;
 using System;
 using System.Collections.Generic;
@@ -15,7 +17,7 @@ namespace Motion.Animation
     public class MotionSender : RemoteParam
     {
         private readonly bool _autoRename = true;
-        
+
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
         public event NickNameChangedEventHandler NickNameChanged;
 
@@ -30,17 +32,56 @@ namespace Motion.Animation
         protected string nicknameKey = "";
         private Guid _connectedSliderGuid = Guid.Empty;
 
+        public override bool AppendMenuItems(ToolStripDropDown menu)
+        {
+            Menu_AppendSeparator(menu);
+
+            // 创建"跳转到Event"的子菜单
+            ToolStripMenuItem jumpToEventMenu = Menu_AppendItem(menu, "跳转到Event");
+
+            // 获取所有关联的Event组件及其所在的组
+            var eventGroups = new Dictionary<string, IGH_DocumentObject>();
+            foreach (var recipient in this.Recipients)
+            {
+                var eventComponent = recipient.Attributes.GetTopLevel.DocObject;
+                if (eventComponent == null) continue;
+
+                // 获取组件所在的组
+                var group = Instances.ActiveCanvas.Document.Objects
+                    .OfType<GH_Group>()
+                    .FirstOrDefault(g => g.ObjectIDs.Contains(eventComponent.InstanceGuid));
+
+                string groupName = group != null ? group.NickName : "未分组";
+
+                // 使用组名作为键，确保不重复
+                if (!eventGroups.ContainsKey(groupName))
+                {
+                    eventGroups.Add(groupName, eventComponent);
+                }
+            }
+
+            // 按组名排序并添加到菜单
+            foreach (var pair in eventGroups.OrderBy(x => x.Key))
+            {
+                var menuItem = new ToolStripMenuItem(pair.Key);
+                var eventComponent = pair.Value;
+                menuItem.Click += (sender, e) => MotionGeneralMethods.GoComponent(eventComponent);
+                jumpToEventMenu.DropDownItems.Add(menuItem);
+            }
+
+            return true;
+        }
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
-            
+
             if (this.Sources.Count > 0) return;
 
             var doc = OnPingDocument();
             if (doc == null) return;
 
             var sliders = doc.Objects
-                .Where(o => o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider"|| o.GetType().ToString() == "Motion.Animation.MotionSlider")
+                .Where(o => o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider" || o.GetType().ToString() == "Motion.Animation.MotionSlider")
                 .Cast<GH_NumberSlider>()
                 .ToList();
 
@@ -50,7 +91,7 @@ namespace Motion.Animation
                 if (closestSlider != null)
                 {
                     this.AddSource(closestSlider);
-                    
+
                     if (_autoRename)
                     {
                         UpdateNicknameFromSlider(closestSlider);
@@ -68,7 +109,7 @@ namespace Motion.Animation
                                 var canvas = Grasshopper.Instances.ActiveCanvas;
                                 if (canvas != null)
                                 {
-                                    ShowTemporaryMessage(canvas, 
+                                    ShowTemporaryMessage(canvas,
                                         $"已存在相同标识({this.NickName})的 Sender!");
                                 }
                             }
@@ -183,7 +224,7 @@ namespace Motion.Animation
             {
                 if (_connectedSliderGuid != Guid.Empty)
                 {
-                    var slider = document.FindObject(_connectedSliderGuid,true) as GH_NumberSlider;
+                    var slider = document.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
                     if (slider != null)
                     {
                         slider.NickName = "Slider";
@@ -282,7 +323,7 @@ namespace Motion.Animation
                     base.NickName = nicknameKey;
 
                     GH_Document doc = this.OnPingDocument();
-                    if (doc != null) 
+                    if (doc != null)
                     {
                         var existingSender = doc.Objects
                             .OfType<MotionSender>()
@@ -293,16 +334,16 @@ namespace Motion.Animation
                             var canvas = Grasshopper.Instances.ActiveCanvas;
                             if (canvas != null)
                             {
-                                ShowTemporaryMessage(canvas, 
+                                ShowTemporaryMessage(canvas,
                                     $"已存在相同标识({nicknameKey})的 Sender!");
                             }
-                            
+
                             return;
                         }
 
                         // 触发 NickNameChanged 事件
                         NickNameChanged?.Invoke(this, nicknameKey);
-                        
+
                         //doc.ScheduleSolution(10, MotilityUtils.connectMatchingParams);
                     }
                 }
@@ -336,7 +377,7 @@ namespace Motion.Animation
         public override bool Write(GH_IWriter writer)
         {
             if (!base.Write(writer)) return false;
-            
+
             try
             {
                 writer.SetString("NicknameKey", nicknameKey);
@@ -346,14 +387,14 @@ namespace Motion.Animation
             {
                 return false;
             }
-            
+
             return true;
         }
 
         public override bool Read(GH_IReader reader)
         {
             if (!base.Read(reader)) return false;
-            
+
             try
             {
                 if (reader.ItemExists("NicknameKey"))
@@ -365,7 +406,7 @@ namespace Motion.Animation
             {
                 return false;
             }
-            
+
             return true;
         }
     }

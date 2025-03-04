@@ -7,6 +7,7 @@ using System.Drawing;
 using Motion.Animation;
 using Grasshopper.GUI.Canvas;
 using static Grasshopper.GUI.Canvas.GH_Canvas;
+using Motion.General;
 
 namespace Motion.Toolbar
 {
@@ -108,7 +109,7 @@ namespace Motion.Toolbar
             var dialog = new JumpToComponentDialog(eventComponent.affectedObjects);
             if (dialog.ShowDialog() == true && dialog.SelectedComponent != null)
             {
-                eventComponent.GoComponent(dialog.SelectedComponent);
+                MotionGeneralMethods.GoComponent(dialog.SelectedComponent);
             }
         }
 
@@ -120,7 +121,7 @@ namespace Motion.Toolbar
 
             if (controllingEvent != null)
             {
-                controllingEvent.GoComponent(controllingEvent);
+                MotionGeneralMethods.GoComponent(controllingEvent);
             }
             else
             {

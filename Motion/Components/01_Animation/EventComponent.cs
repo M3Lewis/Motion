@@ -11,6 +11,7 @@ using Grasshopper.GUI.Base;
 using Grasshopper.GUI.Canvas;
 using Grasshopper;
 using System.Drawing;
+using Motion.General;
 
 namespace Motion.Animation
 {
@@ -194,6 +195,12 @@ namespace Motion.Animation
 
             Menu_AppendSeparator(menu);
 
+            // 添加跳转到 Motion Slider 的选项
+            Menu_AppendItem(menu, "跳转到 Motion Slider", OnJumpToMotionSlider, true);
+
+            // 添加分隔线和跳转选项
+            Menu_AppendSeparator(menu);
+
             ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "选择区间");
             
             // 获取所有区间并排序
@@ -246,48 +253,33 @@ namespace Motion.Animation
             }
         }
 
+        private void OnJumpToMotionSlider(object sender, EventArgs e)
+        {
+            if (this.Params.Input[0].SourceCount == 0) return;
+
+            var source = this.Params.Input[0].Sources[0];
+            if (source is MotionSender motionSender)
+            {
+                // 获取 Sender 的第一个输入端的源
+                if (motionSender.Sources.Count > 0)
+                {
+                    var sliderSource = motionSender.Sources[0].Attributes.GetTopLevel.DocObject;
+                    if (sliderSource != null)
+                    {
+                        // 跳转到 Motion Slider
+                        MotionGeneralMethods.GoComponent(sliderSource);
+                    }
+                }
+            }
+        }
+
         protected void Menu_KeyClicked(object sender, EventArgs e)
         {
             ToolStripMenuItem keyItem = (ToolStripMenuItem)sender;
             this.NickName = keyItem.Text;
             this.Attributes.ExpireLayout();
         }
-        private void OnJumpToOperation(object sender, EventArgs e)
-        {
-            if (Params.Output[0].Recipients.Count == 0) return;
-
-            foreach (var recipient in Params.Output[0].Recipients)
-            {
-                var topLevelObj = recipient.Attributes.GetTopLevel.DocObject;
-                IGH_DocumentObject targetOperation = null;
-
-                // 处理 Graph Mapper 的情况
-                var graphMapper = topLevelObj as GH_GraphMapper;
-                if (graphMapper != null)
-                {
-                    if (graphMapper.Recipients.Count > 0)
-                    {
-                        targetOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
-                    }
-                }
-                // 处理 Component 的情况
-                else
-                {
-                    var component = topLevelObj as GH_Component;
-                    if (component != null)
-                    {
-                        targetOperation = component;
-                    }
-                }
-
-                if (targetOperation != null)
-                {
-                    // 跳转到目标组件
-                    GoComponent(targetOperation);
-                    break;
-                }
-            }
-        }
+        
         private void UpdateMessage()
         {
             // 解析NickName中的区间
@@ -1041,33 +1033,7 @@ namespace Motion.Animation
             }
         }
 
-        // 添加一个方法来重新订阅事件
-        private void ResubscribeToEvents()
-        {
-            //RhinoApp.WriteLine("Resubscribing to events");
-            if (_timelineSlider != null)
-            {
-                var numberSlider = _timelineSlider as GH_NumberSlider;
-                if (numberSlider?.Slider != null)
-                {
-                    numberSlider.Slider.ValueChanged -= OnSliderValueChanged;
-                    numberSlider.Slider.ValueChanged += OnSliderValueChanged;
-                    //RhinoApp.WriteLine("Timeline Slider ValueChanged event resubscribed");
-                }
-            }
-        }
-
-        public void GoComponent(IGH_DocumentObject com)
-        {
-            PointF view_point = new PointF(com.Attributes.Pivot.X, com.Attributes.Pivot.Y);
-            GH_NamedView gH_NamedView = new GH_NamedView("", view_point, 1.5f, GH_NamedViewType.center);
-            foreach (IGH_DocumentObject item in com.OnPingDocument().SelectedObjects())
-            {
-                item.Attributes.Selected = false;
-            }
-            com.Attributes.Selected = true;
-            gH_NamedView.SetToViewport(Instances.ActiveCanvas, 300);
-        }
+        
 
         // 添加删除事件处理方法
         private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)

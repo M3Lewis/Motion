@@ -3,6 +3,7 @@ using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Special;
+using Motion.General;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -366,7 +367,7 @@ namespace Motion.Animation
                         if (graphMapper.Recipients.Count > 0)
                         {
                             eventOperation = graphMapper.Recipients[0].Attributes.GetTopLevel.DocObject;
-                            owner.GoComponent(eventOperation);
+                            MotionGeneralMethods.GoComponent(eventOperation);
                             return GH_ObjectResponse.Handled;
                         }
                     }
@@ -380,7 +381,7 @@ namespace Motion.Animation
 
                         if (mapperComp == null) return GH_ObjectResponse.Ignore;
                         eventOperation = mapperComp.Params.Output[0].Recipients[0].Attributes.GetTopLevel.DocObject;
-                        owner.GoComponent(eventOperation);
+                        MotionGeneralMethods.GoComponent(eventOperation);
                         return GH_ObjectResponse.Handled;
                     }
                 }

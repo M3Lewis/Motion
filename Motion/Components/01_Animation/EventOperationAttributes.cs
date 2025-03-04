@@ -10,6 +10,7 @@ using Grasshopper.Kernel.Special;
 using System.Linq;
 using Grasshopper;
 using System;
+using Motion.General;
 
 namespace Motion.Animation
 {
@@ -88,7 +89,7 @@ namespace Motion.Animation
                 menuItem.Click += (s, args) =>
                 {
                     // 使用 EventComponent 的 GoComponent 方法跳转
-                    targetComponent.GoComponent(targetComponent);
+                    MotionGeneralMethods.GoComponent(targetComponent);
                 };
                 menu.Items.Add(menuItem);
             }
