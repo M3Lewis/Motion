@@ -65,7 +65,7 @@ namespace Motion.Animation
             {
                 var menuItem = new ToolStripMenuItem(pair.Key);
                 var eventComponent = pair.Value;
-                menuItem.Click += (sender, e) => MotionGeneralMethods.GoComponent(eventComponent);
+                menuItem.Click += (sender, e) => MotilityUtils.GoComponent(eventComponent);
                 jumpToEventMenu.DropDownItems.Add(menuItem);
             }
 

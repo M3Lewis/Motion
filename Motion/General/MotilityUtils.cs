@@ -1,8 +1,12 @@
-﻿using Grasshopper.Kernel;
+﻿using Grasshopper.GUI.Canvas;
+using Grasshopper;
+using Grasshopper.Kernel;
 using System.Collections.Generic;
 using System.Linq;
+using System.Drawing;
+using Motion.Animation;
 
-namespace Motion.Animation
+namespace Motion.General
 {
     public static class MotilityUtils
     {
@@ -135,8 +139,6 @@ namespace Motion.Animation
         //}
 
 
-
-
         //this method safely handles removing multiple sources at a time. 
         public static void RemoveSources(IGH_Param target, List<IGH_Param> sources)
         {
@@ -190,6 +192,18 @@ namespace Motion.Animation
                     key.Attributes.ExpireLayout();
                 }
             }
+        }
+
+        internal static void GoComponent(IGH_DocumentObject com)
+        {
+            PointF view_point = new PointF(com.Attributes.Pivot.X, com.Attributes.Pivot.Y);
+            GH_NamedView gH_NamedView = new GH_NamedView("", view_point, 1.5f, GH_NamedViewType.center);
+            foreach (IGH_DocumentObject item in com.OnPingDocument().SelectedObjects())
+            {
+                item.Attributes.Selected = false;
+            }
+            com.Attributes.Selected = true;
+            gH_NamedView.SetToViewport(Instances.ActiveCanvas, 300);
         }
     }
 }

@@ -1,7 +1,7 @@
 <Window x:Class="Motion.UI.ModifySliderWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Modify Slider" Height="700" Width="300"
+        Title="Modify Slider" Height="750" Width="300"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -31,7 +31,7 @@
                 <TextBox x:Name="OffsetFrames" Margin="0,5"
                          ToolTip="输入要偏移的帧数值"
                          IsEnabled="{Binding HasSingleSliderSelected}"/>
-                <Button Content="偏移" Click="CreateOffsetSlider_Click" Margin="0,5"
+                <Button Content="新建偏移" Click="CreateOffsetSlider_Click" Margin="0,5"
                         IsEnabled="{Binding HasSingleSliderSelected}"/>
             </StackPanel>
         </GroupBox>
@@ -65,8 +65,27 @@
                                  IsEnabled="{Binding HasSelectedSliders}"/>
                     </StackPanel>
                 </Grid>
-                <Button Content="调整" Click="AdjustRanges_Click" Margin="0,5"
-                        IsEnabled="{Binding HasSelectedSliders}"/>
+                <StackPanel Margin="0,5,0,0">
+                    <TextBlock Text="循环次数:" Margin="0,0,0,5"/>
+                    <TextBox x:Name="LoopCount" Margin="0,0,0,5" 
+                             Text="1" 
+                             ToolTip="输入调整区间的循环次数（默认为1）"
+                             IsEnabled="{Binding HasSelectedSliders}"/>
+                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="修改当前" 
+                            Click="AdjustRangesExisting_Click" 
+                            Margin="0,0,5,0"
+                            IsEnabled="{Binding HasSelectedSliders}"/>
+                    <Button Grid.Column="1" Content="新建" 
+                            Click="AdjustRangesNew_Click" 
+                            Margin="5,0,0,0"
+                            IsEnabled="{Binding HasSelectedSliders}"/>
+                </Grid>
             </StackPanel>
         </GroupBox>
 

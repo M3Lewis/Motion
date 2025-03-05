@@ -80,7 +80,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <None Include="Components\01_Animation\MotilityUtils.cs" />
+    <None Include="General\MotilityUtils.cs" />
     <None Include="Components\OBSOLETE\FFmpegExceptions.cs" />
     <None Include="Components\OBSOLETE\FFmpegUtil.cs" />
     <None Include="Components\OBSOLETE\MotionSliderControlButton2.cs" />

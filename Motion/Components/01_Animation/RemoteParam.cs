@@ -5,6 +5,7 @@ using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
 using Motion.Animation;
+using Motion.General;
 using Rhino.Geometry;
 using System;
 using System.Collections.Generic;

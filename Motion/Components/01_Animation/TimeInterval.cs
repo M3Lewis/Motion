@@ -1,6 +1,7 @@
 using Grasshopper.Kernel;
 using Rhino.Geometry;
 using System;
+using System.Windows.Forms;
 
 namespace Motion.Animation
 {
@@ -30,6 +31,11 @@ namespace Motion.Animation
             pManager.AddIntervalParameter("Range", "R", "时间区间", GH_ParamAccess.item);
         }
 
+        protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
+        {
+            base.AppendAdditionalComponentMenuItems(menu);
+
+        }
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             double iData = 0d;

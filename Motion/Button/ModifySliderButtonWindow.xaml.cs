@@ -149,13 +149,14 @@ namespace Motion.UI
             Close();
         }
 
-        private void AdjustRanges_Click(object sender, RoutedEventArgs e)
+        private void AdjustRangesExisting_Click(object sender, RoutedEventArgs e)
         {
             if (!HasSelectedSliders) return;
 
             // 解析最小值和最大值的调整量
             decimal minAdjustment = 0;
             decimal maxAdjustment = 0;
+            int loopCount = 1; // 默认不循环
 
             try
             {
@@ -164,6 +165,17 @@ namespace Motion.UI
 
                 if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text))
                     maxAdjustment = decimal.Parse(MaxValueAdjustment.Text.Trim());
+
+                // 尝试解析循环次数，默认为1（不循环）
+                if (!string.IsNullOrWhiteSpace(LoopCount.Text))
+                    loopCount = int.Parse(LoopCount.Text.Trim());
+
+                if (loopCount < 1)
+                {
+                    MessageBox.Show("循环次数必须至少为1！", "错误",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
             }
             catch (Exception ex)
             {
@@ -175,29 +187,151 @@ namespace Motion.UI
             // 检查调整是否会使任何slider的最小值变为负数
             foreach (var slider in _selectedSliders)
             {
-                if (slider.Slider.Minimum + minAdjustment < 0)
+                decimal finalMin = slider.Slider.Minimum;
+                decimal finalMax = slider.Slider.Maximum;
+
+                for (int i = 0; i < loopCount; i++)
                 {
-                    MessageBox.Show("调整后的最小值不能小于0！", "错误",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    finalMin += minAdjustment;
+                    finalMax += maxAdjustment;
+
+                    if (finalMin < 0)
+                    {
+                        MessageBox.Show("调整后的最小值不能小于0！", "错误",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    if (finalMin >= finalMax)
+                    {
+                        MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
                 }
             }
 
             // 更新所有选中的slider
             foreach (var slider in _selectedSliders)
             {
-                slider.Slider.Minimum += minAdjustment;
-                slider.Slider.Maximum += maxAdjustment;
-                
-                // 确保最小值始终小于最大值
-                if (slider.Slider.Minimum >= slider.Slider.Maximum)
+                decimal currentMin = slider.Slider.Minimum;
+                decimal currentMax = slider.Slider.Maximum;
+
+                for (int i = 0; i < loopCount; i++)
                 {
-                    MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误",
+                    currentMin += minAdjustment;
+                    currentMax += maxAdjustment;
+                }
+
+                slider.Slider.Minimum = currentMin;
+                slider.Slider.Maximum = currentMax;
+                slider.ExpireSolution(true);
+            }
+
+            Close();
+        }
+
+        private void AdjustRangesNew_Click(object sender, RoutedEventArgs e)
+        {
+            if (!HasSelectedSliders) return;
+
+            // 解析最小值和最大值的调整量
+            decimal minAdjustment = 0;
+            decimal maxAdjustment = 0;
+            int loopCount = 1; // 默认不循环
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(MinValueAdjustment.Text))
+                    minAdjustment = decimal.Parse(MinValueAdjustment.Text.Trim());
+
+                if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text))
+                    maxAdjustment = decimal.Parse(MaxValueAdjustment.Text.Trim());
+
+                // 尝试解析循环次数，默认为1（不循环）
+                if (!string.IsNullOrWhiteSpace(LoopCount.Text))
+                    loopCount = int.Parse(LoopCount.Text.Trim());
+
+                if (loopCount < 1)
+                {
+                    MessageBox.Show("循环次数必须至少为1！", "错误",
                         MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
-                
-                slider.ExpireSolution(true);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"输入格式错误：{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // 为每个选定的滑块创建新的滑块
+            var doc = Instances.ActiveCanvas.Document;
+
+            // 获取当前视图中心点
+            var bounds = Instances.ActiveCanvas.Viewport.VisibleRegion;
+            var centerX = (bounds.Left + bounds.Right) / 2;
+            var centerY = (bounds.Top + bounds.Bottom) / 2;
+
+            // 设置起始位置和间距
+            double startX = centerX;
+            double startY = centerY;
+            const double verticalSpacing = 50;
+
+            // 计算总数以确定起始Y坐标
+            int totalSliders = _selectedSliders.Count * loopCount;
+            startY -= (totalSliders - 1) * verticalSpacing / 2;
+
+            // 查找现有的 MotionUnionSlider
+            var existingUnionSlider = doc.Objects.OfType<MotionUnionSlider>().FirstOrDefault();
+
+            int index = 0;
+            foreach (var originalSlider in _selectedSliders)
+            {
+                decimal currentMin = originalSlider.Slider.Minimum;
+                decimal currentMax = originalSlider.Slider.Maximum;
+
+                for (int i = 0; i < loopCount; i++)
+                {
+                    currentMin += minAdjustment;
+                    currentMax += maxAdjustment;
+
+                    // 检查是否有负值
+                    if (currentMin < 0 || currentMax < 0)
+                    {
+                        MessageBox.Show("不允许设置负数值，最小值和最大值必须大于或等于0！", "错误",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    // 确保最小值小于最大值
+                    if (currentMin >= currentMax)
+                    {
+                        MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    var slider = new Motion.Animation.MotionSlider();
+                    doc.AddObject(slider, false);
+
+                    // 设置slider的位置
+                    slider.Attributes.Pivot = new System.Drawing.PointF(
+                        (float)startX,
+                        (float)(startY + index * verticalSpacing)
+                    );
+
+                    // 设置slider的范围
+                    slider.Slider.Minimum = currentMin;
+                    slider.Slider.Maximum = currentMax;
+                    slider.Slider.Value = currentMin;
+
+                    // 如果存在 UnionSlider，建立控制关系
+                    existingUnionSlider?.AddControlledSlider(slider);
+
+                    index++;
+                }
             }
 
             Close();

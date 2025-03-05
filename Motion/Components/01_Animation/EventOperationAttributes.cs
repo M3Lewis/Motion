@@ -89,7 +89,7 @@ namespace Motion.Animation
                 menuItem.Click += (s, args) =>
                 {
                     // 使用 EventComponent 的 GoComponent 方法跳转
-                    MotionGeneralMethods.GoComponent(targetComponent);
+                    MotilityUtils.GoComponent(targetComponent);
                 };
                 menu.Items.Add(menuItem);
             }

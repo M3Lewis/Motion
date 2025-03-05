@@ -109,7 +109,7 @@ namespace Motion.Toolbar
             var dialog = new JumpToComponentDialog(eventComponent.affectedObjects);
             if (dialog.ShowDialog() == true && dialog.SelectedComponent != null)
             {
-                MotionGeneralMethods.GoComponent(dialog.SelectedComponent);
+                MotilityUtils.GoComponent(dialog.SelectedComponent);
             }
         }
 
@@ -121,7 +121,7 @@ namespace Motion.Toolbar
 
             if (controllingEvent != null)
             {
-                MotionGeneralMethods.GoComponent(controllingEvent);
+                MotilityUtils.GoComponent(controllingEvent);
             }
             else
             {

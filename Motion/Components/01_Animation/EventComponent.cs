@@ -267,7 +267,7 @@ namespace Motion.Animation
                     if (sliderSource != null)
                     {
                         // 跳转到 Motion Slider
-                        MotionGeneralMethods.GoComponent(sliderSource);
+                        MotilityUtils.GoComponent(sliderSource);
                     }
                 }
             }
