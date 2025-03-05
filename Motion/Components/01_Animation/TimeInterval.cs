@@ -1,6 +1,9 @@
+using Grasshopper;
 using Grasshopper.Kernel;
+using Motion.General;
 using Rhino.Geometry;
 using System;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Motion.Animation
@@ -33,9 +36,64 @@ namespace Motion.Animation
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
-            base.AppendAdditionalComponentMenuItems(menu);
+            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "选择区间");
 
+            // 获取所有区间并排序
+            var sortedKeys = MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
+                .Where(k => !string.IsNullOrEmpty(k))
+                .Select(k => {
+                    var parts = k.Split('-');
+                    if (parts.Length == 2 &&
+                        double.TryParse(parts[0], out double start) &&
+                        double.TryParse(parts[1], out double end))
+                    {
+                        return new { Key = k, Start = start, End = end };
+                    }
+                    return new { Key = k, Start = double.MaxValue, End = double.MaxValue };
+                })
+                .OrderBy(x => x.Start)
+                .ToList();
+
+            // 创建多列布局
+            const int maxItemsPerColumn = 20;
+            int totalItems = sortedKeys.Count;
+            int columnsNeeded = (int)Math.Ceiling((double)totalItems / maxItemsPerColumn);
+
+            // 创建列菜单
+            for (int col = 0; col < columnsNeeded; col++)
+            {
+                int startIdx = col * maxItemsPerColumn;
+                int endIdx = Math.Min(startIdx + maxItemsPerColumn, totalItems);
+
+                if (endIdx <= startIdx) break;
+
+                var columnItems = sortedKeys.GetRange(startIdx, endIdx - startIdx);
+                var firstItem = columnItems.First();
+                var lastItem = columnItems.Last();
+
+                // 创建列标题
+                string columnTitle = $"{firstItem.Start:0}-{lastItem.End:0}";
+                var columnMenu = new ToolStripMenuItem(columnTitle);
+
+                // 添加区间项
+                foreach (var item in columnItems)
+                {
+                    var menuItem = new ToolStripMenuItem(item.Key);
+                    menuItem.Click += Menu_KeyClicked;
+                    columnMenu.DropDownItems.Add(menuItem);
+                }
+
+                // 将列添加到主菜单
+                recentKeyMenu.DropDownItems.Add(columnMenu);
+            }
         }
+        protected void Menu_KeyClicked(object sender, EventArgs e)
+        {
+            ToolStripMenuItem keyItem = (ToolStripMenuItem)sender;
+            this.NickName = keyItem.Text;
+            this.Attributes.ExpireLayout();
+        }
+
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             double iData = 0d;
