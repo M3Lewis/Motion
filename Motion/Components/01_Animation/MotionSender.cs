@@ -146,6 +146,7 @@ namespace Motion.Animation
                     _connectedSliderGuid = closestSlider.InstanceGuid;  // 保存连接的滑块 GUID
                 }
             }
+            UpdateConnectedSliderRange();
         }
 
         private GH_NumberSlider FindClosestSlider(List<GH_NumberSlider> sliders)

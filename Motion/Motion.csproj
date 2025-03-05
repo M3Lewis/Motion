@@ -198,6 +198,7 @@
   </Target>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
   <Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;" />
+		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\McNeel\Rhinoceros\packages\8.0\Motion\0.7.10\net48\$(ProjectName).gha&quot;" />
   <Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />
 </Target>
 </Project>
