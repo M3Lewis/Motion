@@ -9,6 +9,7 @@ using System.Windows;
 using Window = System.Windows.Window;
 using MessageBox = System.Windows.MessageBox;
 using Grasshopper.Kernel.Special;
+using System.Drawing;
 
 
 namespace Motion.UI
@@ -83,11 +84,11 @@ namespace Motion.UI
             MotionSender selectedSlider = _selectedSenders[0];
 
             // 获取所选Slider的当前区间
-            double currentMin = double.Parse(selectedSlider.NickName.Split('-')[0]);
-            double currentMax = double.Parse(selectedSlider.NickName.Split('-')[1]);
+            int currentMin = int.Parse(selectedSlider.NickName.Split('-')[0]);
+            int currentMax = int.Parse(selectedSlider.NickName.Split('-')[1]);
 
             // 根据偏移量计算新的区间
-            double newMin, newMax;
+            int newMin, newMax;
 
             if (offsetFrames >= 0)
             {
@@ -103,7 +104,7 @@ namespace Motion.UI
             }
 
 
-            List<decimal> values = new List<decimal> { (decimal)newMin, (decimal)newMax };
+            List<int> values = new List<int> { newMin, newMax };
             var ranges = GenerateAllRanges(values, NoOverlap.IsChecked == true);
 
             GenerateMotionSenders(ranges);
@@ -211,23 +212,10 @@ namespace Motion.UI
                             MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
+                    selectedSender.NickName = $"{finalMin.ToString()}-{finalMax.ToString()}";
+
+                    selectedSender.ExpireSolution(true);
                 }
-            }
-
-            // 更新所有选中的slider
-            foreach (var selectedSender in _selectedSenders)
-            {
-                decimal currentMin = finalMin;
-                decimal currentMax = finalMax;
-
-                for (int i = 0; i < loopCount; i++)
-                {
-                    currentMin += minAdjustment;
-                    currentMax += maxAdjustment;
-                }
-                selectedSender.NickName = $"{currentMin.ToString()}-{currentMax.ToString()}";
-
-                selectedSender.ExpireSolution(true);
             }
 
             Close();
@@ -268,24 +256,9 @@ namespace Motion.UI
                 return;
             }
 
-            // 为每个选定的滑块创建新的滑块
-            var doc = Instances.ActiveCanvas.Document;
+            // 存储生成的新区间
+            var newRanges = new List<(int min, int max)>();
 
-            // 获取当前视图中心点
-            var bounds = Instances.ActiveCanvas.Viewport.VisibleRegion;
-            var centerX = (bounds.Left + bounds.Right) / 2;
-            var centerY = (bounds.Top + bounds.Bottom) / 2;
-
-            // 设置起始位置和间距
-            double startX = centerX;
-            double startY = centerY;
-            const double verticalSpacing = 50;
-
-            // 计算总数以确定起始Y坐标
-            int totalSliders = _selectedSenders.Count * loopCount;
-            startY -= (totalSliders - 1) * verticalSpacing / 2;
-
-            int index = 0;
             foreach (var originalSender in _selectedSenders)
             {
                 decimal currentMin = decimal.Parse(originalSender.NickName.Split('-')[0]);
@@ -312,13 +285,13 @@ namespace Motion.UI
                         return;
                     }
 
-                    var range = GenerateAllRanges(new List<decimal> { currentMin, currentMax }, NoOverlap.IsChecked == true);
-                    GenerateMotionSenders(range);
-
-                    index++;
+                    // 添加新的区间到列表中
+                    newRanges.Add(((int)currentMin, (int)currentMax));
                 }
             }
 
+            // 使用GenerateMotionSenders方法创建新的滑块
+            GenerateMotionSenders(newRanges);
             Close();
         }
 
@@ -329,64 +302,10 @@ namespace Motion.UI
             var minValue = _selectedSenders.Min(s => int.Parse(s.NickName.Split('-')[0]));
             var maxValue = _selectedSenders.Max(s => int.Parse(s.NickName.Split('-')[1]));
 
-            CreateMotionSenders(new[] { (minValue, maxValue) });
+            GenerateMotionSenders(new[] { (minValue, maxValue) });
             Close();
         }
 
-        private void CreateMotionSenders(IEnumerable<(int min, int max)> ranges)
-        {
-            // 过滤掉任何包含负值的区间
-            var validRanges = ranges.Where(r => r.min >= 0 && r.max >= 0).ToList();
-
-            if (validRanges.Count == 0)
-            {
-                MessageBox.Show("没有有效的非负区间可以创建！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            var doc = Instances.ActiveCanvas.Document;
-
-            // 获取当前视图中心点
-            var bounds = Instances.ActiveCanvas.Viewport.VisibleRegion;
-            var centerX = (bounds.Left + bounds.Right) / 2;
-            var centerY = (bounds.Top + bounds.Bottom) / 2;
-
-            // 设置起始位置和间距
-            double startX = centerX;
-            double startY = centerY;
-            const double verticalSpacing = 50;
-
-            // 计算总数以确定起始Y坐标
-            int totalSliders = validRanges.Count;
-            startY -= (totalSliders - 1) * verticalSpacing / 2;
-
-
-            int index = 0;
-            foreach (var (min, max) in validRanges)
-            {
-                var motionSender = new Motion.Animation.MotionSender();
-                doc.AddObject(motionSender, false);
-
-                // 设置slider的位置
-                motionSender.Attributes.Pivot = new System.Drawing.PointF(
-                    (float)startX,
-                    (float)(startY + index * verticalSpacing)
-                );
-
-                // 设置slider的位置
-                motionSender.Attributes.Pivot = new System.Drawing.PointF(
-                    (float)startX,
-                    (float)(startY + index * verticalSpacing)
-                );
-
-                // 设置slider的范围
-                motionSender.NickName = $"{min.ToString()}-{max.ToString()}";
-
-                index++;
-            }
-
-            doc.NewSolution(true);
-        }
         private void SplitSender_Click(object sender, RoutedEventArgs e)
         {
             if (!HasSingleSenderSelected) return;
@@ -411,12 +330,12 @@ namespace Motion.UI
             Close();
         }
 
-        private List<decimal> ParseValues(string input)
+        private List<int> ParseValues(string input)
         {
             try
             {
                 var values = input.Split(',')
-                                .Select(x => decimal.Parse(x.Trim()))
+                                .Select(x => int.Parse(x.Trim()))
                                 .OrderBy(x => x)
                                 .ToList();
 
@@ -437,12 +356,12 @@ namespace Motion.UI
             }
         }
 
-
-        private IEnumerable<(decimal min, decimal max)> GenerateSequentialRanges(List<decimal> values, bool noOverlap)
+        // 创建不重叠的区间组合
+        private IEnumerable<(int min, int max)> GenerateSequentialRanges(List<int> values, bool noOverlap)
         {
             for (int i = 0; i < values.Count - 1; i++)
             {
-                decimal maxValue = values[i + 1];
+                int maxValue = values[i + 1];
                 if (noOverlap && i < values.Count - 2)
                 {
                     maxValue -= 1;
@@ -456,13 +375,14 @@ namespace Motion.UI
             }
         }
 
-        private IEnumerable<(decimal min, decimal max)> GenerateAllRanges(List<decimal> values, bool noOverlap)
+        //创建所有可能的区间组合
+        private IEnumerable<(int min, int max)> GenerateAllRanges(List<int> values, bool noOverlap)
         {
             for (int i = 0; i < values.Count; i++)
             {
                 for (int j = i + 1; j < values.Count; j++)
                 {
-                    decimal maxValue = values[j];
+                    int maxValue = values[j];
                     if (noOverlap)
                     {
                         maxValue -= 1;
@@ -477,7 +397,8 @@ namespace Motion.UI
             }
         }
 
-        private void GenerateMotionSenders(IEnumerable<(decimal min, decimal max)> ranges)
+        // 创建MotionSender并添加到文档中
+        private void GenerateMotionSenders(IEnumerable<(int min, int max)> ranges)
         {
             // 过滤掉任何包含负值的区间
             var validRanges = ranges.Where(r => r.min >= 0 && r.max >= 0).ToList();
@@ -490,8 +411,17 @@ namespace Motion.UI
 
             var doc = Instances.ActiveCanvas.Document;
 
-            // 获取当前视图中心点
-            var bounds = Instances.ActiveCanvas.Viewport.VisibleRegion;
+            RectangleF bounds;
+            // 获取选中的Sender中心点
+            if (HasSelectedSenders)
+            {
+                bounds = _selectedSenders.First().Attributes.Bounds;
+            }
+            else
+            {
+                bounds = Instances.ActiveCanvas.Viewport.VisibleRegion;
+            }
+
             var centerX = (bounds.Left + bounds.Right) / 2;
             var centerY = (bounds.Top + bounds.Bottom) / 2;
 
@@ -502,7 +432,7 @@ namespace Motion.UI
 
             // 计算总数以确定起始Y坐标
             int totalSenders = validRanges.Count;
-            startY -= (totalSenders - 1) * verticalSpacing / 2;
+            startY += totalSenders * verticalSpacing / 4;
 
             int index = 0;
             foreach (var (min, max) in validRanges)
@@ -510,7 +440,6 @@ namespace Motion.UI
                 var motionSender = new MotionSender();
                 doc.AddObject(motionSender, false);
 
-                // 设置slider的位置
                 motionSender.Attributes.Pivot = new System.Drawing.PointF(
                     (float)startX,
                     (float)(startY + index * verticalSpacing)
@@ -525,7 +454,7 @@ namespace Motion.UI
                   .FirstOrDefault();
 
                 motionSender.AddSource(motionSlider);
-
+                motionSender.WireDisplay = GH_ParamWireDisplay.hidden;
                 index++;
             }
         }

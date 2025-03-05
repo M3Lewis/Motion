@@ -27,7 +27,7 @@ namespace Motion.Animation
             nicknameKey = "";
             base.NickName = nicknameKey;
             base.Hidden = true;
-            // Automatically set range based on nickname
+
             UpdateRangeFromNickname();
         }
 
@@ -108,6 +108,8 @@ namespace Motion.Animation
 
             return true;
         }
+        
+
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
@@ -131,7 +133,7 @@ namespace Motion.Animation
             if (doc == null) return;
 
             var sliders = doc.Objects
-                .Where(o => o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider" || o.GetType().ToString() == "Motion.Animation.MotionSlider")
+                .Where(o => o.GetType().ToString() == "Motion.Animation.MotionSlider")
                 .Cast<GH_NumberSlider>()
                 .ToList();
 
@@ -172,38 +174,31 @@ namespace Motion.Animation
             base.OnVolatileDataCollected();
             var doc = OnPingDocument();
 
-            if (Sources.Count == 0)
-            {
+            if (Sources.Count != 0) return;
 
-                if (doc != null && _connectedSliderGuid != Guid.Empty)
-                {
-                    var savedSlider = doc.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
-                    if (savedSlider != null)
-                    {
-                        this.AddSource(savedSlider);
-                    }
-                }
+            if (doc == null || _connectedSliderGuid == Guid.Empty) return;
+
+            var savedSlider = doc.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
+
+            if (savedSlider != null)
+            {
+                this.AddSource(savedSlider);
             }
 
-            if (doc != null)
-            {
-                // 检查是否存在同名的 Sender
-                var existingSender = doc.Objects
-                    .OfType<MotionSender>()
-                    .FirstOrDefault(s => s != this && s.NickName == this.NickName);
+            if (doc == null) return;
 
-                if (existingSender != null)
-                {
-                    var canvas = Grasshopper.Instances.ActiveCanvas;
-                    if (canvas != null)
-                    {
-                        ShowTemporaryMessage(canvas,
-                            $"已存在相同标识({this.NickName})的 Sender!");
-                    }
-                }
-            }
+            // 检查是否存在同名且非自身的 Sender
+            var existingSender = doc.Objects
+                .OfType<MotionSender>()
+                .FirstOrDefault(s => s != this && s.NickName == NickName);
 
+            if (existingSender == null) return;
 
+            var canvas = Grasshopper.Instances.ActiveCanvas;
+            if (canvas == null) return;
+
+            ShowTemporaryMessage(canvas,
+                $"已存在相同标识({NickName})的 Sender!");
 
             // 检查源组件
             if (Sources.Count == 0)
@@ -238,13 +233,13 @@ namespace Motion.Animation
             double value = sourceValue.Value;
 
             // 如果 _senderRange 尚未初始化，尝试从 NickName 解析
-            if (_senderRange == null || _senderRange.IsValid == false)
+            if (_senderRange == Interval.Unset || _senderRange.IsValid == false)
             {
                 UpdateRangeFromNickname();
             }
 
             // 如果仍然无法获取有效范围，使用默认范围
-            if (_senderRange == null || _senderRange.IsValid == false)
+            if (_senderRange == Interval.Unset || _senderRange.IsValid == false)
             {
                 _senderRange = new Interval(0, 100);
             }
@@ -268,6 +263,20 @@ namespace Motion.Animation
         {
             try
             {
+                // 在文档中查找所有的MotionSlider
+                var sliders = document.Objects
+                    .OfType<MotionSlider>()
+                    .ToList();
+
+                // 如果找到了滑块，尝试更新其范围
+                if (sliders.Any())
+                {
+                    foreach (var slider in sliders)
+                    {
+                        slider.UpdateRangeBasedOnSenders();
+                    }
+                }
+
                 if (_connectedSliderGuid != Guid.Empty)
                 {
                     var slider = document.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
@@ -279,13 +288,15 @@ namespace Motion.Animation
             }
             catch (Exception ex)
             {
-                Rhino.RhinoApp.WriteLine($"Error resetting slider nickname: {ex.Message}");
+                Rhino.RhinoApp.WriteLine($"Error handling MotionSender removal: {ex.Message}");
             }
             finally
             {
                 base.RemovedFromDocument(document);
             }
         }
+
+
 
 
         private void ShowTemporaryMessage(GH_Canvas canvas, string message)
@@ -335,20 +346,6 @@ namespace Motion.Animation
             timer.Start();
         }
 
-        //public override string NickName
-        //{
-        //    get => nicknameKey;
-        //    set
-        //    {
-        //        if (nicknameKey != value)
-        //        {
-        //            nicknameKey = value;
-        //            base.NickName = nicknameKey;
-        //            NickNameChanged?.Invoke(this, nicknameKey);  // 触发事件
-        //            ExpireSolution(true);
-        //        }
-        //    }
-        //}
         public override string NickName
         {
             get
@@ -390,7 +387,8 @@ namespace Motion.Animation
                 ShowTemporaryMessage(canvas, $"已存在相同标识({nicknameKey})的 Sender!");
             }
         }
-        private void UpdateConnectedSliderRange()
+
+        internal void UpdateConnectedSliderRange()
         {
             var doc = OnPingDocument();
             if (doc == null) return;
@@ -405,6 +403,8 @@ namespace Motion.Animation
             }
         }
 
+
+        
 
         #region Overriding Name and Description
         public override string TypeName => "Motion Sender";
