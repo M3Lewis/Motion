@@ -161,12 +161,12 @@ namespace Motion.Animation
             var timeParam = Params.Input[1];
 
             var timelineSlider = OnPingDocument()?.Objects
-                .OfType<GH_NumberSlider>()
-                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+                .OfType<MotionSlider>()
+                .FirstOrDefault();
 
             if (timelineSlider == null || !timeParam.Sources.Contains(timelineSlider))
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "请放置 Motion Union Slider 并连接到时间输入端");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "请放置 MotionSlider 并连接到时间输入端");
                 return;
             }
 
@@ -472,8 +472,8 @@ namespace Motion.Animation
 
             // 查找 TimeLine(Union) Slider
             var timelineSlider = doc.Objects
-                .OfType<GH_NumberSlider>()
-                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+                .OfType<MotionSlider>()
+                .FirstOrDefault();
 
             if (timelineSlider != null)
             {

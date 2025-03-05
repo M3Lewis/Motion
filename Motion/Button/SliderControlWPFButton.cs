@@ -3,6 +3,7 @@ using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
+using Motion.Animation;
 using System;
 using System.Drawing;
 using System.Linq;
@@ -66,12 +67,12 @@ namespace Motion.Toolbar
                 }
 
                 var connectedSlider = doc.Objects
-                    .OfType<GH_NumberSlider>()
-                    .FirstOrDefault(o => Grasshopper.Utility.LikeOperator(o.NickName, "TimeLine(Union)"));
+                    .OfType<MotionSlider>()
+                    .FirstOrDefault();
 
                 if (connectedSlider == null)
                 {
-                    MessageBox.Show("请先创建一个Union滑块！");
+                    MessageBox.Show("请先创建一个MotionSlider！");
                     return;
                 }
 

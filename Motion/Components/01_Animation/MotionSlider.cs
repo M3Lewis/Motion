@@ -18,21 +18,10 @@ namespace Motion.Animation
 {
     public class MotionSlider : GH_NumberSlider
     {
-        // 添加静态事件来通知新滑块创建
-        public static event EventHandler<MotionSlider> SliderCreated;
 
-        // 添加静态字段来跟踪主控滑块
-        private static MotionSlider _mainController;
+
         private bool _isPositionInitialized = false;
-        public List<MotionSlider> _controlledSliders = new List<MotionSlider>();
-        public List<Guid> _controlledSliderGuids = new List<Guid>();
-        public bool _isControlled;
-        public Guid _controllerGuid = Guid.Empty;
-        private decimal _lastValue;
-        private bool _isDragging = false;
-        private bool _isDraggingLeft = false;
-        private PointF _lastMouseLocation;
-        public bool _isRefreshing = false;
+
 
         public event EventHandler<decimal> ValueChanged;
 
@@ -48,12 +37,6 @@ namespace Motion.Animation
             SubCategory = "01_Animation";
 
             SetInitialValues();
-
-            // 触发新建事件
-            SliderCreated?.Invoke(this, this);
-
-            // 添加值变化事件处理
-            this.Slider.ValueChanged += Slider_ValueChanged;
         }
 
         public MotionSlider(decimal minimum, decimal maximum) : base()
@@ -73,14 +56,6 @@ namespace Motion.Animation
             Slider.Minimum = minimum;
             Slider.Maximum = maximum;
             Slider.Value = minimum;
-
-            _lastValue = minimum;
-
-            // 触发新建事件
-            SliderCreated?.Invoke(this, this);
-
-            // 添加值变化事件处理
-            this.Slider.ValueChanged += Slider_ValueChanged;
         }
 
         public override void AddedToDocument(GH_Document document)
@@ -106,98 +81,61 @@ namespace Motion.Animation
                 }
                 _isPositionInitialized = true;
             }
-
-            // 如果有保存的控制关系，尝试立即恢复
-            if (_isControlled || _controlledSliderGuids.Count > 0)
-            {
-                OnPingDocument().ScheduleSolution(50, doc =>
-                {
-                    RestoreControlRelationships();
-                    //Rhino.RhinoApp.WriteLine("Restored Relationship"+DateTime.Now.ToString());
-                });
-            }
         }
-
-        public override void RemovedFromDocument(GH_Document document)
+        public void UpdateRangeBasedOnSenders()
         {
-            if (document != null)
-            {
-                document.ObjectsDeleted -= Document_ObjectsDeleted;
-            }
+            var doc = OnPingDocument();
+            if (doc == null) return;
 
-            if (IsMainController)
-            {
-                IsMainController = false;
-            }
+            // 获取所有连接到这个 Slider 的 MotionSender
+            var connectedSenders = doc.Objects
+                .OfType<MotionSender>()
+                .Where(sender => sender.Sources.Any(source => source.InstanceGuid == this.InstanceGuid))
+                .ToList();
 
-            // 清理事件订阅
-            if (Slider != null)
-            {
-                Slider.ValueChanged -= Slider_ValueChanged;
-            }
+            if (!connectedSenders.Any()) return;
 
-            base.RemovedFromDocument(document);
-        }
+            // 计算所有连接的 Sender 的最小和最大区间
+            decimal minValue = decimal.MaxValue;
+            decimal maxValue = decimal.MinValue;
 
-        private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
-        {
-            if (e.Objects.Contains(this) && IsMainController)
+            foreach (var sender in connectedSenders)
             {
-                IsMainController = false;
-            }
-        }
-
-        // 添加属性来标识是否是主控滑块
-        public bool IsMainController
-        {
-            get => this == _mainController;
-            set
-            {
-                if (value)
+                if (TryParseRange(sender.NickName, out decimal min, out decimal max))
                 {
-                    _mainController = this;
-                    // 注册新滑块创建事件处理
-                    SliderCreated += HandleNewSliderCreated;
-                }
-                else if (this == _mainController)
-                {
-                    _mainController = null;
-                    // 取消注册事件处理
-                    SliderCreated -= HandleNewSliderCreated;
+                    minValue = Math.Min(minValue, min);
+                    maxValue = Math.Max(maxValue, max);
                 }
             }
+
+            // 更新 Slider 的区间
+            if (minValue != decimal.MaxValue && maxValue != decimal.MinValue)
+            {
+                Slider.Minimum = minValue;
+                Slider.Maximum = maxValue;
+                ExpireSolution(true);
+            }
         }
 
+        private bool TryParseRange(string nickname, out decimal min, out decimal max)
+        {
+            min = 0;
+            max = 0;
+
+            if (string.IsNullOrEmpty(nickname))
+                return false;
+
+            var parts = nickname.Split('-');
+            if (parts.Length == 2 &&
+                decimal.TryParse(parts[0], out min) &&
+                decimal.TryParse(parts[1], out max))
+            {
+                return true;
+            }
+
+            return false;
+        }
         // 处理新滑块创建的事件
-        private void HandleNewSliderCreated(object sender, MotionSlider newSlider)
-        {
-            if (sender == this) return; // 忽略自己的创建事件
-
-            bool needsUpdate = false;
-            decimal currentMin = Slider.Minimum;
-            decimal currentMax = Slider.Maximum;
-
-            // 分别检查最小值和最大值
-            decimal newMin = Math.Min(currentMin, newSlider.Slider.Minimum);
-            if (newMin != currentMin)
-            {
-                Slider.Minimum = newMin;
-                needsUpdate = true;
-            }
-
-            decimal newMax = Math.Max(currentMax, newSlider.Slider.Maximum);
-            if (newMax != currentMax)
-            {
-                Slider.Maximum = newMax;
-                needsUpdate = true;
-            }
-
-            // 只有在值真正发生变化时才更新解决方案
-            if (needsUpdate && OnPingDocument() != null)
-            {
-                OnPingDocument().NewSolution(false);
-            }
-        }
 
         private void SetInitialValues()
         {
@@ -206,309 +144,66 @@ namespace Motion.Animation
             Slider.Value = 0m;
             Slider.DecimalPlaces = 0;
             Slider.Type = GH_SliderAccuracy.Integer;
-            _lastValue = CurrentValue;
         }
 
         public override void CreateAttributes()
         {
             m_attributes = new MotionSliderAttributes(this);
         }
-
-        public override void ExpireSolution(bool recompute)
+        // 新增方法：同步 MotionSender 的区间
+        public void SynchronizeSenderIntervals()
         {
-            if (!_isRefreshing && CurrentValue != _lastValue)
+            var doc = Instances.ActiveCanvas.Document;
+            if (doc == null) return;
+
+            // 找到所有连接到当前 Slider 的 MotionSender
+            var connectedSenders = doc.Objects
+                .OfType<MotionSender>()
+                .Where(sender => sender.Sources.Any(source => source.InstanceGuid == this.InstanceGuid))
+                .ToList();
+
+            if (!connectedSenders.Any()) return;
+
+            // 计算所有连接的 Sender 的最小和最大区间
+            decimal minInterval = connectedSenders.Min(sender =>
+                decimal.Parse(sender.NickName.Split('-')[0]));
+            decimal maxInterval = connectedSenders.Max(sender =>
+                decimal.Parse(sender.NickName.Split('-')[1]));
+
+            // 更新 Slider 的区间
+            if (minInterval < maxInterval)
             {
-                try
+                Slider.Minimum = minInterval;
+                Slider.Maximum = maxInterval;
+
+                // 更新所有连接的 Sender 的 NickName（这将触发区间更新）
+                foreach (var sender in connectedSenders)
                 {
-                    _isRefreshing = true;
-
-                    if (_controlledSliders.Count > 0)
-                    {
-                        decimal currentValue = CurrentValue;
-                        foreach (var slider in _controlledSliders)
-                        {
-                            if (currentValue >= slider.Slider.Minimum &&
-                                currentValue <= slider.Slider.Maximum)
-                            {
-                                slider.UpdateValue(currentValue);
-                            }
-                        }
-                    }
-
-                    ValueChanged?.Invoke(this, CurrentValue);
-                    _lastValue = CurrentValue;
-                }
-                finally
-                {
-                    _isRefreshing = false;
-                }
-            }
-            base.ExpireSolution(recompute);
-        }
-
-        public bool IsControlled
-        {
-            get => _isControlled;
-            set => _isControlled = value;
-        }
-
-        public void UpdateValue(decimal unionValue)
-        {
-            if (!_isRefreshing && _isControlled &&
-                unionValue >= Slider.Minimum &&
-                unionValue <= Slider.Maximum)
-            {
-                SetSliderValue(unionValue);
-            }
-        }
-
-        /// <summary>
-        /// 添加要控制的滑块
-        /// </summary>
-        public virtual void AddControlledSlider(MotionSlider slider)
-        {
-            if (!_controlledSliders.Contains(slider))
-            {
-                _controlledSliders.Add(slider);
-                slider._isControlled = true;
-                slider._controllerGuid = this.InstanceGuid;
-
-                // 确保GUID也被添加到列表中
-                if (!_controlledSliderGuids.Contains(slider.InstanceGuid))
-                {
-                    _controlledSliderGuids.Add(slider.InstanceGuid);
+                    sender.NickName = $"{minInterval}-{maxInterval}";
                 }
 
-                // 添加调试输出
-                //Rhino.RhinoApp.WriteLine($"Added controlled slider: {slider.InstanceGuid}");
-                //Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
+                // 触发解决方案更新
+                ExpireSolution(true);
             }
         }
-
-        /// <summary>
-        /// 移除被控制的滑块
-        /// </summary>
-        public virtual void RemoveControlledSlider(MotionSlider slider)
-        {
-            _controlledSliders.Remove(slider);
-            _controlledSliderGuids.Remove(slider.InstanceGuid);
-            slider._isControlled = false;
-            slider._controllerGuid = Guid.Empty;
-
-            // 添加调试输出
-            //Rhino.RhinoApp.WriteLine($"Removed controlled slider: {slider.InstanceGuid}");
-            //Rhino.RhinoApp.WriteLine($"Current controlled sliders count: {_controlledSliderGuids.Count}");
-        }
-
-        /// <summary>
-        /// 获取是否有被控制的滑块
-        /// </summary>
-        public bool HasControlledSliders => _controlledSliders.Count > 0;
-
-        /// <summary>
-        /// 获取所有被控制的滑块
-        /// </summary>
-        public List<MotionSlider> GetControlledSliders()
-        {
-            return new List<MotionSlider>(_controlledSliders);
-        }
-
-        // 添加一个新的方来更新区间范围
-
         public override bool Write(GH_IWriter writer)
         {
             if (!base.Write(writer)) return false;
 
-            try
-            {
-                // 添加调试输出
-                //Rhino.RhinoApp.WriteLine($"Writing controlled sliders. Count: {_controlledSliderGuids.Count}");
-
-                writer.SetDrawingPoint("CanvasPosition", new Point(
-                    (int)Attributes.Pivot.X,
-                    (int)Attributes.Pivot.Y
-                ));
-
-                writer.SetBoolean("IsControlled", _isControlled);
-                writer.SetBoolean("IsMainController", IsMainController);
-                writer.SetString("ControllerGuid", _controllerGuid.ToString());
-
-                // 确保在写入之前同步两个列表
-                _controlledSliderGuids = _controlledSliders.Select(s => s.InstanceGuid).ToList();
-
-                writer.SetInt32("ControlledSlidersCount", _controlledSliderGuids.Count);
-                for (int i = 0; i < _controlledSliderGuids.Count; i++)
-                {
-                    writer.SetString($"ControlledSlider_{i}", _controlledSliderGuids[i].ToString());
-                    // 添加调试输出
-                    //Rhino.RhinoApp.WriteLine($"Writing controlled slider {i}: {_controlledSliderGuids[i]}");
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                //Rhino.RhinoApp.WriteLine($"Error writing slider data: {ex.Message}");
-                return false;
-            }
+            return true;
         }
 
         public override bool Read(GH_IReader reader)
         {
-            try
-            {
-                // 读取滑块在画布中的位置
-                if (reader.ItemExists("CanvasPosition"))
-                {
-                    Point position = reader.GetDrawingPoint("CanvasPosition");
-                    Attributes.Pivot = new PointF(position.X, position.Y);
-                    _isPositionInitialized = true;
-                }
+            if (!base.Read(reader)) return false;
 
-                // 读取控制关系
-                _isControlled = reader.GetBoolean("IsControlled");
-                bool isMainController = reader.GetBoolean("IsMainController");
-                string controllerGuidStr = reader.GetString("ControllerGuid");
-                _controllerGuid = string.IsNullOrEmpty(controllerGuidStr) ?
-                    Guid.Empty : new Guid(controllerGuidStr);
-
-                // 读取受控滑块的GUID列表
-                _controlledSliderGuids.Clear();
-                _controlledSliders.Clear();
-
-                int count = reader.GetInt32("ControlledSlidersCount");
-
-                for (int i = 0; i < count; i++)
-                {
-                    string guidStr = reader.GetString($"ControlledSlider_{i}");
-                    if (Guid.TryParse(guidStr, out Guid guid))
-                    {
-                        _controlledSliderGuids.Add(guid);
-                    }
-                }
-                // 设置一个延迟执行的恢复
-                GH_Document doc = this.OnPingDocument();
-                if (doc != null)
-                {
-                    doc.ScheduleSolution(30, d => RestoreControlRelationships());
-                }
-
-                // 调用基类的 Read 方法，但不要立即返回
-                base.Read(reader);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
-
+            return true;
         }
 
-        private void RestoreControlRelationships()
+        protected override void ValuesChanged()
         {
-            // 确保只执行一次
-            var doc = OnPingDocument();
-            if (doc == null)
-            {
-                return;
-            }
-
-            // 移除事件处理器
-            doc.SolutionEnd -= (sender, e) => RestoreControlRelationships();
-
-            // 如果这个滑块被控制，找到它的控制者并建立关系
-            if (_isControlled && _controllerGuid != Guid.Empty)
-            {
-                var controller = doc.FindObject(_controllerGuid, true) as MotionUnionSlider;
-                if (controller != null)
-                {
-                    controller.AddControlledSlider(this);
-                    // 确保立即更新值
-                    controller.ExpireSolution(true);
-                }
-            }
-
-            // 如果这个滑块是控制者，重建对其他滑块的控制
-            if (_controlledSliderGuids.Count > 0)
-            {
-                _controlledSliders.Clear(); // 清空现有列表
-                foreach (var guid in _controlledSliderGuids.ToList())
-                {
-                    var slider = doc.FindObject(guid, true) as MotionSlider;
-                    if (slider != null)
-                    {
-                        _controlledSliders.Add(slider); // 直接添加到控制列表
-                        slider._isControlled = true;
-                        slider._controllerGuid = this.InstanceGuid;
-                    }
-                }
-                // 确保立即更新所有受控滑块的值
-                ExpireSolution(true);
-            }
-        }
-
-        private void Slider_ValueChanged(object sender, GH_SliderEventArgs e)
-        {
-            // 只更新受控滑块的值，不更新区间
-            foreach (var slider in _controlledSliders)
-            {
-                if (slider != null)
-                {
-                    slider.SetSliderValue(Slider.Value);
-                }
-            }
-        }
-
-        // 添加一个只更新值的方法，不影响区间
-        public virtual void SetSliderValue(decimal value)
-        {
-            if (!_isRefreshing && Slider.Value != value)
-            {
-                try
-                {
-                    _isRefreshing = true;
-
-                    // 临时移除事件处理器以避免循环调用
-                    this.Slider.ValueChanged -= Slider_ValueChanged;
-                    Slider.Value = value;
-                    ExpireSolution(true);
-                }
-                finally
-                {
-                    // 重新添加事件处理器
-                    this.Slider.ValueChanged += Slider_ValueChanged;
-                    _isRefreshing = false;
-                }
-            }
-        }
-
-        // 区间更新方法
-        public virtual void SetRange(decimal minimum, decimal maximum)
-        {
-            bool rangeChanged = Slider.Minimum != minimum || Slider.Maximum != maximum;
-
-            // 原有的 SetRange 逻辑
-            Slider.Minimum = minimum;
-            Slider.Maximum = maximum;
-
-            // 保留 SetSliderValue 的逻辑
-            decimal currentValue = Slider.Value;
-            if (currentValue < minimum)
-                SetSliderValue(minimum);
-            else if (currentValue > maximum)
-                SetSliderValue(maximum);
-
-            // 如果范围发生变化，通知控制器更新范围
-            if (rangeChanged && _isControlled && _controllerGuid != Guid.Empty)
-            {
-                var doc = OnPingDocument();
-                if (doc != null)
-                {
-                    var controller = doc.FindObject(_controllerGuid, true) as MotionUnionSlider;
-                    controller?.UpdateUnionRange();
-                }
-            }
+            base.ValuesChanged();
+            SynchronizeSenderIntervals();
         }
     }
 

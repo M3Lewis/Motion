@@ -111,8 +111,7 @@ namespace Motion.Animation
         {
             // 检查是否添加了 Union Slider
             var addedUnionSlider = e.Objects
-                .FirstOrDefault(obj => obj is MotionUnionSlider &&
-                                     obj.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(obj => obj is MotionSlider);
 
             if (addedUnionSlider != null)
             {
@@ -137,7 +136,7 @@ namespace Motion.Animation
             // 查找 Timeline Slider
             _timelineSlider = doc.Objects
                 .OfType<GH_NumberSlider>()
-                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault();
 
             if (_timelineSlider != null)
             {

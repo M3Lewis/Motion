@@ -64,11 +64,11 @@ namespace Motion.Toolbar
             var window = new ModifySliderWindow();
 
             // 获取选中的Motion Slider组件
-            List<MotionSlider> selectedSliders = Instances.ActiveCanvas.Document.SelectedObjects()
-                .OfType<MotionSlider>()
+            List<MotionSender> selectedSenders = Instances.ActiveCanvas.Document.SelectedObjects()
+                .OfType<MotionSender>()
                 .ToList();
 
-            window.Initialize(selectedSliders);
+            window.Initialize(selectedSenders);
 
             // 设置窗口位置
             // For cloned buttons we need to get position differently

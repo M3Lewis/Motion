@@ -66,7 +66,7 @@ namespace Motion.Toolbar
                 if (doc == null) return;
 
                 var sliderPositions = allTimelineSliders
-                    .Where(s => s != null && !(s is MotionUnionSlider))
+                    .Where(s => s != null && !(s is MotionSlider))
                     .Select(s => new
                     {
                         Slider = s,

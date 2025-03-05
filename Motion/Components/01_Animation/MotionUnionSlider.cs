@@ -30,11 +30,6 @@ namespace Motion.Animation
             {
                 if (_instance != value)
                 {
-                    if (_instance != null)
-                    {
-                        // 清理旧实例的事件订阅
-                        _instance.CleanupEvents();
-                    }
                     _instance = value;
                 }
             }
@@ -50,8 +45,6 @@ namespace Motion.Animation
             SubCategory = "01_Animation";
 
             Instance = this;
-            SetupEvents();
-            this.Slider.ValueChanged += UnionSlider_ValueChanged;
             _updateCancellation = new CancellationTokenSource();
         }
 
@@ -65,32 +58,7 @@ namespace Motion.Animation
             SubCategory = "01_Animation";
 
             Instance = this;
-            SetupEvents();
-            this.Slider.ValueChanged += UnionSlider_ValueChanged;
             _updateCancellation = new CancellationTokenSource();
-        }
-
-        private void SetupEvents()
-        {
-            // 监听文档事件
-            GH_Document doc = this.OnPingDocument();
-            if (doc != null)
-            {
-                doc.ObjectsAdded += OnObjectsAdded;
-                doc.ObjectsDeleted += OnObjectsDeleted;
-                doc.SolutionEnd += Doc_SolutionEnd;
-            }
-        }
-
-        private void CleanupEvents()
-        {
-            GH_Document doc = this.OnPingDocument();
-            if (doc != null)
-            {
-                doc.ObjectsAdded -= OnObjectsAdded;
-                doc.ObjectsDeleted -= OnObjectsDeleted;
-                doc.SolutionEnd -= Doc_SolutionEnd;
-            }
         }
 
         public override void RemovedFromDocument(GH_Document document)
@@ -99,198 +67,10 @@ namespace Motion.Animation
             {
                 Instance = null;
             }
-            if (Slider != null)
-            {
-                Slider.ValueChanged -= UnionSlider_ValueChanged;
-            }
             _updateCancellation?.Cancel();
             _updateCancellation?.Dispose();
             _updateLock?.Dispose();
-            CleanupEvents();
             base.RemovedFromDocument(document);
-        }
-
-        private void OnObjectsAdded(object sender, GH_DocObjectEventArgs e)
-        {
-            if (_isUpdatingRange) return;
-            
-            bool hasNewSlider = e.Objects.Any(obj => obj is MotionSlider && !(obj is MotionUnionSlider));
-            if (hasNewSlider)
-            {
-                // 检查新添加的对象中是否有复制出来的被控制滑块
-                foreach (IGH_DocumentObject obj in e.Objects)
-                {
-                    if (obj is MotionSlider slider && !_controlledSliders.Contains(slider))
-                    {
-                        if (slider._isControlled && slider._controllerGuid == this.InstanceGuid)
-                        {
-                            AddControlledSlider(slider);
-                        }
-                    }
-                }
-                
-                GH_Document doc = this.OnPingDocument();
-                if (doc != null)
-                {
-                    doc.ScheduleSolution(5, (d) => UpdateUnionRange());
-                }
-            }
-        }
-
-        private void OnObjectsDeleted(object sender, GH_DocObjectEventArgs e)
-        {
-            if (_isUpdatingRange) return;
-
-            // 检查是否有受控的滑块被删除
-            bool hasDeletedSlider = e.Objects.Any(obj => 
-                obj is MotionSlider && _controlledSliders.Contains(obj as MotionSlider));
-
-            if (hasDeletedSlider)
-            {
-                // 清理已删除的滑块
-                _controlledSliders.RemoveAll(slider => 
-                    e.Objects.Contains(slider));
-                _controlledSliderGuids.RemoveAll(guid => 
-                    e.Objects.Any(obj => obj.InstanceGuid == guid));
-
-                // 如果还有受控滑块，立即更新区间
-                if (_controlledSliders.Count > 0)
-                {
-                    // 在主线程上执行更新
-                    Instances.ActiveCanvas?.BeginInvoke((MethodInvoker)delegate
-                    {
-                        UpdateUnionRange();
-                        ExpireSolution(false);
-                    });
-                }
-            }
-        }
-
-        private void Doc_SolutionEnd(object sender, GH_SolutionEventArgs e)
-        {
-            // 在解决方案结束时检查并更新范围
-            if (!_isUpdatingRange)
-            {
-                UpdateUnionRange();
-            }
-        }
-
-        public async void UpdateUnionRange()
-        {
-            GH_Document doc = this.OnPingDocument();
-            if (_isUpdatingRange || doc == null || _controlledSliders.Count == 0) return;
-
-            try
-            {
-                _isUpdatingRange = true;
-
-                await Task.Run(() =>
-                {
-                    var sliders = _controlledSliders
-                        .Where(s => s != null && s.Slider != null)
-                        .ToList();
-
-                    if (!sliders.Any()) return;
-
-                    decimal globalMin = sliders.Min(s => s.Slider.Minimum);
-                    decimal globalMax = sliders.Max(s => s.Slider.Maximum);
-
-                    if (globalMin != Slider.Minimum || globalMax != Slider.Maximum)
-                    {
-                        Grasshopper.Instances.ActiveCanvas?.BeginInvoke((MethodInvoker)delegate
-                        {
-                            SetRange(globalMin, globalMax);
-
-                            decimal currentValue = Slider.Value;
-                            if (currentValue < globalMin)
-                                SetSliderValue(globalMin);
-                            else if (currentValue > globalMax)
-                                SetSliderValue(globalMax);
-
-                            doc.ScheduleSolution(1, d => ExpireSolution(true));
-                        });
-                    }
-                });
-            }
-            finally
-            {
-                _isUpdatingRange = false;
-            }
-        }
-
-        private async Task UpdateControlledSlidersAsync(decimal value, CancellationToken cancellationToken)
-        {
-            if (_isRestoringState || _isUpdatingRange || _isRefreshing) return;
-
-            try
-            {
-                // 尝试获取锁，如果无法立即获取则保存待更新值并返回
-                if (!await _updateLock.WaitAsync(0, cancellationToken))
-                {
-                    _pendingValue = value;
-                    return;
-                }
-
-                _isRefreshing = true;
-                _isUpdating = true;
-
-                // 使用最新的值
-                decimal updateValue = value;
-
-                var slidersToUpdate = _controlledSliders
-                    .Where(s => s?.Slider != null)
-                    .ToList();
-
-                // 批量更新所有滑块
-                await Task.Run(() =>
-                {
-                    Grasshopper.Instances.ActiveCanvas?.BeginInvoke((MethodInvoker)delegate
-                    {
-                        foreach (var slider in slidersToUpdate)
-                        {
-                            if (cancellationToken.IsCancellationRequested) return;
-                            slider.SetSliderValue(updateValue);
-                        }
-
-                        // 一次性触发所有滑块的更新
-                        foreach (var slider in slidersToUpdate)
-                        {
-                            slider.ExpireSolution(false);
-                        }
-                        this.ExpireSolution(true);
-                    });
-                }, cancellationToken);
-            }
-            finally
-            {
-                _isRefreshing = false;
-                _isUpdating = false;
-                _updateLock.Release();
-            }
-        }
-
-        public async void UnionSlider_ValueChanged(object sender, GH_SliderEventArgs e)
-        {
-            if (_isUpdatingRange || _isRestoringState) return;
-
-            try
-            {
-                // 取消之前的更新操作
-                _updateCancellation.Cancel();
-                _updateCancellation.Dispose();
-                _updateCancellation = new CancellationTokenSource();
-
-                // 移除延迟，直接执行更新
-                await UpdateControlledSlidersAsync(Slider.Value, _updateCancellation.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // 忽略取消的操作
-            }
-            catch (Exception)
-            {
-                // 忽略其他异常
-            }
         }
 
         public override void CreateAttributes()
@@ -298,48 +78,6 @@ namespace Motion.Animation
             m_attributes = new MotionUnionSliderAttributes(this);
         }
 
-        public override void SetSliderValue(decimal value)
-        {
-            if (_isRestoringState)
-            {
-                // 在恢复状态下，直接设置值而不触发事件
-                if (Slider != null)
-                {
-                    Slider.ValueChanged -= UnionSlider_ValueChanged;  // 临时移除事件处理
-                    base.SetSliderValue(value);
-                    Slider.ValueChanged += UnionSlider_ValueChanged;  // 恢复事件处理
-                }
-            }
-            else
-            {
-                base.SetSliderValue(value);
-            }
-        }
-        public override void AddControlledSlider(MotionSlider slider)
-        {
-            if (!_controlledSliders.Contains(slider))
-            {
-                //Rhino.RhinoApp.WriteLine($"MotionUnionSlider {InstanceGuid} adding control over {slider.InstanceGuid}");
-                
-                base.AddControlledSlider(slider);
-                slider._isControlled = true;
-                slider._controllerGuid = this.InstanceGuid;
-                
-                if (this.Slider != null)
-                {
-                    this.Slider.ValueChanged -= UnionSlider_ValueChanged;
-                    this.Slider.ValueChanged += UnionSlider_ValueChanged;
-                    //Rhino.RhinoApp.WriteLine("Value change event handler set");
-                }
-
-                if (!_isUpdatingRange)
-                {
-                    UpdateUnionRange();
-                }
-
-                //DebugControlRelationships();
-            }
-        }
 
         public override bool Write(GH_IWriter writer)
         {
@@ -386,15 +124,6 @@ namespace Motion.Animation
                             Instance = this;
                             //Rhino.RhinoApp.WriteLine($"Restored instance: {InstanceGuid}");
 
-                            if (this.Slider != null)
-                            {
-                                this.Slider.ValueChanged -= UnionSlider_ValueChanged;
-                                this.Slider.ValueChanged += UnionSlider_ValueChanged;
-                                //Rhino.RhinoApp.WriteLine("Value change event handler set");
-                            }
-
-                            UpdateUnionRange();
-
                             doc.SolutionEnd -= (sender, args) => Instance = this;
                         };
                     }
@@ -412,12 +141,7 @@ namespace Motion.Animation
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
-            SetupEvents();
             
-            if (!_isUpdatingRange)
-            {
-                UpdateUnionRange();
-            }
 
             // 自动连接到所有时间输入端
             ConnectToTimeInputs();
