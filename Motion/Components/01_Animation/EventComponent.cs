@@ -173,10 +173,10 @@ namespace Motion.Animation
             Menu_AppendSeparator(menu);
 
             // 添加显示/隐藏按钮的菜单项
-            var showHideItem = Menu_AppendItem(menu, 
-                IsCollapsed ? "显示HIDE/LOCK按钮" : "显示HIDE/LOCK按钮", 
-                OnShowHideButtonsClicked, 
-                true, 
+            var showHideItem = Menu_AppendItem(menu,
+                IsCollapsed ? "显示HIDE/LOCK按钮" : "显示HIDE/LOCK按钮",
+                OnShowHideButtonsClicked,
+                true,
                 !IsCollapsed);
 
             Menu_AppendSeparator(menu);
@@ -201,14 +201,15 @@ namespace Motion.Animation
             Menu_AppendSeparator(menu);
 
             ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "选择区间");
-            
+
             // 获取所有区间并排序
             var sortedKeys = MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
                 .Where(k => !string.IsNullOrEmpty(k))
-                .Select(k => {
+                .Select(k =>
+                {
                     var parts = k.Split('-');
-                    if (parts.Length == 2 && 
-                        double.TryParse(parts[0], out double start) && 
+                    if (parts.Length == 2 &&
+                        double.TryParse(parts[0], out double start) &&
                         double.TryParse(parts[1], out double end))
                     {
                         return new { Key = k, Start = start, End = end };
@@ -228,7 +229,7 @@ namespace Motion.Animation
             {
                 int startIdx = col * maxItemsPerColumn;
                 int endIdx = Math.Min(startIdx + maxItemsPerColumn, totalItems);
-                
+
                 if (endIdx <= startIdx) break;
 
                 var columnItems = sortedKeys.GetRange(startIdx, endIdx - startIdx);
@@ -259,16 +260,8 @@ namespace Motion.Animation
             var source = this.Params.Input[0].Sources[0];
             if (source is MotionSender motionSender)
             {
-                // 获取 Sender 的第一个输入端的源
-                if (motionSender.Sources.Count > 0)
-                {
-                    var sliderSource = motionSender.Sources[0].Attributes.GetTopLevel.DocObject;
-                    if (sliderSource != null)
-                    {
-                        // 跳转到 Motion Slider
-                        MotilityUtils.GoComponent(sliderSource);
-                    }
-                }
+                // 跳转到 Motion Sender
+                MotilityUtils.GoComponent(motionSender);
             }
         }
 
@@ -278,7 +271,7 @@ namespace Motion.Animation
             this.NickName = keyItem.Text;
             this.Attributes.ExpireLayout();
         }
-        
+
         private void UpdateMessage()
         {
             // 解析NickName中的区间
@@ -1032,7 +1025,7 @@ namespace Motion.Animation
             }
         }
 
-        
+
 
         // 添加删除事件处理方法
         private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
