@@ -176,12 +176,6 @@ namespace Motion.Animation
                 Slider.Minimum = minInterval;
                 Slider.Maximum = maxInterval;
 
-                // 更新所有连接的 Sender 的 NickName（这将触发区间更新）
-                foreach (var sender in connectedSenders)
-                {
-                    sender.NickName = $"{minInterval}-{maxInterval}";
-                }
-
                 // 触发解决方案更新
                 ExpireSolution(true);
             }
