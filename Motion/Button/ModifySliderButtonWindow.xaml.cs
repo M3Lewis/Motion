@@ -20,7 +20,6 @@ namespace Motion.UI
         public bool HasSelectedSenders => _selectedSenders?.Any() ?? false;
         public bool HasSingleSenderSelected => _selectedSenders?.Count == 1;
 
-
         public ModifySliderWindow()
         {
             InitializeComponent();
@@ -28,30 +27,32 @@ namespace Motion.UI
         }
 
         public void Initialize(List<MotionSender> selectedSenders)
-        {
-            _selectedSenders = selectedSenders;
+{
+    _selectedSenders = selectedSenders;
 
-            if (HasSelectedSenders)
-            {
-                // 填充替换区间的文本框
-                var ranges = _selectedSenders.
-                    Select(s => new[] { s.NickName.Split('-')[0], s.NickName.Split('-')[1] })
-                                          .SelectMany(x => x)
-                                          .Distinct()
-                                          .OrderBy(x => x);
-                ReplaceValues.Text = string.Join(",", ranges);
+    if (HasSelectedSenders)
+    {
+        // 填充替换区间的文本框，确保数字按照正确顺序排序
+        var ranges = _selectedSenders
+            .Select(s => new[] { s.NickName.Split('-')[0], s.NickName.Split('-')[1] })
+            .SelectMany(x => x)
+            .Distinct()
+            .Select(x => int.Parse(x))  // 转换为数字进行排序
+            .OrderBy(x => x)            // 按数字大小排序
+            .Select(x => x.ToString()); // 转回字符串
+        ReplaceValues.Text = string.Join(",", ranges);
 
-                // 初始化调整值的文本框
-                MinValueAdjustment.Text = "0";
-                MaxValueAdjustment.Text = "0";
-            }
+        // 初始化调整值的文本框
+        MinValueAdjustment.Text = "0";
+        MaxValueAdjustment.Text = "0";
+    }
 
-            if (HasSingleSenderSelected)
-            {
-                var sender = _selectedSenders.First();
-                SplitValues.Text = $"{sender.NickName.Split('-')[0]},{sender.NickName.Split('-')[1]}";
-            }
-        }
+    if (HasSingleSenderSelected)
+    {
+        var sender = _selectedSenders.First();
+        SplitValues.Text = $"{sender.NickName.Split('-')[0]},{sender.NickName.Split('-')[1]}";
+    }
+}
 
         private void CreateSenders_Click(object sender, RoutedEventArgs e)
         {
@@ -153,6 +154,205 @@ namespace Motion.UI
             Close();
         }
 
+        private void InsertRange_Click(object sender, RoutedEventArgs e)
+        {
+            if (!HasSelectedSenders) return;
+
+            try
+            {
+                // 解析输入文本
+                var parts = ReplaceValues.Text.Split(',')
+                                                .Select(x => x.Trim())
+                                                .ToList();
+
+                // 查找所有插入点和长度
+                var insertPoints = new List<(int position, int length)>();
+                for (int i = 0; i < parts.Count; i++)
+                {
+                    if (parts[i].StartsWith("[") && parts[i].EndsWith("]"))
+                    {
+                        int length = int.Parse(parts[i].Trim('[', ']'));
+                        if (length < 0)
+                        {
+                            MessageBox.Show("插入长度不能为负数！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                        // 记录插入位置和长度
+                        insertPoints.Add((i, length));
+                    }
+                }
+
+                if (!insertPoints.Any())
+                {
+                    MessageBox.Show("请使用方括号指定插入长度，例如：100,[100],101,200,[100],201",
+                        "格式错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 获取所有画布上的MotionSender
+                var doc = Instances.ActiveCanvas.Document;
+                var allSenders = doc.Objects
+                    .OfType<MotionSender>()
+                    .OrderBy(s => int.Parse(s.NickName.Split('-')[0]))
+                    .ToList();
+
+                var newRanges = new List<(int min, int max)>();
+                int accumulatedOffset = 0;  // 累计偏移量
+
+                // 先获取所有非插入区间的值和位置
+                var normalValues = new List<(int position, int value)>();
+                for (int i = 0; i < parts.Count; i++)
+                {
+                    if (!parts[i].StartsWith("[") && int.TryParse(parts[i], out int value))
+                    {
+                        normalValues.Add((i, value));
+                    }
+                }
+
+                for (int i = 0; i < parts.Count; i++)
+                {
+                    if (parts[i].StartsWith("[") && parts[i].EndsWith("]"))
+                    {
+                        int length = int.Parse(parts[i].Trim('[', ']'));
+                        int insertValue;
+
+                        // 找到当前插入点之前的最近的数值
+                        var previousValue = normalValues
+                            .Where(x => x.position < i)
+                            .OrderByDescending(x => x.position)
+                            .FirstOrDefault();
+
+                        // 如果是在末尾插入，需要考虑已经调整过的区间
+                        if (i > previousValue.position && i == parts.Count - 1)
+                        {
+                            // 获取最后一个已存在的区间的结束值
+                            var lastSender = allSenders
+                                .OrderByDescending(s => int.Parse(s.NickName.Split('-')[1]))
+                                .FirstOrDefault();
+
+                            if (lastSender != null)
+                            {
+                                insertValue = int.Parse(lastSender.NickName.Split('-')[1]);
+                            }
+                            else
+                            {
+                                insertValue = previousValue.value + accumulatedOffset;
+                            }
+                        }
+                        else
+                        {
+                            insertValue = previousValue.value + accumulatedOffset;
+                        }
+
+                        // 创建新的插入区间
+                        newRanges.Add((insertValue + 1, insertValue + length));
+
+                        // 调整插入点之后的所有Sender的区间
+                        foreach (var motionSender in allSenders.Where(s =>
+                            int.Parse(s.NickName.Split('-')[0]) > insertValue))
+                        {
+                            var range = motionSender.NickName.Split('-');
+                            int min = int.Parse(range[0]) + length;
+                            int max = int.Parse(range[1]) + length;
+                            motionSender.NickName = $"{min}-{max}";
+                            motionSender.ExpireSolution(true);
+                        }
+
+                        // 更新累计偏移量，同时更新后续的normalValues
+                        accumulatedOffset += length;
+                        for (int j = 0; j < normalValues.Count; j++)
+                        {
+                            if (normalValues[j].position > i)
+                            {
+                                // 更新normalValues[j]的值，考虑之前的插入影响
+                                normalValues[j] = (normalValues[j].position, normalValues[j].value + length);
+                            }
+                        }
+
+                        // 更新插入点之后的所有normalValues的位置
+                        for (int j = 0; j < normalValues.Count; j++)
+                        {
+                            if (normalValues[j].position > i)
+                            {
+                                normalValues[j] = (normalValues[j].position + 1, normalValues[j].value);
+                            }
+                        }
+                    }
+                }
+
+                // 生成所有新的区间
+                if (newRanges.Any())
+                {
+                    GenerateMotionSenders(newRanges);
+                }
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"处理过程中出错：{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void DeleteAndAdjust_Click(object sender, RoutedEventArgs e)
+        {
+            if (!HasSelectedSenders) return;
+
+            try
+            {
+                var doc = Instances.ActiveCanvas.Document;
+
+                doc.UndoUtil.RecordEvent("Delete Motion Sender");
+
+                // 按照起始值排序选中的Sender，确保从小到大删除
+                var sortedSelectedSenders = _selectedSenders
+                    .OrderBy(s => int.Parse(s.NickName.Split('-')[0]))
+                    .ToList();
+
+                // 获取所有Sender并按起始值排序
+                var allSenders = doc.Objects
+                    .OfType<MotionSender>()
+                    .OrderBy(s => int.Parse(s.NickName.Split('-')[0]))
+                    .ToList();
+
+                // 累计偏移量
+                int totalOffset = 0;
+
+                // 逐个处理每个选中的Sender
+                foreach (var selectedSender in sortedSelectedSenders)
+                {
+                    var range = selectedSender.NickName.Split('-');
+                    int selectedMin = int.Parse(range[0]);
+                    int selectedMax = int.Parse(range[1]);
+                    int intervalLength = selectedMax - selectedMin + 1;
+
+                    // 调整当前Sender之后的所有未删除的Sender的区间
+                    foreach (var motionSender in allSenders.Where(s =>
+                        !sortedSelectedSenders.Contains(s) && // 排除所有要删除的Sender
+                        int.Parse(s.NickName.Split('-')[0]) > selectedMax - totalOffset)) // 使用已调整的位置进行比较
+                    {
+                        var senderRange = motionSender.NickName.Split('-');
+                        int min = int.Parse(senderRange[0]) - intervalLength;
+                        int max = int.Parse(senderRange[1]) - intervalLength;
+                        motionSender.NickName = $"{min}-{max}";
+                        motionSender.ExpireSolution(true);
+                    }
+
+                    // 更新累计偏移量
+                    totalOffset += intervalLength;
+
+                    // 删除当前Sender
+                    doc.RemoveObject(selectedSender, false);
+                }
+
+                doc.ExpireSolution();
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"处理过程中出错：{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         private void AdjustRangesExisting_Click(object sender, RoutedEventArgs e)
         {
             if (!HasSelectedSenders) return;
@@ -441,11 +641,14 @@ namespace Motion.UI
                 doc.AddObject(motionSender, false);
 
                 motionSender.Attributes.Pivot = new System.Drawing.PointF(
-                    (float)startX,
+                    (float)startX + 100,
                     (float)(startY + index * verticalSpacing)
                 );
 
                 // 设置slider的范围
+                motionSender.NickName = $"{min.ToString()}-{max.ToString()}";
+
+                // 手动触发NickName的set方法
                 motionSender.NickName = $"{min.ToString()}-{max.ToString()}";
 
                 var motionSlider = doc.Objects
@@ -456,6 +659,15 @@ namespace Motion.UI
                 motionSender.AddSource(motionSlider);
                 motionSender.WireDisplay = GH_ParamWireDisplay.hidden;
                 index++;
+            }
+            // 获取所有MotionSlider
+            var sliders = doc.Objects
+                .OfType<MotionSlider>()
+                .ToList();
+            // 更新所有MotionSlider的区间
+            foreach (var slider in sliders)
+            {
+                slider.UpdateRangeBasedOnSenders();
             }
         }
     }

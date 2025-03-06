@@ -16,7 +16,6 @@ namespace Motion.Animation
 {
     public class MotionSender : RemoteParam
     {
-        private readonly bool _autoRename = true;
         private Interval _senderRange;
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
         public event NickNameChangedEventHandler NickNameChanged;
@@ -264,6 +263,8 @@ namespace Motion.Animation
         {
             try
             {
+                document.UndoUtil.RecordEvent("Remove Motion Sender");
+
                 // 在文档中查找所有的MotionSlider
                 var sliders = document.Objects
                     .OfType<MotionSlider>()
@@ -283,6 +284,7 @@ namespace Motion.Animation
                     var slider = document.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
                     if (slider != null)
                     {
+                        document.UndoUtil.RecordEvent("Reset Slider Name");
                         slider.NickName = "Slider";
                     }
                 }

@@ -522,8 +522,9 @@ namespace Motion.Animation
             {
                 if (GH_Convert.ToDouble(text, out var destination, GH_Conversion.Secondary))
                 {
-                    base.Owner.RecordUndoEvent("Slider Value Change");
-                    base.Owner.TrySetSliderValue(Convert.ToDecimal(destination));
+                    Owner.RecordUndoEvent("Slider Value Change");
+                    Owner.TrySetSliderValue(Convert.ToDecimal(destination));
+                    Owner.SynchronizeSenderIntervals(); // 确保这里调用了 SynchronizeSenderIntervals
                 }
             }
             catch (Exception ex)
