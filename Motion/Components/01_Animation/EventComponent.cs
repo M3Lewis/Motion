@@ -195,7 +195,7 @@ namespace Motion.Animation
             Menu_AppendSeparator(menu);
 
             // 添加跳转到 Motion Slider 的选项
-            Menu_AppendItem(menu, "跳转到 Motion Slider", OnJumpToMotionSlider, true);
+            Menu_AppendItem(menu, "跳转到 Motion Sender", OnJumpToMotionSender, true);
 
             // 添加分隔线和跳转选项
             Menu_AppendSeparator(menu);
@@ -253,7 +253,7 @@ namespace Motion.Animation
             }
         }
 
-        private void OnJumpToMotionSlider(object sender, EventArgs e)
+        private void OnJumpToMotionSender(object sender, EventArgs e)
         {
             if (this.Params.Input[0].SourceCount == 0) return;
 
