@@ -7,11 +7,10 @@ namespace Motion.Views
 {
     public partial class RangeSelectorDialog : Window
     {
-        public double SelectedMin { get; private set; }
-        public double SelectedMax { get; private set; }
+        public string SelectedTimeIntervalStr { get; private set; }
         public bool IsConfirmed { get; private set; }
 
-        public RangeSelectorDialog(IEnumerable<double> values)
+        public RangeSelectorDialog(IEnumerable<string> values)
         {
             InitializeComponent();
 
@@ -19,54 +18,38 @@ namespace Motion.Views
             var sortedValues = values.Distinct().OrderBy(x => x).ToList();
 
             // 填充下拉框
-            MinValueComboBox.ItemsSource = sortedValues;
-            MaxValueComboBox.ItemsSource = sortedValues;
+            TimeIntervalComboBox.ItemsSource = sortedValues;
 
             // 默认选择第一个和最后一个值
             if (sortedValues.Any())
             {
-                MinValueComboBox.SelectedItem = sortedValues.First();
-                MaxValueComboBox.SelectedItem = sortedValues.Last();
+                TimeIntervalComboBox.SelectedItem = sortedValues.First();
             }
         }
 
-        private void MinValueComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-            ValidateSelection();
-        }
-
-        private void MaxValueComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private void TimeIntervalComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             ValidateSelection();
         }
 
         private void ValidateSelection()
         {
-            if (MinValueComboBox.SelectedItem == null || MaxValueComboBox.SelectedItem == null)
+            if (TimeIntervalComboBox.SelectedItem == null)
                 return;
 
-            double min = (double)MinValueComboBox.SelectedItem;
-            double max = (double)MaxValueComboBox.SelectedItem;
-
-            if (min > max)
-            {
-                MessageBox.Show("Minimum value cannot be greater than maximum value!", 
-                    "Invalid Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
-                MinValueComboBox.SelectedItem = max;
-            }
+            string timeIntervalStr = (string)TimeIntervalComboBox.SelectedItem;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            if (MinValueComboBox.SelectedItem == null || MaxValueComboBox.SelectedItem == null)
+            if (TimeIntervalComboBox.SelectedItem == null)
             {
-                MessageBox.Show("Please select both minimum and maximum values.", 
+                MessageBox.Show("Please select a valid time interval.",
                     "Invalid Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            SelectedMin = (double)MinValueComboBox.SelectedItem;
-            SelectedMax = (double)MaxValueComboBox.SelectedItem;
+            SelectedTimeIntervalStr = (string)TimeIntervalComboBox.SelectedItem;
             IsConfirmed = true;
             Close();
         }

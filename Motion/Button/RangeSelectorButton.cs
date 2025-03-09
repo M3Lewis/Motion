@@ -5,6 +5,7 @@ using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
+using Motion.Animation;
 using Motion.Views;
 using System;
 using System.Collections.Generic;
@@ -63,22 +64,20 @@ namespace Motion.Toolbar
                 if (doc == null) return;
 
                 // 收集所有非Union的MotionSlider的区间值
-                var values = new HashSet<double>();
+                var values = new HashSet<string>();
                 foreach (var obj in doc.Objects)
                 {
-                    if (obj is GH_NumberSlider slider &&
-                        slider.GetType().Name == "MotionSlider" &&
-                        !slider.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
+                    if (obj is MotionSender motionSender)                   
                     {
-                        values.Add((double)slider.Slider.Minimum);
-                        values.Add((double)slider.Slider.Maximum);
+                        string senderNickname = motionSender.NickName;
+                        values.Add(senderNickname);
                     }
                 }
 
                 if (!values.Any())
                 {
-                    MessageBox.Show("No Motion Sliders found in the document.",
-                        "No Sliders", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("No matching Motion Sender found in the document.",
+                        "No Sender Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -89,8 +88,7 @@ namespace Motion.Toolbar
                 if (dialog.IsConfirmed)
                 {
                     // 创建Interval参数
-                    var interval = new Param_Interval();
-                    interval.CreateAttributes();
+                    var timeInterval = new TimeInterval();
 
                     // 获取当前视图中心
                     var canvas = Instances.ActiveCanvas;
@@ -101,16 +99,19 @@ namespace Motion.Toolbar
                         new PointF(canvas.Width / 2, canvas.Height / 2));
 
                     // 设置参数位置
-                    interval.Attributes.Pivot = pt;
+                    timeInterval.Attributes.Pivot = pt;
 
-                    // 设置区间值
-                    interval.PersistentData.Clear();
-                    interval.PersistentData.Append(new GH_Interval(
-                        new Rhino.Geometry.Interval(dialog.SelectedMin, dialog.SelectedMax)));
+                    var matchingSender = doc.Objects
+                    .OfType<MotionSender>()
+                    .Where(s => s.NickName == dialog.SelectedTimeIntervalStr)
+                    .FirstOrDefault();
 
                     // 添加到文档并记录到撤销记录
-                    doc.AddObject(interval, true);
-                    doc.NewSolution(true);
+                    doc.AddObject(timeInterval, true);
+                    timeInterval.Params.Input[0].AddSource(matchingSender);
+                    timeInterval.Params.Input[0].WireDisplay = GH_ParamWireDisplay.hidden;
+
+                    doc.NewSolution(false);
                 }
             }
             catch (Exception ex)
