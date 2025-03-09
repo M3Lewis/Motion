@@ -18,9 +18,11 @@ namespace Motion.Animation
 
         public override Guid ComponentGuid => new Guid("D2C75940-DF88-4BFD-B398-4A77A488AF27");
 
-        // Ìí¼Ó nicknameKey ×Ö¶ÎºÍ NickName ÊôĞÔ
+        // æ·»åŠ  nicknameKey å­—æ®µå’Œ NickName å±æ€§
         protected string nicknameKey = "";
         private MotionSender _linkedSender;
+        private Guid? _associatedGroupId = null; // æ·»åŠ å­—æ®µè·Ÿè¸ªå…³è”çš„ç»„ID
+        private bool _isGroupCreated = false; // æ·»åŠ æ ‡å¿—ä»¥è·Ÿè¸ªç»„æ˜¯å¦å·²åˆ›å»º
 
         public override string NickName
         {
@@ -33,19 +35,19 @@ namespace Motion.Animation
                     base.NickName = nicknameKey;
                     NickNameChanged?.Invoke(this, nicknameKey);
 
-                    // ´¦ÀíÁ¬½Ó
+                    // å¤„ç†è¿æ¥
                     HandleConnectionsOnNicknameChange();
                     ExpireSolution(true);
                 }
             }
         }
 
-        // Ìí¼Ó NickNameChanged ÊÂ¼ş
+        // æ·»åŠ  NickNameChanged äº‹ä»¶
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
         public event NickNameChangedEventHandler NickNameChanged;
 
         public TimeInterval()
-            : base("Time Interval", "Time Interval", "»ñÈ¡Ê±¼äÇø¼ä", "Motion", "01_Animation")
+            : base("Time Interval", "Time Interval", "è·å–æ—¶é—´åŒºé—´", "Motion", "01_Animation")
         { }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
@@ -53,21 +55,21 @@ namespace Motion.Animation
             pManager.AddNumberParameter(
                 "Input Data",
                 "I",
-                "ÊäÈëÊı¾İ£¬¿É½ÓÊÕMotion Sender/EventµÄÊä³öÖµ",
+                "è¾“å…¥æ•°æ®ï¼Œå¯æ¥æ”¶Motion Sender/Eventçš„è¾“å‡ºå€¼",
                 GH_ParamAccess.item
             );
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddIntervalParameter("Range", "R", "Ê±¼äÇø¼ä", GH_ParamAccess.item);
+            pManager.AddIntervalParameter("Range", "R", "æ—¶é—´åŒºé—´", GH_ParamAccess.item);
         }
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
-            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "Ñ¡ÔñÇø¼ä");
+            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "é€‰æ‹©åŒºé—´");
 
-            // »ñÈ¡ËùÓĞÇø¼ä²¢ÅÅĞò
+            // è·å–æ‰€æœ‰åŒºé—´å¹¶æ’åº
             var sortedKeys = MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
                 .Where(k => !string.IsNullOrEmpty(k))
                 .Select(k => {
@@ -83,12 +85,12 @@ namespace Motion.Animation
                 .OrderBy(x => x.Start)
                 .ToList();
 
-            // ´´½¨¶àÁĞ²¼¾Ö
+            // åˆ›å»ºå¤šåˆ—å¸ƒå±€
             const int maxItemsPerColumn = 20;
             int totalItems = sortedKeys.Count;
             int columnsNeeded = (int)Math.Ceiling((double)totalItems / maxItemsPerColumn);
 
-            // ´´½¨ÁĞ²Ëµ¥
+            // åˆ›å»ºåˆ—èœå•
             for (int col = 0; col < columnsNeeded; col++)
             {
                 int startIdx = col * maxItemsPerColumn;
@@ -100,11 +102,11 @@ namespace Motion.Animation
                 var firstItem = columnItems.First();
                 var lastItem = columnItems.Last();
 
-                // ´´½¨ÁĞ±êÌâ
+                // åˆ›å»ºåˆ—æ ‡é¢˜
                 string columnTitle = $"{firstItem.Start:0}-{lastItem.End:0}";
                 var columnMenu = new ToolStripMenuItem(columnTitle);
 
-                // Ìí¼ÓÇø¼äÏî
+                // æ·»åŠ åŒºé—´é¡¹
                 foreach (var item in columnItems)
                 {
                     var menuItem = new ToolStripMenuItem(item.Key);
@@ -112,13 +114,13 @@ namespace Motion.Animation
                     columnMenu.DropDownItems.Add(menuItem);
                 }
 
-                // ½«ÁĞÌí¼Óµ½Ö÷²Ëµ¥
+                // å°†åˆ—æ·»åŠ åˆ°ä¸»èœå•
                 recentKeyMenu.DropDownItems.Add(columnMenu);
             }
 
-            // Ìí¼ÓÌø×ªµ½ Motion Sender µÄÑ¡Ïî
+            // æ·»åŠ è·³è½¬åˆ° Motion Sender çš„é€‰é¡¹
             Menu_AppendSeparator(menu);
-            Menu_AppendItem(menu, "Ìø×ªµ½ Motion Sender", OnJumpToMotionSender, true);
+            Menu_AppendItem(menu, "è·³è½¬åˆ° Motion Sender", OnJumpToMotionSender, true);
         }
 
         private void OnJumpToMotionSender(object sender, EventArgs e)
@@ -128,7 +130,7 @@ namespace Motion.Animation
             var source = this.Params.Input[0].Sources[0];
             if (source is MotionSender motionSender)
             {
-                // Ìø×ªµ½ Motion Sender
+                // è·³è½¬åˆ° Motion Sender
                 MotilityUtils.GoComponent(motionSender);
             }
         }
@@ -171,7 +173,7 @@ namespace Motion.Animation
 
             var input = this.Params.Input[0];
 
-            // Èç¹ûĞÂµÄnicknameÓëÔ­linked sender²»Í¬£¬¶Ï¿ªÁ¬½Ó
+            // å¦‚æœæ–°çš„nicknameä¸åŸlinked senderä¸åŒï¼Œæ–­å¼€è¿æ¥
             if (_linkedSender != null && _linkedSender.NickName != base.NickName)
             {
                 _linkedSender.NickNameChanged -= OnSenderNickNameChanged;
@@ -179,7 +181,7 @@ namespace Motion.Animation
                 input.RemoveAllSources();
             }
 
-            // ²éÕÒÆ¥ÅäµÄsender²¢Á¬½Ó
+            // æŸ¥æ‰¾åŒ¹é…çš„senderå¹¶è¿æ¥
             doc.ScheduleSolution(5, d =>
             {
                 var matchingSenders = d.Objects
@@ -191,16 +193,16 @@ namespace Motion.Animation
                 {
                     if (!input.Sources.Contains(sender))
                     {
-                        // ÒÆ³ıÏÖÓĞÁ¬½Ó
+                        // ç§»é™¤ç°æœ‰è¿æ¥
                         input.RemoveAllSources();
 
-                        // ½¨Á¢ĞÂÁ¬½Ó
+                        // å»ºç«‹æ–°è¿æ¥
                         input.AddSource(sender);
                         input.WireDisplay = GH_ParamWireDisplay.hidden;
 
-                        // ¸üĞÂlinked sender
+                        // æ›´æ–°linked sender
                         LinkToSender(sender);
-                        break;  // Ö»Á¬½ÓµÚÒ»¸öÆ¥ÅäµÄsender
+                        break;  // åªè¿æ¥ç¬¬ä¸€ä¸ªåŒ¹é…çš„sender
                     }
                 }
             });
@@ -210,16 +212,16 @@ namespace Motion.Animation
         {
             base.AddedToDocument(document);
 
-            // ¼àÌıÎÄµµµÄ¶ÔÏóÌí¼ÓÊÂ¼ş
+            // ç›‘å¬æ–‡æ¡£çš„å¯¹è±¡æ·»åŠ äº‹ä»¶
             document.ObjectsAdded += Document_ObjectsAdded;
 
-            // ÑÓ³ÙÖ´ĞĞÒÔÈ·±£ËùÓĞ×é¼ş¶¼ÒÑ¼ÓÔØ
+            // å»¶è¿Ÿæ‰§è¡Œä»¥ç¡®ä¿æ‰€æœ‰ç»„ä»¶éƒ½å·²åŠ è½½
             document.ScheduleSolution(5, doc =>
             {
-                // ¼àÌıÊäÈë¶ËµÄ±ä»¯
+                // ç›‘å¬è¾“å…¥ç«¯çš„å˜åŒ–
                 this.Params.Input[0].ObjectChanged += Input_ObjectChanged;
 
-                // ¼ì²éÏÖÓĞÁ¬½Ó
+                // æ£€æŸ¥ç°æœ‰è¿æ¥
                 var input = this.Params.Input[0];
                 if (input.SourceCount > 0)
                 {
@@ -231,18 +233,18 @@ namespace Motion.Animation
                 }
                 else
                 {
-                    // Èç¹ûÃ»ÓĞÁ¬½Ó£¬³¢ÊÔ²éÕÒÆ¥ÅäµÄ Sender
+                    // å¦‚æœæ²¡æœ‰è¿æ¥ï¼Œå°è¯•æŸ¥æ‰¾åŒ¹é…çš„ Sender
                     TryConnectToMatchingSender();
                 }
             });
 
-            // Ìí¼Ó¶ÔÏóÉ¾³ıÊÂ¼ş¼àÌı
+            // æ·»åŠ å¯¹è±¡åˆ é™¤äº‹ä»¶ç›‘å¬
             document.ObjectsDeleted += Document_ObjectsDeleted;
         }
 
         private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
         {
-            // ¼ì²éÊÇ·ñÌí¼ÓÁËÆ¥ÅäµÄ MotionSender
+            // æ£€æŸ¥æ˜¯å¦æ·»åŠ äº†åŒ¹é…çš„ MotionSender
             var addedSender = e.Objects
                 .OfType<MotionSender>()
                 .FirstOrDefault(s => s.NickName == this.NickName);
@@ -252,11 +254,11 @@ namespace Motion.Animation
                 var doc = OnPingDocument();
                 if (doc != null)
                 {
-                    // ÑÓ³ÙÖ´ĞĞÒÔÈ·±£ Sender ÍêÈ«³õÊ¼»¯
+                    // å»¶è¿Ÿæ‰§è¡Œä»¥ç¡®ä¿ Sender å®Œå…¨åˆå§‹åŒ–
                     doc.ScheduleSolution(5, d =>
                     {
                         var input = this.Params.Input[0];
-                        if (input.SourceCount == 0)  // Ö»ÔÚÃ»ÓĞÁ¬½ÓÊ±³¢ÊÔÁ¬½Ó
+                        if (input.SourceCount == 0)  // åªåœ¨æ²¡æœ‰è¿æ¥æ—¶å°è¯•è¿æ¥
                         {
                             input.AddSource(addedSender);
                             input.WireDisplay = GH_ParamWireDisplay.hidden;
@@ -269,11 +271,18 @@ namespace Motion.Animation
 
         private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
         {
-            // ¼ì²éÊÇ·ñÉ¾³ıÁËÁ¬½ÓµÄ MotionSender
+            // æ£€æŸ¥æ˜¯å¦åˆ é™¤äº†è¿æ¥çš„ MotionSender
             if (_linkedSender != null && e.Objects.Any(obj => obj.InstanceGuid == _linkedSender.InstanceGuid))
             {
                 _linkedSender.NickNameChanged -= OnSenderNickNameChanged;
                 _linkedSender = null;
+            }
+
+            // æ£€æŸ¥æ˜¯å¦åˆ é™¤äº†å…³è”çš„ç»„
+            if (_associatedGroupId.HasValue && e.Objects.Any(obj => obj.InstanceGuid == _associatedGroupId.Value))
+            {
+                _associatedGroupId = null;
+                _isGroupCreated = false;
             }
         }
 
@@ -308,7 +317,7 @@ namespace Motion.Animation
             }
             else if (_linkedSender != null)
             {
-                // ¶Ï¿ªÁ¬½ÓÊ±ÇåÀí
+                // æ–­å¼€è¿æ¥æ—¶æ¸…ç†
                 _linkedSender.NickNameChanged -= OnSenderNickNameChanged;
                 _linkedSender = null;
             }
@@ -316,7 +325,7 @@ namespace Motion.Animation
 
         public override void RemovedFromDocument(GH_Document document)
         {
-            // ÇåÀíÊÂ¼ş¶©ÔÄ
+            // æ¸…ç†äº‹ä»¶è®¢é˜…
             if (document != null)
             {
                 document.ObjectsAdded -= Document_ObjectsAdded;
@@ -339,42 +348,100 @@ namespace Motion.Animation
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            var doc = Instances.ActiveCanvas.Document;
+            // æ£€æŸ¥è¾“å…¥è¿æ¥
+            if (this.Params.Input[0].SourceCount == 0)
+                return;
 
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            // æ£€æŸ¥æ˜¯å¦å·²æœ‰å…³è”çš„ç»„
+            if (_associatedGroupId.HasValue)
+            {
+                var existingGroup = doc.FindObject(_associatedGroupId.Value,false) as GH_Group;
+                if (existingGroup != null)
+                {
+                    // åªåœ¨éœ€è¦æ—¶æ›´æ–°ç»„åç§°
+                    string newGroupName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
+                    if (existingGroup.NickName != newGroupName)
+                    {
+                        existingGroup.NickName = newGroupName;
+                        doc.ScheduleSolution(1, d => { }); // è½»é‡çº§åˆ·æ–°
+                    }
+
+                    // è§£æåŒºé—´å¹¶è®¾ç½®è¾“å‡º
+                    SetIntervalOutput(DA);
+                    return;
+                }
+                else
+                {
+                    // ç»„å·²è¢«åˆ é™¤ï¼Œé‡ç½®æ ‡å¿—
+                    _associatedGroupId = null;
+                    _isGroupCreated = false;
+                }
+            }
+
+            // æ£€æŸ¥æ˜¯å¦å·²ç»åœ¨æŸä¸ªç»„ä¸­
             var allGroups = doc.Objects.OfType<GH_Group>().ToList();
-
             foreach (var g in allGroups)
             {
                 if (g.ObjectIDs.Contains(this.InstanceGuid))
                 {
-                    g.NickName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
-                    doc.NewSolution(false);
+                    // æ›´æ–°ç°æœ‰ç»„çš„åç§°
+                    string newGroupName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
+                    if (g.NickName != newGroupName)
+                    {
+                        g.NickName = newGroupName;
+                    }
+
+                    _associatedGroupId = g.InstanceGuid;
+                    _isGroupCreated = true;
+
+                    // è§£æåŒºé—´å¹¶è®¾ç½®è¾“å‡º
+                    SetIntervalOutput(DA);
                     return;
                 }
             }
 
-            // ½âÎöÇø¼ä
+            // å¦‚æœæ²¡æœ‰å…³è”çš„ç»„ï¼Œåˆ›å»ºæ–°ç»„
+            if (!_isGroupCreated)
+            {
+                GH_Group group = new GH_Group();
+                group.CreateAttributes();
+                group.Colour = Color.FromArgb(60, 150, 150, 150);
+                group.AddObject(this.InstanceGuid);
+                group.NickName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
+                group.Border = GH_GroupBorder.Blob;
+                doc.AddObject(group, false);
+
+                _associatedGroupId = group.InstanceGuid;
+                _isGroupCreated = true;
+
+                // ä½¿ç”¨è½»é‡çº§åˆ·æ–°è€Œä¸æ˜¯å®Œå…¨é‡æ–°æ±‚è§£
+                doc.ScheduleSolution(1, d => { });
+            }
+
+            // è§£æåŒºé—´å¹¶è®¾ç½®è¾“å‡º
+            SetIntervalOutput(DA);
+        }
+
+        // æå–è§£æåŒºé—´å’Œè®¾ç½®è¾“å‡ºçš„é€»è¾‘åˆ°å•ç‹¬çš„æ–¹æ³•
+        private void SetIntervalOutput(IGH_DataAccess DA)
+        {
+            // è§£æåŒºé—´
             double min = 0;
             double max = 100;
 
-            // ´ÓNickName½âÎöÇø¼ä
+            // ä»NickNameè§£æåŒºé—´
             string[] parts = this.NickName.Split('-');
-            if (parts.Length != 2 &&
-                !double.TryParse(parts[0], out min) &&
-                !double.TryParse(parts[1], out max))
-                return;
+            if (parts.Length == 2)
+            {
+                double.TryParse(parts[0], out min);
+                double.TryParse(parts[1], out max);
+            }
 
-            // Êä³öÇø¼ä
+            // è®¾ç½®è¾“å‡º
             DA.SetData(0, new Interval(min, max));
-
-            GH_Group group = new GH_Group();
-            group.CreateAttributes();
-            group.Colour = Color.FromArgb(60, 150, 150, 150);
-            group.AddObject(this.InstanceGuid);
-            group.NickName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
-            group.Border = GH_GroupBorder.Blob;
-            doc.AddObject(group, false);
-            doc.NewSolution(false);
         }
     }
 }

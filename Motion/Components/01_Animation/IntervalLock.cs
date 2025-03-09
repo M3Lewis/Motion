@@ -11,6 +11,7 @@ namespace Motion.Animation
     public class IntervalLock : GH_Component
     {
         private bool _previousState = false;
+        private List<IGH_ActiveObject> _groupComponents = new List<IGH_ActiveObject>();
 
         public IntervalLock()
             : base("Interval Lock", "Lock",
@@ -41,22 +42,25 @@ namespace Motion.Animation
                 if (!DA.GetData(0, ref time)) return;
                 if (!DA.GetDataList(1, domains)) return;
 
-                bool isIncludedInAny = false;
-                foreach (var domain in domains)
-                {
-                    if (domain.IncludesParameter(time))
-                    {
-                        isIncludedInAny = true;
-                        break;
-                    }
-                }
+                // 检查时间是否在任何区间内
+                bool isIncludedInAny = domains.Any(domain => domain.IncludesParameter(time));
 
+                // 设置输出
                 DA.SetData(0, isIncludedInAny);
 
+                // 只在状态变化时更新锁定
                 if (isIncludedInAny != _previousState)
                 {
                     _previousState = isIncludedInAny;
-                    OnPingDocument()?.ScheduleSolution(1, d => SetGroupComponentsLock(!isIncludedInAny));
+                    
+                    // 查找组内组件（如果尚未缓存）
+                    if (_groupComponents.Count == 0)
+                    {
+                        CacheGroupComponents();
+                    }
+                    
+                    // 使用单次ScheduleSolution更新锁定状态
+                    OnPingDocument()?.ScheduleSolution(1, doc => SetComponentsLock(!isIncludedInAny));
                 }
             }
             catch (Exception ex)
@@ -65,7 +69,7 @@ namespace Motion.Animation
             }
         }
 
-        private void SetGroupComponentsLock(bool lockState)
+        private void CacheGroupComponents()
         {
             var doc = OnPingDocument();
             if (doc == null) return;
@@ -76,56 +80,35 @@ namespace Motion.Animation
 
             if (currentGroup == null) return;
 
-            doc.ScheduleSolution(5, d =>
+            _groupComponents = currentGroup.ObjectIDs
+                .Select(id => doc.FindObject(id, true))
+                .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
+                .Cast<IGH_ActiveObject>()
+                .ToList();
+        }
+
+        private void SetComponentsLock(bool lockState)
+        {
+            try
             {
-                try
+                _groupComponents.ToList().ForEach(delegate (IGH_ActiveObject o)
                 {
-                    var groupObjects = currentGroup.ObjectIDs
-                        .Select(id => doc.FindObject(id, true))
-                        .Where(obj => obj != null && obj != this)
-                        .ToList();
-
-                    foreach (var obj in groupObjects)
-                    {
-                        if (obj is not IGH_ActiveObject activeObj) continue;
-
-                        try
-                        {
-                            activeObj.Locked = lockState;
-
-                            if (lockState)
-                            {
-                                d.ScheduleSolution(1, doc =>
-                                {
-                                    activeObj.Phase = GH_SolutionPhase.Blank;
-                                    if (obj is IGH_Component component)
-                                    {
-                                        component.ExpireSolution(false);
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                if (obj is IGH_Component component)
-                                {
-                                    d.ScheduleSolution(1, doc =>
-                                    {
-                                        component.ExpireSolution(true);
-                                    });
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Rhino.RhinoApp.WriteLine($"Error handling component {obj.Name}: {ex.Message}");
-                        }
-                    }
-                }
-                catch (Exception ex)
+                    o.Locked = lockState;
+                });
+                _groupComponents.ToList().ForEach(delegate (IGH_ActiveObject o)
                 {
-                    Rhino.RhinoApp.WriteLine($"Error in SetGroupComponentsLock: {ex.Message}");
-                }
-            });
+                    o.ExpireSolution(recompute: false);
+                });
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error in SetComponentsLock: {ex.Message}");
+            }
+        }
+
+        private void setObjects(bool active)
+        {
+            
         }
 
         public override void AddedToDocument(GH_Document document)
@@ -148,6 +131,15 @@ namespace Motion.Animation
                 timeParam.WireDisplay = GH_ParamWireDisplay.hidden;
                 ExpireSolution(true);
             }
+            
+            // 缓存组内组件
+            document.ScheduleSolution(5, doc => CacheGroupComponents());
+        }
+        
+        public override void RemovedFromDocument(GH_Document document)
+        {
+            _groupComponents.Clear();
+            base.RemovedFromDocument(document);
         }
 
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
