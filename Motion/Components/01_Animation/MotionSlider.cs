@@ -18,10 +18,7 @@ namespace Motion.Animation
 {
     public class MotionSlider : GH_NumberSlider
     {
-
-
         private bool _isPositionInitialized = false;
-
 
         public event EventHandler<decimal> ValueChanged;
 
@@ -60,27 +57,107 @@ namespace Motion.Animation
 
         public override void AddedToDocument(GH_Document document)
         {
+            // 检查文档中是否已经存在 MotionSlider
+            var existingSliders = document.Objects
+                .OfType<MotionSlider>()
+                .Where(s => s != this)
+                .ToList();
+
+            if (existingSliders.Any())
+            {
+                // 如果已经存在 MotionSlider，显示消息并取消添加
+                var canvas = Grasshopper.Instances.ActiveCanvas;
+                if (canvas != null)
+                {
+                    ShowTemporaryMessage(canvas, "每个文件只能放置一个 Motion Slider!");
+                }
+
+                // 延迟执行移除操作，确保消息能够显示
+                document.ScheduleSolution(5, doc =>
+                {
+                    doc.RemoveObject(this, false);
+                });
+
+                return;
+            }
+
             base.AddedToDocument(document);
 
-            if (!_isPositionInitialized)
-            {
-                // 只有在位置未初始化时才使用鼠标位置
-                if (this.Attributes.Bounds.IsEmpty)  // 检查是否已经设置了位置
-                {
-                    // 获取当前鼠标位置作为放置位置
-                    PointF mouseLoc = Instances.ActiveCanvas.CursorCanvasPosition;
-                    if (mouseLoc.X != 0 || mouseLoc.Y != 0)  // 确保有有效的鼠标位置
-                    {
-                        this.Attributes.Pivot = mouseLoc;
+            if (_isPositionInitialized) return;
 
-                        // 如果需要，也可以更新 Bounds
-                        RectangleF bounds = this.Attributes.Bounds;
-                        bounds.Location = mouseLoc;
-                        this.Attributes.Bounds = bounds;
-                    }
-                }
-                _isPositionInitialized = true;
-            }
+            // 只有在位置未初始化时才使用鼠标位置
+            if (!this.Attributes.Bounds.IsEmpty) return;// 检查是否已经设置了位置
+
+            // 获取当前鼠标位置作为放置位置
+            PointF mouseLoc = Instances.ActiveCanvas.CursorCanvasPosition;
+            if (mouseLoc.X == 0 || mouseLoc.Y == 0) return; // 确保有有效的鼠标位置
+
+            this.Attributes.Pivot = mouseLoc;
+
+            // 如果需要，也可以更新 Bounds
+            RectangleF bounds = this.Attributes.Bounds;
+            bounds.Location = mouseLoc;
+            this.Attributes.Bounds = bounds;
+            _isPositionInitialized = true;
+        }
+
+        // 添加显示临时消息的方法
+        protected void ShowTemporaryMessage(GH_Canvas canvas, string message)
+        {
+            GH_Canvas.CanvasPostPaintObjectsEventHandler canvasRepaint = null;
+            canvasRepaint = (sender) =>
+            {
+                Graphics g = canvas.Graphics;
+                if (g == null) return;
+
+                // 保存当前的变换矩阵
+                var originalTransform = g.Transform;
+
+                // 重置变换，确保文字大小不受画布缩放影响
+                g.ResetTransform();
+
+                // 计算文本大小
+                SizeF textSize = new SizeF(30, 30);
+
+                // 设置消息位置在画布顶部居中
+                float padding = 20;
+                float x = textSize.Width + 300;
+                float y = padding + 30;
+
+                RectangleF textBounds = new RectangleF(x, y, textSize.Width + 300, textSize.Height + 30);
+                textBounds.Inflate(6, 3);  // 添加一些内边距
+
+                // 绘制消息
+                GH_Capsule capsule = GH_Capsule.CreateTextCapsule(
+                    textBounds,
+                    textBounds,
+                    GH_Palette.Pink,
+                    message);
+
+                capsule.Render(g, Color.LightSkyBlue);
+                capsule.Dispose();
+
+                // 恢复原始变换
+                g.Transform = originalTransform;
+            };
+
+            // 添加临时事件处理器
+            canvas.CanvasPostPaintObjects += canvasRepaint;
+
+            // 立即刷新画布以显示消息
+            canvas.Refresh();
+
+            // 设置定时器移除事件处理器
+            Timer timer = new Timer();
+            timer.Interval = 1500;
+            timer.Tick += (sender, e) =>
+            {
+                canvas.CanvasPostPaintObjects -= canvasRepaint;
+                canvas.Refresh();
+                timer.Stop();
+                timer.Dispose();
+            };
+            timer.Start();
         }
         public void UpdateRangeBasedOnSenders()
         {
