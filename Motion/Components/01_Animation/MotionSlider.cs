@@ -99,6 +99,62 @@ namespace Motion.Animation
             bounds.Location = mouseLoc;
             this.Attributes.Bounds = bounds;
             _isPositionInitialized = true;
+
+            // 自动连接到所有时间输入端
+            ConnectToTimeInputs();
+        }
+
+        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+        {
+            base.AppendAdditionalMenuItems(menu);
+
+            // 添加分隔线
+            menu.Items.Add(new ToolStripSeparator());
+
+            // 添加自动连接选项
+            ToolStripMenuItem connectItem = new ToolStripMenuItem(
+                "连接到所有时间输入端",
+                null,
+                (sender, e) => ConnectToTimeInputs()
+            );
+            menu.Items.Add(connectItem);
+        }
+
+        public void ConnectToTimeInputs()
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            int connectionCount = 0;
+
+            // 连接到所有 EventOperation 的 Time 输入端
+            foreach (var eventOp in doc.Objects.OfType<EventOperation>())
+            {
+                var timeParam = eventOp.Params.Input.FirstOrDefault(p => p.Name == "Time");
+                if (timeParam != null && timeParam.SourceCount == 0)
+                {
+                    timeParam.AddSource(this);
+                    timeParam.WireDisplay = GH_ParamWireDisplay.hidden;  // 设置连线为隐藏
+                    connectionCount++;
+                }
+            }
+
+            // 连接到所有 IntervalLock 的第一个输入端
+            foreach (var intervalLock in doc.Objects.OfType<IntervalLock>())
+            {
+                var firstInput = intervalLock.Params.Input.FirstOrDefault();
+                if (firstInput != null && firstInput.SourceCount == 0)
+                {
+                    firstInput.AddSource(this);
+                    firstInput.WireDisplay = GH_ParamWireDisplay.hidden;  // 设置连线为隐藏
+                    connectionCount++;
+                }
+            }
+
+            if (connectionCount > 0)
+            {
+                doc.NewSolution(true);
+            }
         }
 
         // 添加显示临时消息的方法

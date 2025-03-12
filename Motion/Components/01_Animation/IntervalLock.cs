@@ -121,8 +121,8 @@ namespace Motion.Animation
             if (doc == null) return;
 
             var timelineSlider = doc.Objects
-                .OfType<GH_NumberSlider>()
-                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+                .OfType<MotionSlider>()
+                .FirstOrDefault();
 
             if (timelineSlider != null)
             {
