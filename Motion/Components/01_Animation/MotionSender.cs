@@ -146,6 +146,24 @@ namespace Motion.Animation
                 }
             }
             UpdateConnectedSliderRange();
+
+            // 查找并通知所有使用相同 NickName 的 EventComponent
+            doc.ScheduleSolution(10, d => {
+                var relatedEvents = d.Objects
+                    .OfType<EventComponent>()
+                    .Where(e => e.NickName == this.NickName);
+
+                foreach (var eventComp in relatedEvents)
+                {
+                    if (eventComp.Params.Input.Count > 0 &&
+                        eventComp.Params.Input[0].SourceCount == 0)
+                    {
+                        eventComp.Params.Input[0].AddSource(this);
+                        eventComp.Params.Input[0].WireDisplay = Grasshopper.Kernel.GH_ParamWireDisplay.hidden;
+                        eventComp.LinkToSender(this);
+                    }
+                }
+            });
         }
 
         private GH_NumberSlider FindClosestSlider(List<GH_NumberSlider> sliders)
@@ -376,6 +394,23 @@ namespace Motion.Animation
                 {
                     ShowDuplicateNicknameMessage();
                     return;
+                }
+
+                // 通过 Recipients 查找所有关联的 EventComponent
+                var relatedEvents = new HashSet<EventComponent>();
+                foreach (var recipient in this.Recipients)
+                {
+                    var eventComp = recipient.Attributes.GetTopLevel.DocObject as EventComponent;
+                    if (eventComp != null)
+                    {
+                        relatedEvents.Add(eventComp);
+                    }
+                }
+
+                // 更新所有关联的 EventComponent 的昵称
+                foreach (var eventComp in relatedEvents)
+                {
+                    eventComp.NickName = nicknameKey;
                 }
 
                 NickNameChanged?.Invoke(this, nicknameKey);

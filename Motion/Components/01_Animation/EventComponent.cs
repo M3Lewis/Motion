@@ -438,9 +438,15 @@ namespace Motion.Animation
             }
 
             _linkedSender = sender;
-            this.NickName = sender.NickName;
+            // 确保 NickName 与 Sender 保持一致
+            if (this.NickName != sender.NickName)
+            {
+                this.NickName = sender.NickName;
+            }
             UpdateMessage();  // 更Message
 
+            // 重新订阅事件
+            sender.NickNameChanged -= OnSenderNickNameChanged; // 先取消订阅以避免重复
             sender.NickNameChanged += OnSenderNickNameChanged;
         }
 
@@ -572,6 +578,12 @@ namespace Motion.Animation
                 timeInput.AddSource(matchingSender);
                 timeInput.WireDisplay = GH_ParamWireDisplay.hidden;
                 LinkToSender(matchingSender);
+
+                // 确保 NickName 与 Sender 保持一致
+                if (this.NickName == matchingSender.NickName) return;
+
+                this.NickName = matchingSender.NickName;
+
             }
         }
 
@@ -677,6 +689,9 @@ namespace Motion.Animation
 
                 if (reader.ItemExists("NickNameKey"))
                     nicknameKey = reader.GetString("NickNameKey");
+
+                // 确保 base.NickName 也被设置
+                base.NickName = nicknameKey;
 
                 // 读取折叠态
                 if (reader.ItemExists("IsCollapsed"))
