@@ -360,7 +360,7 @@ namespace Motion.UI
             // 解析最小值和最大值的调整量
             decimal minAdjustment = 0;
             decimal maxAdjustment = 0;
-            int loopCount = 1; // 默认不循环
+            int loopCount = 1;
 
             try
             {
@@ -370,7 +370,6 @@ namespace Motion.UI
                 if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text))
                     maxAdjustment = decimal.Parse(MaxValueAdjustment.Text.Trim());
 
-                // 尝试解析循环次数，默认为1（不循环）
                 if (!string.IsNullOrWhiteSpace(LoopCount.Text))
                     loopCount = int.Parse(LoopCount.Text.Trim());
 
@@ -387,13 +386,58 @@ namespace Motion.UI
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            decimal finalMin = 0;
-            decimal finalMax = 0;
-            // 检查调整是否会使任何slider的最小值变为负数
+
+            var doc = Instances.ActiveCanvas.Document;
+            if (doc == null) return;
+
+            // 如果启用了同步调整功能
+            if (AdjustFollowingSenders.IsChecked == true && maxAdjustment != 0)
+            {
+                // 获取所有Sender并按最小值排序
+                var allSenders = doc.Objects
+                    .OfType<MotionSender>()
+                    .OrderBy(s => decimal.Parse(s.NickName.Split('-')[0]))
+                    .ToList();
+
+                // 对每个选中的Sender进行处理
+                foreach (var selectedSender in _selectedSenders.OrderBy(s => decimal.Parse(s.NickName.Split('-')[0])))
+                {
+                    decimal currentMax = decimal.Parse(selectedSender.NickName.Split('-')[1]);
+                    
+                    // 找到所有需要调整的后续Sender
+                    var followingSenders = allSenders
+                        .Where(s => decimal.Parse(s.NickName.Split('-')[0]) > currentMax)
+                        .ToList();
+
+                    // 调整后续Sender的区间
+                    foreach (var motionSender in followingSenders)
+                    {
+                        var range = motionSender.NickName.Split('-');
+                        decimal senderMin = decimal.Parse(range[0]);
+                        decimal senderMax = decimal.Parse(range[1]);
+                        
+                        // 整体偏移相同的调整量
+                        senderMin += maxAdjustment;
+                        senderMax += maxAdjustment;
+
+                        if (senderMin < 0)
+                        {
+                            MessageBox.Show("调整后的最小值不能小于0！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+
+                        motionSender.NickName = $"{senderMin}-{senderMax}";
+                        motionSender.ExpireSolution(true);
+                    }
+                }
+            }
+
+            // 原有的调整逻辑
             foreach (var selectedSender in _selectedSenders)
             {
-                finalMin = decimal.Parse(selectedSender.NickName.Split('-')[0]);
-                finalMax = decimal.Parse(selectedSender.NickName.Split('-')[1]);
+                decimal finalMin = decimal.Parse(selectedSender.NickName.Split('-')[0]);
+                decimal finalMax = decimal.Parse(selectedSender.NickName.Split('-')[1]);
+
                 for (int i = 0; i < loopCount; i++)
                 {
                     finalMin += minAdjustment;
@@ -401,21 +445,19 @@ namespace Motion.UI
 
                     if (finalMin < 0)
                     {
-                        MessageBox.Show("调整后的最小值不能小于0！", "错误",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show("调整后的最小值不能小于0！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
 
                     if (finalMin >= finalMax)
                     {
-                        MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
-                    selectedSender.NickName = $"{finalMin.ToString()}-{finalMax.ToString()}";
-
-                    selectedSender.ExpireSolution(true);
                 }
+
+                selectedSender.NickName = $"{finalMin}-{finalMax}";
+                selectedSender.ExpireSolution(true);
             }
 
             Close();

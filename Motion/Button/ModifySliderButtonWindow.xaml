@@ -92,6 +92,11 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="30"/>
+                    </Grid.RowDefinitions>
                     <Button Grid.Column="0" Content="修改当前" 
                             Click="AdjustRangesExisting_Click" 
                             Margin="0,0,5,0"
@@ -100,6 +105,8 @@
                             Click="AdjustRangesNew_Click" 
                             Margin="5,0,0,0"
                             IsEnabled="{Binding HasSelectedSenders}"/>
+                    <CheckBox x:Name="AdjustFollowingSenders" Grid.Row="2" Grid.ColumnSpan="2" Content="同步调整后续Sender"
+                              ToolTip="当调整某个Sender的最大值时，自动调整其后所有Sender的区间" Margin="0,5,0,0"/>
                 </Grid>
             </StackPanel>
         </GroupBox>
