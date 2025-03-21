@@ -1,7 +1,7 @@
 <Window x:Class="Motion.UI.ModifySliderWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Modify Slider" Height="800" Width="300"
+        Title="Modify Slider" Height="880" Width="300"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -62,7 +62,7 @@
         </GroupBox>
 
         <!-- 调整最小值和最大值部分 -->
-        <GroupBox Grid.Row="3" Header="调整Sender区间值" Margin="0,0,0,10">
+        <GroupBox Grid.Row="3" Header="增减" Margin="0,0,0,10">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -95,7 +95,9 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Button Grid.Column="0" Content="修改当前" 
                             Click="AdjustRangesExisting_Click" 
@@ -105,20 +107,30 @@
                             Click="AdjustRangesNew_Click" 
                             Margin="5,0,0,0"
                             IsEnabled="{Binding HasSelectedSenders}"/>
-                    <CheckBox x:Name="AdjustFollowingSenders" Grid.Row="2" Grid.ColumnSpan="2" Content="同步调整后续Sender"
-                              ToolTip="当调整某个Sender的最大值时，自动调整其后所有Sender的区间" Margin="0,5,0,0"/>
+                    <CheckBox x:Name="AdjustFollowingSenders" Grid.Row="2" Grid.ColumnSpan="2" 
+                              Content="同步偏移后续Sender"
+                              ToolTip="当调整某个Sender的区间最大值时，自动偏移其后所有Sender的区间(例如50-100,101-150,若调整100变为120，则101-150会变为121-170)" 
+                              Margin="0,5,0,0"/>
+                    <CheckBox x:Name="AdjustAdjacentSenders" Grid.Row="3" Grid.ColumnSpan="2" 
+                              Content="同步调整相邻Sender区间值"
+                              ToolTip="当调整Sender的区间值时，自动调整相邻Sender的区间值(例如50-100,101-150,若调整100变为120，则101会变为121)"
+                              Margin="0,5,0,0"/>
+                    <CheckBox x:Name="AdjustSameValueSenders" Grid.Row="4" Grid.ColumnSpan="2" 
+                              Content="同步调整相同起止值Sender"
+                              ToolTip="当调整Sender的区间值时，自动调整具有相同起始或结束值的Sender" 
+                              Margin="0,5,0,0"/>
                 </Grid>
             </StackPanel>
         </GroupBox>
 
         <!-- 合并部分 -->
-        <GroupBox Grid.Row="4" Header="合并Sender" Margin="0,0,0,10">
+        <GroupBox Grid.Row="4" Header="合并" Margin="0,0,0,10">
             <Button Content="合并" Click="MergeSenders_Click"
                     IsEnabled="{Binding HasSelectedSenders}"/>
         </GroupBox>
 
         <!-- 拆分部分 -->
-        <GroupBox Grid.Row="5" Header="拆分Slider" Margin="0,0,0,10">
+        <GroupBox Grid.Row="5" Header="拆分" Margin="0,0,0,10">
             <StackPanel>
                 <TextBox x:Name="SplitValues" Margin="0,5"
                          IsEnabled="{Binding HasSingleSenderSelected}"/>
@@ -131,7 +143,7 @@
             </StackPanel>
         </GroupBox>
         <!-- 在其他按钮组之后添加 -->
-        <GroupBox Grid.Row="6" Header="删除Sender" Margin="0,0,0,10">
+        <GroupBox Grid.Row="6" Header="删除" Margin="0,0,0,10">
             <StackPanel>
                 <Button Content="删除并调整后续区间" 
                         Click="DeleteAndAdjust_Click" 

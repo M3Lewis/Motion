@@ -27,32 +27,32 @@ namespace Motion.UI
         }
 
         public void Initialize(List<MotionSender> selectedSenders)
-{
-    _selectedSenders = selectedSenders;
+        {
+            _selectedSenders = selectedSenders;
 
-    if (HasSelectedSenders)
-    {
-        // 填充替换区间的文本框，确保数字按照正确顺序排序
-        var ranges = _selectedSenders
-            .Select(s => new[] { s.NickName.Split('-')[0], s.NickName.Split('-')[1] })
-            .SelectMany(x => x)
-            .Distinct()
-            .Select(x => int.Parse(x))  // 转换为数字进行排序
-            .OrderBy(x => x)            // 按数字大小排序
-            .Select(x => x.ToString()); // 转回字符串
-        ReplaceValues.Text = string.Join(",", ranges);
+            if (HasSelectedSenders)
+            {
+                // 填充替换区间的文本框，确保数字按照正确顺序排序
+                var ranges = _selectedSenders
+                    .Select(s => new[] { s.NickName.Split('-')[0], s.NickName.Split('-')[1] })
+                    .SelectMany(x => x)
+                    .Distinct()
+                    .Select(x => int.Parse(x))  // 转换为数字进行排序
+                    .OrderBy(x => x)            // 按数字大小排序
+                    .Select(x => x.ToString()); // 转回字符串
+                ReplaceValues.Text = string.Join(",", ranges);
 
-        // 初始化调整值的文本框
-        MinValueAdjustment.Text = "0";
-        MaxValueAdjustment.Text = "0";
-    }
+                // 初始化调整值的文本框
+                MinValueAdjustment.Text = "0";
+                MaxValueAdjustment.Text = "0";
+            }
 
-    if (HasSingleSenderSelected)
-    {
-        var sender = _selectedSenders.First();
-        SplitValues.Text = $"{sender.NickName.Split('-')[0]},{sender.NickName.Split('-')[1]}";
-    }
-}
+            if (HasSingleSenderSelected)
+            {
+                var sender = _selectedSenders.First();
+                SplitValues.Text = $"{sender.NickName.Split('-')[0]},{sender.NickName.Split('-')[1]}";
+            }
+        }
 
         private void CreateSenders_Click(object sender, RoutedEventArgs e)
         {
@@ -147,7 +147,8 @@ namespace Motion.UI
             // 更新所有选中的sender
             foreach (var selectedSender in _selectedSenders)
             {
-                selectedSender.NickName = $"{mapping[selectedSender.NickName.Split('-')[0]]}-{mapping[selectedSender.NickName.Split('-')[1]]}";
+                string newNickname = $"{mapping[selectedSender.NickName.Split('-')[0]]}-{mapping[selectedSender.NickName.Split('-')[1]]}";
+                selectedSender.SetNicknameWithUndo(newNickname);
                 selectedSender.ExpireSolution(true);
             }
 
@@ -254,7 +255,9 @@ namespace Motion.UI
                             var range = motionSender.NickName.Split('-');
                             int min = int.Parse(range[0]) + length;
                             int max = int.Parse(range[1]) + length;
-                            motionSender.NickName = $"{min}-{max}";
+
+                            string newNickname = $"{min}-{max}";
+                            motionSender.SetNicknameWithUndo(newNickname);
                             motionSender.ExpireSolution(true);
                         }
 
@@ -301,8 +304,6 @@ namespace Motion.UI
             {
                 var doc = Instances.ActiveCanvas.Document;
 
-                doc.UndoUtil.RecordEvent("Delete Motion Sender");
-
                 // 按照起始值排序选中的Sender，确保从小到大删除
                 var sortedSelectedSenders = _selectedSenders
                     .OrderBy(s => int.Parse(s.NickName.Split('-')[0]))
@@ -333,7 +334,9 @@ namespace Motion.UI
                         var senderRange = motionSender.NickName.Split('-');
                         int min = int.Parse(senderRange[0]) - intervalLength;
                         int max = int.Parse(senderRange[1]) - intervalLength;
-                        motionSender.NickName = $"{min}-{max}";
+
+                        string newNickname = $"{min}-{max}";
+                        motionSender.SetNicknameWithUndo(newNickname);
                         motionSender.ExpireSolution(true);
                     }
 
@@ -390,76 +393,187 @@ namespace Motion.UI
             var doc = Instances.ActiveCanvas.Document;
             if (doc == null) return;
 
-            // 如果启用了同步调整功能
-            if (AdjustFollowingSenders.IsChecked == true && maxAdjustment != 0)
+            // 在修改之前记录撤销事件
+            doc.UndoUtil.RecordEvent("调整Motion Sender区间");
+
+            // 获取所有Sender并按最小值排序
+            var allSenders = doc.Objects
+                .OfType<MotionSender>()
+                .ToList();
+
+            // 创建字典来存储每个Sender的最终最小值和最大值
+            var adjustmentDictionary = new Dictionary<MotionSender, (decimal Min, decimal Max)>();
+
+            // 初始化字典，存储原始值
+            foreach (var currentSender in allSenders)
             {
-                // 获取所有Sender并按最小值排序
-                var allSenders = doc.Objects
-                    .OfType<MotionSender>()
-                    .OrderBy(s => decimal.Parse(s.NickName.Split('-')[0]))
-                    .ToList();
-
-                // 对每个选中的Sender进行处理
-                foreach (var selectedSender in _selectedSenders.OrderBy(s => decimal.Parse(s.NickName.Split('-')[0])))
-                {
-                    decimal currentMax = decimal.Parse(selectedSender.NickName.Split('-')[1]);
-                    
-                    // 找到所有需要调整的后续Sender
-                    var followingSenders = allSenders
-                        .Where(s => decimal.Parse(s.NickName.Split('-')[0]) > currentMax)
-                        .ToList();
-
-                    // 调整后续Sender的区间
-                    foreach (var motionSender in followingSenders)
-                    {
-                        var range = motionSender.NickName.Split('-');
-                        decimal senderMin = decimal.Parse(range[0]);
-                        decimal senderMax = decimal.Parse(range[1]);
-                        
-                        // 整体偏移相同的调整量
-                        senderMin += maxAdjustment;
-                        senderMax += maxAdjustment;
-
-                        if (senderMin < 0)
-                        {
-                            MessageBox.Show("调整后的最小值不能小于0！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                            return;
-                        }
-
-                        motionSender.NickName = $"{senderMin}-{senderMax}";
-                        motionSender.ExpireSolution(true);
-                    }
-                }
+                var parts = currentSender.NickName.Split('-');
+                decimal min = decimal.Parse(parts[0]);
+                decimal max = decimal.Parse(parts[1]);
+                adjustmentDictionary[currentSender] = (min, max);
             }
 
-            // 原有的调整逻辑
+            // 计算所有调整值
+
+            // 1. 首先计算选中Sender的直接调整
             foreach (var selectedSender in _selectedSenders)
             {
-                decimal finalMin = decimal.Parse(selectedSender.NickName.Split('-')[0]);
-                decimal finalMax = decimal.Parse(selectedSender.NickName.Split('-')[1]);
+                var (min, max) = adjustmentDictionary[selectedSender];
+                decimal finalMin = min;
+                decimal finalMax = max;
 
                 for (int i = 0; i < loopCount; i++)
                 {
                     finalMin += minAdjustment;
                     finalMax += maxAdjustment;
-
-                    if (finalMin < 0)
-                    {
-                        MessageBox.Show("调整后的最小值不能小于0！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
-
-                    if (finalMin >= finalMax)
-                    {
-                        MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
                 }
 
-                selectedSender.NickName = $"{finalMin}-{finalMax}";
-                selectedSender.ExpireSolution(true);
+                adjustmentDictionary[selectedSender] = (finalMin, finalMax);
             }
 
+            // 2. 处理相邻区间调整
+            if (AdjustAdjacentSenders.IsChecked == true)
+            {
+                foreach (var selectedSender in _selectedSenders)
+                {
+                    var (currentMin, currentMax) = adjustmentDictionary[selectedSender];
+
+                    // 处理最小值调整
+                    if (minAdjustment != 0)
+                    {
+                        // 查找最大值等于当前最小值-1的相邻Sender
+                        var lowerAdjacents = allSenders
+                            .Where(s => s != selectedSender &&
+                                   decimal.Parse(s.NickName.Split('-')[1]) == decimal.Parse(selectedSender.NickName.Split('-')[0]) - 1)
+                            .ToList();
+
+                        foreach (var lowerAdjacent in lowerAdjacents)
+                        {
+                            var (min, max) = adjustmentDictionary[lowerAdjacent];
+                            adjustmentDictionary[lowerAdjacent] = (min, max + minAdjustment);
+                        }
+                    }
+
+                    // 处理最大值调整
+                    if (maxAdjustment != 0)
+                    {
+                        // 查找最小值等于当前最大值+1的相邻Sender
+                        var upperAdjacents = allSenders
+                            .Where(s => s != selectedSender &&
+                                   decimal.Parse(s.NickName.Split('-')[0]) == decimal.Parse(selectedSender.NickName.Split('-')[1]) + 1)
+                            .ToList();
+
+                        foreach (var upperAdjacent in upperAdjacents)
+                        {
+                            var (min, max) = adjustmentDictionary[upperAdjacent];
+                            adjustmentDictionary[upperAdjacent] = (min + maxAdjustment, max);
+                        }
+                    }
+                }
+            }
+
+            // 3. 处理具有相同最小/最大值的Sender
+            if (AdjustSameValueSenders.IsChecked == true)
+            {
+                foreach (var selectedSender in _selectedSenders)
+                {
+                    var originalMin = decimal.Parse(selectedSender.NickName.Split('-')[0]);
+                    var originalMax = decimal.Parse(selectedSender.NickName.Split('-')[1]);
+
+                    // 处理最小值调整
+                    if (minAdjustment != 0)
+                    {
+                        // 查找具有相同最小值的Sender
+                        var sameMinSenders = allSenders
+                            .Where(s => s != selectedSender &&
+                                   !_selectedSenders.Contains(s) &&
+                                   decimal.Parse(s.NickName.Split('-')[0]) == originalMin)
+                            .ToList();
+
+                        foreach (var sameSender in sameMinSenders)
+                        {
+                            var (min, max) = adjustmentDictionary[sameSender];
+                            adjustmentDictionary[sameSender] = (min + minAdjustment, max);
+                        }
+                    }
+
+                    // 处理最大值调整
+                    if (maxAdjustment != 0)
+                    {
+                        // 查找具有相同最大值的Sender
+                        var sameMaxSenders = allSenders
+                            .Where(s => s != selectedSender &&
+                                   !_selectedSenders.Contains(s) &&
+                                   decimal.Parse(s.NickName.Split('-')[1]) == originalMax)
+                            .ToList();
+
+                        foreach (var sameSender in sameMaxSenders)
+                        {
+                            var (min, max) = adjustmentDictionary[sameSender];
+                            adjustmentDictionary[sameSender] = (min, max + maxAdjustment);
+                        }
+                    }
+                }
+            }
+
+            // 4. 处理后续区间调整
+            if (AdjustFollowingSenders.IsChecked == true && maxAdjustment != 0)
+            {
+                // 获取选中sender的最大的max值，确定哪些是后续sender
+                var maxSelectedMax = _selectedSenders.Max(s => decimal.Parse(s.NickName.Split('-')[1]));
+
+                // 找到所有后续Sender
+                var followingSenders = allSenders
+                    .Where(s => !_selectedSenders.Contains(s) &&
+                           decimal.Parse(s.NickName.Split('-')[0]) > maxSelectedMax)
+                    .ToList();
+
+                foreach (var followingSender in followingSenders)
+                {
+                    var (min, max) = adjustmentDictionary[followingSender];
+                    // 整体偏移相同的调整量
+                    adjustmentDictionary[followingSender] = (min + maxAdjustment, max + maxAdjustment);
+                }
+            }
+
+            // 验证所有调整后的值是否有效
+            foreach (var kvp in adjustmentDictionary)
+            {
+                var (min, max) = kvp.Value;
+
+                if (min < 0)
+                {
+                    MessageBox.Show($"调整后的最小值不能小于0！(Sender: {kvp.Key.NickName})", "错误",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                if (min >= max)
+                {
+                    MessageBox.Show($"调整后的最小值不能大于或等于最大值！(Sender: {kvp.Key.NickName} → {min}-{max})",
+                        "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+
+            // 应用所有调整
+            foreach (var kvp in adjustmentDictionary)
+            {
+                var motionSender = kvp.Key;
+                var (finalMin, finalMax) = kvp.Value;
+
+                // 只更新发生了变化的Sender
+                if (finalMin != decimal.Parse(motionSender.NickName.Split('-')[0]) ||
+                    finalMax != decimal.Parse(motionSender.NickName.Split('-')[1]))
+                {
+                    string newNickname = $"{finalMin}-{finalMax}";
+                    motionSender.SetNicknameWithUndo(newNickname);
+                    motionSender.ExpireSolution(true);
+                }
+            }
+
+            // 确保更新文档
+            doc.ExpireSolution();
             Close();
         }
 
@@ -677,10 +791,12 @@ namespace Motion.UI
             startY += totalSenders * verticalSpacing / 4;
 
             int index = 0;
+
+            List<MotionSender> motionSenders = new List<MotionSender>(validRanges.Count);
             foreach (var (min, max) in validRanges)
             {
                 var motionSender = new MotionSender();
-                doc.AddObject(motionSender, false);
+                motionSender.CreateSenderWithUndo(doc);
 
                 motionSender.Attributes.Pivot = new System.Drawing.PointF(
                     (float)startX + 100,
@@ -702,6 +818,8 @@ namespace Motion.UI
                 motionSender.WireDisplay = GH_ParamWireDisplay.hidden;
                 index++;
             }
+
+
             // 获取所有MotionSlider
             var sliders = doc.Objects
                 .OfType<MotionSlider>()

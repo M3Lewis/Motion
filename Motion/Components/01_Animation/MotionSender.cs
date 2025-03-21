@@ -4,6 +4,7 @@ using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
+using Grasshopper.Kernel.Undo;
 using Motion.General;
 using Rhino.Geometry;
 using System;
@@ -11,6 +12,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using static System.Windows.Forms.AxHost;
 
 namespace Motion.Animation
 {
@@ -186,7 +188,27 @@ namespace Motion.Animation
             return closestSlider;
         }
 
+        private void CheckSameNicknameSender(GH_Document doc)
+        {
+            if (doc == null) return;
+            // 检查是否存在同名且非自身的 Sender
+            var existingSender = doc.Objects
+                .OfType<MotionSender>()
+                .FirstOrDefault(s => s != this && s.NickName == NickName);
 
+            if (existingSender == null) return;
+
+            var canvas = Grasshopper.Instances.ActiveCanvas;
+            if (canvas == null) return;
+
+            ShowTemporaryMessage(canvas, $"已存在相同标识({NickName})的 Sender!");
+        }
+
+        protected override void ValuesChanged()
+        {
+            var doc = OnPingDocument();
+            CheckSameNicknameSender(doc);
+        }
         protected override void OnVolatileDataCollected()
         {
             base.OnVolatileDataCollected();
@@ -205,18 +227,7 @@ namespace Motion.Animation
 
             if (doc == null) return;
 
-            // 检查是否存在同名且非自身的 Sender
-            var existingSender = doc.Objects
-                .OfType<MotionSender>()
-                .FirstOrDefault(s => s != this && s.NickName == NickName);
-
-            if (existingSender == null) return;
-
-            var canvas = Grasshopper.Instances.ActiveCanvas;
-            if (canvas == null) return;
-
-            ShowTemporaryMessage(canvas,
-                $"已存在相同标识({NickName})的 Sender!");
+            CheckSameNicknameSender(doc);
 
             // 检查源组件
             if (Sources.Count == 0)
@@ -317,8 +328,44 @@ namespace Motion.Animation
             }
         }
 
+        public void SetNicknameWithUndo(string newNickname)
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
 
+            // 使用专门的昵称更改撤销记录
+            GH_UndoRecord record = doc.UndoUtil.CreateNickNameEvent("修改 Motion Sender 区间", this);
+            doc.UndoServer.PushUndoRecord(record);
+            // 记录会自动保存当前昵称状态，我们只需要修改昵称即可
+            this.NickName = newNickname;
 
+            // 确保变更生效
+            doc.ScheduleSolution(5);
+        }
+
+        public void CreateSenderWithUndo(GH_Document doc)
+        {
+            if (doc == null) return;
+
+            // 初始化Attributes
+            if (this.Attributes == null)
+                this.CreateAttributes();
+
+            // 记录操作前的状态
+            GH_UndoRecord record = doc.UndoUtil.CreateAddObjectEvent("新建 Motion Sender", this);
+
+            // 确保记录被添加到撤销栈中
+            doc.UndoServer.PushUndoRecord(record);
+
+            // 添加对象到文档
+            doc.AddObject(this, false);
+
+            // 通知文档发生了变化
+            doc.Modified();
+
+            // 触发解决方案
+            doc.ScheduleSolution(5);
+        }
 
         private void ShowTemporaryMessage(GH_Canvas canvas, string message)
         {
@@ -385,6 +432,8 @@ namespace Motion.Animation
 
                 var doc = this.OnPingDocument();
                 if (doc == null) return;
+
+                    doc.UndoUtil.RecordEvent("修改 Motion Sender 区间");
 
                 var existingSender = doc.Objects
                     .OfType<MotionSender>()

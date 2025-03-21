@@ -205,5 +205,7 @@ namespace Motion.General
             com.Attributes.Selected = true;
             gH_NamedView.SetToViewport(Instances.ActiveCanvas, 300);
         }
+
+
     }
 }
