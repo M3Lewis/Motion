@@ -72,7 +72,8 @@ namespace Motion.Animation
 
         public override bool AppendMenuItems(ToolStripDropDown menu)
         {
-            base.AppendMenuItems(menu);
+            
+            Menu_AppendObjectNameEx(menu);
             Menu_AppendSeparator(menu);
 
             // 创建"跳转到Event"的子菜单
