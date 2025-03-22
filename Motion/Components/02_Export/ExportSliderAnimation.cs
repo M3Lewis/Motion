@@ -3,6 +3,7 @@ using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
 using Grasshopper.Kernel.Types;
+using Motion.Animation;
 using Motion.UI;
 using Rhino;
 using Rhino.Geometry;
@@ -171,14 +172,14 @@ namespace Motion.Export
                 return;
 
             var source = this.Params.Input[9].Sources[0];
-            if (!(source is GH_NumberSlider unionSlider))
+            if (!(source is MotionSlider motionSlider ))
                 return;
 
             // 检查路径盘符是否存在
             string driveLetter = Path.GetPathRoot(parameters.FullPath);
             if (!Directory.Exists(driveLetter))
             {
-                this.Message = $"找不到盘符: {driveLetter}";
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"找不到盘符: {driveLetter}");
                 return;
             }
 
@@ -189,9 +190,34 @@ namespace Motion.Export
             var targetView = views.Find(parameters.ViewName, false);
             if (targetView == null)
             {
-                this.Message = $"找不到视图: {parameters.ViewName}";
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"找不到视图: {parameters.ViewName}");
                 return;
             }
+
+            // 检查自定义区间是否在Slider范围内
+            if (parameters.IsCustomRange)
+            {
+                var sliderRange = new Interval((double)motionSlider.Slider.Minimum, (double)motionSlider.Slider.Maximum);
+                if (!sliderRange.IncludesInterval(parameters.Range))
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"自定义区间 [{parameters.Range.Min}-{parameters.Range.Max}] 超出Slider范围 [{sliderRange.Min}-{sliderRange.Max}]");
+                    return;
+                }
+
+                if (parameters.Range.T0 > parameters.Range.T1)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "自定义区间最小值必须小于最大值");
+                    return;
+                }
+
+                // 检查 Cycles Passes 的值
+                if (parameters.IsCycles && parameters.RealtimeRenderPasses < 1)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Cycles渲染通道数必须大于0");
+                    return;
+                }
+            }   
+
 
             var displayMode = activeView.ActiveViewport.DisplayMode;
             string modeName = displayMode.EnglishName;
@@ -236,11 +262,11 @@ namespace Motion.Export
                         // 检查渲染模式
                         if (parameters.IsCycles && !isRaytracedMode)
                         {
-                            this.Message = "请打开光线跟踪(Raytraced)模式!";
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "请打开光线跟踪(Raytraced)模式!");
                             return;
                         }
                         
-                        using (var sliderAnimator = new MotionSliderAnimator(unionSlider))
+                        using (var sliderAnimator = new MotionSliderAnimator(motionSlider))
                         {
                             sliderAnimator.Width = parameters.Width;
                             sliderAnimator.Height = parameters.Height;
@@ -267,7 +293,7 @@ namespace Motion.Export
                             }
                             else
                             {
-                                sliderAnimator.FrameCount = (int)unionSlider.Slider.Maximum;
+                                sliderAnimator.FrameCount = (int)motionSlider.Slider.Maximum;
                                 sliderAnimator.UseCustomRange = false;
                             }
 
@@ -417,7 +443,7 @@ namespace Motion.Export
             // 查找 TimeLine(Union) Slider
             var timelineSlider = doc.Objects
                 .OfType<GH_NumberSlider>()
-                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault();
 
             if (timelineSlider == null) return;
             

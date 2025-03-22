@@ -211,6 +211,11 @@ namespace Motion.Animation
             base.OnVolatileDataCollected();
             var doc = OnPingDocument();
 
+            var motionSlider = doc.Objects
+                .OfType<GH_NumberSlider>()
+                .FirstOrDefault();
+            if (motionSlider == null) return;
+
             var source = Sources[0];
             var allSourceData = source.VolatileData.AllData(true);
             if (!allSourceData.Any())

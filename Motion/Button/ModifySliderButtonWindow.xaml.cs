@@ -54,8 +54,13 @@ namespace Motion.UI
             }
         }
 
+        private void UnlockSolver(bool lockState)
+        {
+            GH_Document.EnableSolutions = lockState;
+        }
         private void CreateSenders_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             var values = ParseValues(NewSliderValues.Text);
             if (values == null) return;
 
@@ -64,12 +69,14 @@ namespace Motion.UI
                 : GenerateSequentialRanges(values, NoOverlap.IsChecked == true);
 
             GenerateMotionSenders(ranges);
+            UnlockSolver(true);
             Close();
         }
 
         // Add this method to the ModifySliderWindow class
         private void CreateOffsetSender_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!int.TryParse(OffsetFrames.Text, out int offsetFrames))
             {
                 MessageBox.Show("请输入有效的偏移帧数值", "输入错误", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -109,12 +116,14 @@ namespace Motion.UI
             var ranges = GenerateAllRanges(values, NoOverlap.IsChecked == true);
 
             GenerateMotionSenders(ranges);
+            UnlockSolver(true);
             // 关闭窗口
             Close();
         }
 
         private void ReplaceRanges_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!HasSelectedSenders) return;
 
             var values = ParseValues(ReplaceValues.Text);
@@ -151,12 +160,13 @@ namespace Motion.UI
                 selectedSender.SetNicknameWithUndo(newNickname);
                 selectedSender.ExpireSolution(true);
             }
-
+            UnlockSolver(true);
             Close();
         }
 
         private void InsertRange_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!HasSelectedSenders) return;
 
             try
@@ -288,6 +298,7 @@ namespace Motion.UI
                 {
                     GenerateMotionSenders(newRanges);
                 }
+                UnlockSolver(true);
                 Close();
             }
             catch (Exception ex)
@@ -298,6 +309,7 @@ namespace Motion.UI
         }
         private void DeleteAndAdjust_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!HasSelectedSenders) return;
 
             try
@@ -348,6 +360,7 @@ namespace Motion.UI
                 }
 
                 doc.ExpireSolution();
+                UnlockSolver(true);
                 Close();
             }
             catch (Exception ex)
@@ -358,6 +371,7 @@ namespace Motion.UI
         }
         private void AdjustRangesExisting_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!HasSelectedSenders) return;
 
             // 解析最小值和最大值的调整量
@@ -528,11 +542,13 @@ namespace Motion.UI
 
             // 确保更新文档
             doc.ExpireSolution();
+            UnlockSolver(true);
             Close();
         }
 
         private void AdjustRangesNew_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!HasSelectedSenders) return;
 
             // 解析最小值和最大值的调整量
@@ -602,22 +618,26 @@ namespace Motion.UI
 
             // 使用GenerateMotionSenders方法创建新的滑块
             GenerateMotionSenders(newRanges);
+            UnlockSolver(true);
             Close();
         }
 
         private void MergeSenders_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!HasSelectedSenders) return;
 
             var minValue = _selectedSenders.Min(s => int.Parse(s.NickName.Split('-')[0]));
             var maxValue = _selectedSenders.Max(s => int.Parse(s.NickName.Split('-')[1]));
 
             GenerateMotionSenders(new[] { (minValue, maxValue) });
+            UnlockSolver(true);
             Close();
         }
 
         private void SplitSender_Click(object sender, RoutedEventArgs e)
         {
+            UnlockSolver(false);
             if (!HasSingleSenderSelected) return;
 
             var values = ParseValues(SplitValues.Text);
@@ -637,6 +657,7 @@ namespace Motion.UI
                 : GenerateSequentialRanges(values, SplitNoOverlap.IsChecked == true);
 
             GenerateMotionSenders(ranges);
+            UnlockSolver(true);
             Close();
         }
 
