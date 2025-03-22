@@ -17,10 +17,10 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>0.7.10</Version>
+    <Version>0.8.0</Version>
     <Title>Motion</Title>
     <Company>M3_Lewis</Company>
-    <Description>Make GH Animation much easier</Description>
+    <Description>Multi-Event Based Animation Tool for GH</Description>
   </PropertyGroup>
   
   <ItemGroup>
