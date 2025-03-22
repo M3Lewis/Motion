@@ -792,7 +792,6 @@ namespace Motion.UI
 
             int index = 0;
 
-            List<MotionSender> motionSenders = new List<MotionSender>(validRanges.Count);
             foreach (var (min, max) in validRanges)
             {
                 var motionSender = new MotionSender();

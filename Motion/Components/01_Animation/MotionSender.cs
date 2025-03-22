@@ -21,6 +21,7 @@ namespace Motion.Animation
         private Interval _senderRange;
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
         public event NickNameChangedEventHandler NickNameChanged;
+        private double _previousValue = double.NaN;
 
         public MotionSender()
             : base()
@@ -204,19 +205,13 @@ namespace Motion.Animation
             ShowTemporaryMessage(canvas, $"已存在相同标识({NickName})的 Sender!");
         }
 
-        protected override void ValuesChanged()
-        {
-            var doc = OnPingDocument();
-            CheckSameNicknameSender(doc);
-        }
         protected override void OnVolatileDataCollected()
         {
             base.OnVolatileDataCollected();
             var doc = OnPingDocument();
+            if (doc == null) return;
 
-            if (Sources.Count != 0) return;
-
-            if (doc == null || _connectedSliderGuid == Guid.Empty) return;
+            if (Sources.Count == 0) return;
 
             var savedSlider = doc.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
 
@@ -225,55 +220,35 @@ namespace Motion.Animation
                 this.AddSource(savedSlider);
             }
 
-            if (doc == null) return;
-
-            CheckSameNicknameSender(doc);
-
-            // 检查源组件
             if (Sources.Count == 0)
             {
-                // 如果没有源组件，清空输出并返回
                 m_data.Clear();
                 return;
             }
 
-            // 获取源组件
             var source = Sources[0];
-
-            // 获取所有源数据
             var allSourceData = source.VolatileData.AllData(true);
             if (!allSourceData.Any())
             {
-                // 如果没有源数据，清空输出并返回
                 m_data.Clear();
                 return;
             }
 
-            // 获取第一个数据项
             var sourceValue = allSourceData.FirstOrDefault() as GH_Number;
             if (sourceValue == null)
             {
-                // 如果数据不是数字类型，清空输出并返回
                 m_data.Clear();
                 return;
             }
 
-            // 获取源值
             double value = sourceValue.Value;
 
-            // 如果 _senderRange 尚未初始化，尝试从 NickName 解析
             if (_senderRange == Interval.Unset || _senderRange.IsValid == false)
             {
                 UpdateRangeFromNickname();
-            }
-
-            // 如果仍然无法获取有效范围，使用默认范围
-            if (_senderRange == Interval.Unset || _senderRange.IsValid == false)
-            {
                 _senderRange = new Interval(0, 100);
             }
 
-            // 映射值
             double outputValue;
             if (value < _senderRange.Min)
                 outputValue = _senderRange.Min;
@@ -282,7 +257,13 @@ namespace Motion.Animation
             else
                 outputValue = value;
 
-            // 设置输出数据
+            bool valueChanged = double.IsNaN(_previousValue) || outputValue != _previousValue;
+            if (valueChanged)
+            {
+                CheckSameNicknameSender(doc);
+                _previousValue = outputValue;
+            }
+
             m_data.Clear();
             m_data.Append(new GH_Number(outputValue));
         }
@@ -357,13 +338,8 @@ namespace Motion.Animation
             // 确保记录被添加到撤销栈中
             doc.UndoServer.PushUndoRecord(record);
 
-            // 添加对象到文档
             doc.AddObject(this, false);
-
-            // 通知文档发生了变化
             doc.Modified();
-
-            // 触发解决方案
             doc.ScheduleSolution(5);
         }
 
@@ -378,8 +354,8 @@ namespace Motion.Animation
 
                 // 设置消息位置（在组件下方）
                 PointF location = new PointF(
-                    this.Attributes.Bounds.Left,
-                    this.Attributes.Bounds.Bottom + 25
+                    this.Attributes.Bounds.Right+20,
+                    this.Attributes.Bounds.Top+4
                 );
 
                 // 计算文本小
