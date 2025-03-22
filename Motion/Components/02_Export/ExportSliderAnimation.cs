@@ -174,8 +174,25 @@ namespace Motion.Export
             if (!(source is GH_NumberSlider unionSlider))
                 return;
 
+            // 检查路径盘符是否存在
+            string driveLetter = Path.GetPathRoot(parameters.FullPath);
+            if (!Directory.Exists(driveLetter))
+            {
+                this.Message = $"找不到盘符: {driveLetter}";
+                return;
+            }
+
             var views = RhinoDoc.ActiveDoc.Views;
             var activeView = views.ActiveView;
+
+            // 检查视图名称是否存在
+            var targetView = views.Find(parameters.ViewName, false);
+            if (targetView == null)
+            {
+                this.Message = $"找不到视图: {parameters.ViewName}";
+                return;
+            }
+
             var displayMode = activeView.ActiveViewport.DisplayMode;
             string modeName = displayMode.EnglishName;
             bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
