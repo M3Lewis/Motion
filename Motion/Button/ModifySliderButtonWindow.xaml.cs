@@ -413,8 +413,6 @@ namespace Motion.UI
                 adjustmentDictionary[currentSender] = (min, max);
             }
 
-            // 计算所有调整值
-
             // 1. 首先计算选中Sender的直接调整
             foreach (var selectedSender in _selectedSenders)
             {
@@ -472,51 +470,7 @@ namespace Motion.UI
                 }
             }
 
-            // 3. 处理具有相同最小/最大值的Sender
-            if (AdjustSameValueSenders.IsChecked == true)
-            {
-                foreach (var selectedSender in _selectedSenders)
-                {
-                    var originalMin = decimal.Parse(selectedSender.NickName.Split('-')[0]);
-                    var originalMax = decimal.Parse(selectedSender.NickName.Split('-')[1]);
-
-                    // 处理最小值调整
-                    if (minAdjustment != 0)
-                    {
-                        // 查找具有相同最小值的Sender
-                        var sameMinSenders = allSenders
-                            .Where(s => s != selectedSender &&
-                                   !_selectedSenders.Contains(s) &&
-                                   decimal.Parse(s.NickName.Split('-')[0]) == originalMin)
-                            .ToList();
-
-                        foreach (var sameSender in sameMinSenders)
-                        {
-                            var (min, max) = adjustmentDictionary[sameSender];
-                            adjustmentDictionary[sameSender] = (min + minAdjustment, max);
-                        }
-                    }
-
-                    // 处理最大值调整
-                    if (maxAdjustment != 0)
-                    {
-                        // 查找具有相同最大值的Sender
-                        var sameMaxSenders = allSenders
-                            .Where(s => s != selectedSender &&
-                                   !_selectedSenders.Contains(s) &&
-                                   decimal.Parse(s.NickName.Split('-')[1]) == originalMax)
-                            .ToList();
-
-                        foreach (var sameSender in sameMaxSenders)
-                        {
-                            var (min, max) = adjustmentDictionary[sameSender];
-                            adjustmentDictionary[sameSender] = (min, max + maxAdjustment);
-                        }
-                    }
-                }
-            }
-
-            // 4. 处理后续区间调整
+            // 3. 处理后续区间调整
             if (AdjustFollowingSenders.IsChecked == true && maxAdjustment != 0)
             {
                 // 获取选中sender的最大的max值，确定哪些是后续sender

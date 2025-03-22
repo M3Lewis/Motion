@@ -11,14 +11,14 @@ using System.Windows.Forms;
 
 namespace Motion.Toolbar
 {
-    public class MotionSliderSettings : MotionToolbarButton
+    public class MotionSenderSettings : MotionToolbarButton
     {
         protected override int ToolbarOrder => 101;
         private ToolStripButton button;
         private bool isActive = false;
         public static int FramesPerSecond { get; private set; } = 60; // 默认每秒60帧
 
-        public MotionSliderSettings()
+        public MotionSenderSettings()
         {
         }
 
@@ -46,7 +46,7 @@ namespace Motion.Toolbar
 
         private void Instantiate()
         {
-            button.Name = "Motion Slider Settings";
+            button.Name = "Motion Sender Settings";
             button.Size = new System.Drawing.Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Resources.MotionSliderSettingsButton; // 需要添加对应的图标
@@ -110,9 +110,9 @@ namespace Motion.Toolbar
             {
                 foreach (ToolStripItem item in targetToolbar.Items)
                 {
-                    if (item.Name == "Motion Slider Settings" && item is ToolStripButton button)
+                    if (item.Name == "Motion Sender Settings" && item is ToolStripButton button)
                     {
-                        var settings = button.Tag as MotionSliderSettings;
+                        var settings = button.Tag as MotionSenderSettings;
                         return settings?.isActive ?? false;
                     }
                 }

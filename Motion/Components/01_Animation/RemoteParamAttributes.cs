@@ -4,11 +4,14 @@ using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Graphs;
 using Grasshopper.Kernel.Special;
+using Motion.Toolbar;
+using Rhino.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+
 
 namespace Motion.Animation
 {
@@ -95,56 +98,6 @@ namespace Motion.Animation
                 RectangleF arrowRect = new RectangleF(this.Bounds.Right, this.Bounds.Bottom, 10, 1);
                 this.Bounds = RectangleF.Union(this.Bounds, arrowRect);
             }
-            //if (Owner is Param_RemoteReceiver)
-            //{
-            //    RectangleF arrowRect = new RectangleF(this.Bounds.Left - 15, this.Bounds.Bottom, 15, 1);
-            //    this.Bounds = RectangleF.Union(this.Bounds, arrowRect);
-            //}
-
-            //if (Owner is Param_RemoteReceiver)
-            //{
-            //    float buttonHeight = 20.0f;
-            //    float spacing = 1f;
-
-            //    HideButtonBounds = new RectangleF(
-            //        Bounds.X,
-            //        Bounds.Bottom + spacing,
-            //        Bounds.Width,
-            //        buttonHeight);
-            //    HideButtonBounds.Inflate(-1.0f, -1.0f);
-
-            //    LockButtonBounds = new RectangleF(
-            //        Bounds.X,
-            //        Bounds.Bottom + buttonHeight + spacing,
-            //        Bounds.Width,
-            //        buttonHeight);
-            //    LockButtonBounds.Inflate(-1.0f, -1.0f);
-
-            //    DataButtonBounds = new RectangleF(
-            //        Bounds.X,
-            //        Bounds.Bottom + (buttonHeight) * 2 + spacing,
-            //        Bounds.Width,
-            //        buttonHeight);
-            //    DataButtonBounds.Inflate(-1.0f, -1.0f);
-
-            //    CollapseButtonBounds = new RectangleF(
-            //        Bounds.Right - 14,
-            //        Bounds.Y,
-            //        13,
-            //        13);
-
-            //    if (!IsCollapsed)
-            //    {
-            //        var buttonArea = RectangleF.Union(HideButtonBounds, LockButtonBounds);
-            //        buttonArea = RectangleF.Union(buttonArea, DataButtonBounds);
-            //        buttonArea.Inflate(2.0f, 2.0f);
-            //        Bounds = RectangleF.Union(Bounds, buttonArea);
-            //    }
-            //    else
-            //    {
-            //        return;
-            //    }
-            //}
         }
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
@@ -159,138 +112,12 @@ namespace Motion.Animation
 
                 RenderCapsuleAndArrow(canvas, graphics, Bounds);
                 RenderStateTagsIfNeeded(graphics);
-
-                //var remoteReceiver = Owner as Param_RemoteReceiver;
-
-                //if (mouseOver && remoteReceiver?.affectedObjects != null && remoteReceiver.affectedObjects.Any())
-                //{
-                //    Color boundaryColor;
-
-                //    Color orange = Color.Orange;
-                //    Color dodgerBlue = Color.DodgerBlue;
-                //    Color limeGreen = Color.LimeGreen;
-
-                //    Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
-                //    Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
-                //    Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
-
-                //    if (remoteReceiver.HideWhenEmpty && remoteReceiver.LockWhenEmpty)
-                //    {
-                //        boundaryColor = orangeWithLessAlpha;
-                //    }
-                //    else if (remoteReceiver.HideWhenEmpty)
-                //    {
-                //        boundaryColor = dodgerBlueWithLessAlpha;
-                //    }
-                //    else if (remoteReceiver.LockWhenEmpty)
-                //    {
-                //        boundaryColor = limeGreenWithLessAlpha;
-                //    }
-                //    else
-                //    {
-                //        boundaryColor = Color.Transparent;
-                //    }
-
-                //    foreach (var obj in remoteReceiver.affectedObjects)
-                //    {
-                //        if (obj?.Attributes != null)
-                //        {
-                //            var objBounds = obj.Attributes.Bounds;
-                //            objBounds.Inflate(5f, 5f);
-                //            DrawBoundary(graphics, objBounds, boundaryColor);
-                //        }
-                //    }
-                //}
-
-                //if (remoteReceiver != null)
-                //{
-                //    graphics.DrawString(
-                //        IsCollapsed ? "▾" : "▴",
-                //        GH_FontServer.Standard,
-                //        Brushes.LightSkyBlue,
-                //        CollapseButtonBounds,
-                //        new StringFormat()
-                //        {
-                //            Alignment = StringAlignment.Far,
-                //            LineAlignment = StringAlignment.Far
-                //        });
-
-                //    if (!IsCollapsed)
-                //    {
-                //        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(HideButtonBounds,
-                //            remoteReceiver.HideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                //        {
-                //            capsule.Render(graphics, Selected, Owner.Locked, false);
-                //            graphics.DrawString(
-                //                "Hide",
-                //                GH_FontServer.StandardBold,
-                //                Brushes.White,
-                //                HideButtonBounds,
-                //                new StringFormat()
-                //                {
-                //                    Alignment = StringAlignment.Center,
-                //                    LineAlignment = StringAlignment.Center
-                //                });
-                //        }
-
-                //        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(LockButtonBounds,
-                //            remoteReceiver.LockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                //        {
-                //            capsule.Render(graphics, Selected, Owner.Locked, false);
-                //            graphics.DrawString(
-                //                "Lock",
-                //                GH_FontServer.StandardBold,
-                //                Brushes.White,
-                //                LockButtonBounds,
-                //                new StringFormat()
-                //                {
-                //                    Alignment = StringAlignment.Center,
-                //                    LineAlignment = StringAlignment.Center
-                //                });
-                //        }
-
-                //        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(DataButtonBounds, GH_Palette.Black))
-                //        {
-                //            capsule.Render(graphics, Selected, Owner.Locked, false);
-                //            graphics.DrawString(
-                //                "Data",
-                //                GH_FontServer.StandardBold,
-                //                Brushes.White,
-                //                DataButtonBounds,
-                //                new StringFormat()
-                //                {
-                //                    Alignment = StringAlignment.Center,
-                //                    LineAlignment = StringAlignment.Center
-                //                });
-                //        }
-                //    }
-                //}
-
-                //    //string label = "";
-                //    //if (Owner is Param_RemoteLocation)
-                //    //{
-                //    //    label = "L";
-                //    //}
-                //    //else if (Owner is Param_RemoteTarget)
-                //    //{
-                //    //    label = "T";
-                //    //}
-
-                //    //if (!string.IsNullOrEmpty(label))
-                //    //{
-                //    //    var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 7);
-                //    //    var labelBounds = new RectangleF(
-                //    //        Bounds.Left - 12,
-                //    //        Bounds.Top + (Bounds.Height - labelFont.Height) / 2,
-                //    //        15,
-                //    //        labelFont.Height
-                //    //    );
-
-                //    //    graphics.DrawString(label, labelFont, Brushes.DarkGray, labelBounds);
-                //    //}
-                //}
+                if ((MotionSenderSettings.IsSecondsInputMode()))
+                {
+                    DrawRangeLength(canvas, graphics);
+                }
             }
-            }
+        }
         private void RenderCapsuleAndArrow(GH_Canvas canvas, Graphics graphics, RectangleF bounds)
         {
             using (GH_Capsule capsule = GH_Capsule.CreateTextCapsule(bounds, m_textBounds, GH_Palette.Black, Owner.NickName))
@@ -310,17 +137,6 @@ namespace Motion.Animation
 
         private PointF GetArrowLocation(RectangleF bounds)
         {
-            //if (Owner is Param_RemoteReceiver)
-            //{
-            //    if (IsCollapsed)
-            //    {
-            //        return new PointF(bounds.Left + 9, bounds.Bottom - 10);
-            //    }
-            //    else
-            //    {
-            //        return new PointF(bounds.Left + 10, this.OutputGrip.Y - 30);
-            //    }
-            //}
             if (Owner is MotionSender)
                 return new PointF(bounds.Right - 10, this.OutputGrip.Y + 2);
             return PointF.Empty;
@@ -333,14 +149,37 @@ namespace Motion.Animation
                 this.m_stateTags.RenderStateTags(graphics);
             }
         }
-
-        private void DrawBoundary(Graphics graphics, RectangleF bounds, Color color)
+        // 添加一个新的方法来绘制区间长度
+        private void DrawRangeLength(GH_Canvas canvas,Graphics graphics)
         {
-            using (var pen = new Pen(color, 2f))
+            if (!this.Selected) return;
+            var _sender = Owner as MotionSender;
+            Interval _senderRange = new Interval(
+                double.Parse(_sender.NickName.Split('-')[0]),
+                double.Parse(_sender.NickName.Split('-')[1]));
+
+            if (_senderRange == Interval.Unset || !_senderRange.IsValid) return;
+
+            if (graphics == null) return;
+
+            // 计算区间长度
+            double length = Math.Abs(_senderRange.Max - _senderRange.Min+1);
+            string message = $"[{length}f | {Math.Round(length/MotionSenderSettings.FramesPerSecond,2)}s]";
+
+            // 设置消息位置（在组件上方）
+            PointF location = new PointF(
+                this.Bounds.Left-70,
+                this.Bounds.Top+5
+            );
+            var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 8);
+            // 计算文本大小
+            SizeF textSize = GH_FontServer.MeasureString(message, GH_FontServer.Standard);
+            RectangleF textBounds = new RectangleF(location, textSize);
+            textBounds.Inflate(6, 3);  // 添加一些内边距
+
+            using (var brush = new SolidBrush(Color.DeepSkyBlue))
             {
-                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
-                pen.Width = 2;
-                graphics.DrawRectangle(pen, bounds.X - 3, bounds.Y - 3, bounds.Width + 6, bounds.Height + 6);
+                graphics.DrawString(message, labelFont, brush, textBounds);
             }
         }
 
@@ -361,7 +200,7 @@ namespace Motion.Animation
         }
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            Point point = GH_Convert.ToPoint(e.CanvasLocation);
+            System.Drawing.Point point = GH_Convert.ToPoint(e.CanvasLocation);
             if (e.Button != 0)
             {
                 return base.RespondToMouseMove(sender, e);
@@ -416,7 +255,7 @@ namespace Motion.Animation
                         eventComp.Attributes.Pivot.X + 100,
                         eventComp.Attributes.Pivot.Y - 75
                     );
-                    
+
                     doc.AddObject(graphMapper, false);
 
                     graphMapper.AddSource(eventComp.Params.Output[0]);
@@ -451,7 +290,8 @@ namespace Motion.Animation
                     graphMapper.Attributes.Selected = true;
                     eventComp.Attributes.Selected = true;
 
-                    doc.ScheduleSolution(10, d => {
+                    doc.ScheduleSolution(10, d =>
+                    {
                         graphMapper.ExpireSolution(true);
                         eventComp.ExpireSolution(true);
                     });
@@ -475,13 +315,13 @@ namespace Motion.Animation
 
         //        // 保存当前的变换矩阵
         //        var originalTransform = g.Transform;
-                
+
         //        // 重置变换，确保文字大小不受画布缩放影响
         //        g.ResetTransform();
 
         //        // 计算文本大小
         //        SizeF textSize = new SizeF(30, 30);
-                
+
         //        // 设置消息位置在画布顶部居中
         //        float padding = 20;
         //        float x = textSize.Width + 300;
@@ -506,7 +346,7 @@ namespace Motion.Animation
 
         //    // 添加临时事件处理器
         //    canvas.CanvasPostPaintObjects += canvasRepaint;
-            
+
         //    // 立即刷新画布以显示消息
         //    canvas.Refresh();
 

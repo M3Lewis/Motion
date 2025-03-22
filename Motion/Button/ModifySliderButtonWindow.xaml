@@ -97,7 +97,6 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Button Grid.Column="0" Content="修改当前" 
                             Click="AdjustRangesExisting_Click" 
@@ -114,10 +113,6 @@
                     <CheckBox x:Name="AdjustAdjacentSenders" Grid.Row="3" Grid.ColumnSpan="2" 
                               Content="同步调整相邻Sender区间值"
                               ToolTip="当调整Sender的区间值时，自动调整相邻Sender的区间值(例如50-100,101-150,若调整100变为120，则101会变为121)"
-                              Margin="0,5,0,0"/>
-                    <CheckBox x:Name="AdjustSameValueSenders" Grid.Row="4" Grid.ColumnSpan="2" 
-                              Content="同步调整相同起止值Sender"
-                              ToolTip="当调整Sender的区间值时，自动调整具有相同起始或结束值的Sender" 
                               Margin="0,5,0,0"/>
                 </Grid>
             </StackPanel>

@@ -454,7 +454,7 @@ namespace Motion.Animation
             // 绘制滑块
             Owner.Slider.Render(graphics);
             // 如果处于秒数输入模式，绘制秒数文本
-            if (MotionSliderSettings.IsSecondsInputMode())
+            if (MotionSenderSettings.IsSecondsInputMode())
             {
                 // 计算秒数文本的位置（在区间文本框左侧）
                 var secondsTextBounds = new RectangleF(
@@ -465,8 +465,8 @@ namespace Motion.Animation
                 );
 
                 // 计算秒数
-                double minSeconds = (double)Owner.Slider.Minimum / MotionSliderSettings.FramesPerSecond;
-                double maxSeconds = (double)Owner.Slider.Maximum / MotionSliderSettings.FramesPerSecond;
+                double minSeconds = (double)Owner.Slider.Minimum / MotionSenderSettings.FramesPerSecond;
+                double maxSeconds = (double)Owner.Slider.Maximum / MotionSenderSettings.FramesPerSecond;
                 string secondsText = $"{minSeconds:F1}s-{maxSeconds:F1}s";
 
                 // 直接绘制秒数文本

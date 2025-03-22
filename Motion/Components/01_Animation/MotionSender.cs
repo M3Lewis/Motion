@@ -210,22 +210,6 @@ namespace Motion.Animation
         {
             base.OnVolatileDataCollected();
             var doc = OnPingDocument();
-            if (doc == null) return;
-
-            if (Sources.Count == 0) return;
-
-            var savedSlider = doc.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
-
-            if (savedSlider != null)
-            {
-                this.AddSource(savedSlider);
-            }
-
-            if (Sources.Count == 0)
-            {
-                m_data.Clear();
-                return;
-            }
 
             var source = Sources[0];
             var allSourceData = source.VolatileData.AllData(true);
@@ -241,16 +225,9 @@ namespace Motion.Animation
                 m_data.Clear();
                 return;
             }
-
             double value = sourceValue.Value;
-
-            if (_senderRange == Interval.Unset || _senderRange.IsValid == false)
-            {
-                UpdateRangeFromNickname();
-                _senderRange = new Interval(0, 100);
-            }
-
             double outputValue;
+
             if (value < _senderRange.Min)
                 outputValue = _senderRange.Min;
             else if (value > _senderRange.Max)
@@ -265,10 +242,26 @@ namespace Motion.Animation
                 _previousValue = outputValue;
             }
 
+            if (doc == null|| Sources.Count == 0) return;
+
+            var savedSlider = doc.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
+
+            if (savedSlider != null)
+            {
+                this.AddSource(savedSlider);
+            }
+
+            if (Sources.Count == 0)
+            {
+                m_data.Clear();
+                return;
+            }
+
+            UpdateRangeFromNickname();
+            
             m_data.Clear();
             m_data.Append(new GH_Number(outputValue));
         }
-
 
         public override void RemovedFromDocument(GH_Document document)
         {
@@ -466,9 +459,6 @@ namespace Motion.Animation
                 }
             }
         }
-
-
-        
 
         #region Overriding Name and Description
         public override string TypeName => "Motion Sender";
