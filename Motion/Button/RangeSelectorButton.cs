@@ -52,7 +52,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.RangeSelector;
-            button.ToolTipText = "根据当前画布上所有Motion Slider的区间值创建一个区间Param";
+            button.ToolTipText = "根据当前画布上所有Motion Sender的区间值进行选择，并创建一个Time Interval组件";
             button.Click += CreateRangeParameter;
         }
 

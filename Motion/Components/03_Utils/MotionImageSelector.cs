@@ -22,7 +22,9 @@ namespace Motion.Utils
         {
             pManager.AddParameter(new Param_FilePath(), "Path", "P", "图片文件路径或文件夹路径", GH_ParamAccess.item);
             pManager.AddIntegerParameter("Index", "I", "如果输入为文件夹路径，则选择指定序号的图片", GH_ParamAccess.item, 0);
+            pManager.AddNumberParameter("Value", "V", "0-1之间的值，用于按比例选择图片", GH_ParamAccess.item);
             pManager[1].Optional = true;
+            pManager[2].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
@@ -75,9 +77,11 @@ namespace Motion.Utils
         {
             string path = string.Empty;
             int index = 0;
+            double value = double.NaN;
 
             if (!DA.GetData(0, ref path)) return;
             DA.GetData(1, ref index);
+            bool hasValue = DA.GetData(2, ref value);
 
             // 更新图片文件列表
             UpdateImageFiles(path);
@@ -89,15 +93,27 @@ namespace Motion.Utils
                 return;
             }
 
-            // 处理索引
-            if (index < 0)
+            // 根据是否提供了 value 值来决定使用哪种方式选择图片
+            if (hasValue && !double.IsNaN(value))
             {
-                index = _imageFiles.Length - (-index % _imageFiles.Length);
+                // 将 value 限制在 0-1 范围内
+                value = Math.Max(0, Math.Min(1, value));
+                
+                // 将 0-1 映射到图片索引
+                index = (int)Math.Floor(value * (_imageFiles.Length - 1));
             }
-            int actualIndex = index % _imageFiles.Length;
+            else
+            {
+                // 处理原有的索引逻辑
+                if (index < 0)
+                {
+                    index = _imageFiles.Length - (-index % _imageFiles.Length);
+                }
+                index = index % _imageFiles.Length;
+            }
 
             // 输出选中的图片路径
-            DA.SetData(0, _imageFiles[actualIndex]);
+            DA.SetData(0, _imageFiles[index]);
             // 输出所有图片路径
             DA.SetDataList(1, _imageFiles);
         }
@@ -106,4 +122,4 @@ namespace Motion.Utils
         public override Guid ComponentGuid => new Guid("B6C3D245-8E6F-4A47-9F9A-123456789ABC");
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
     }
-} 
+}

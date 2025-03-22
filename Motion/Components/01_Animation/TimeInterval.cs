@@ -52,11 +52,25 @@ namespace Motion.Animation
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddNumberParameter(
+            pManager.AddIntegerParameter(
                 "Input Data",
                 "I",
                 "输入数据，可接收Motion Sender/Event的输出值",
                 GH_ParamAccess.item
+            );
+            pManager.AddIntegerParameter(
+                "Start Offset",
+                "S",
+                "区间最小值偏移",
+                GH_ParamAccess.item,
+                0
+            );
+            pManager.AddIntegerParameter(
+                "End Offset",
+                "E",
+                "区间最大值偏移",
+                GH_ParamAccess.item,
+                0
             );
         }
 
@@ -72,7 +86,8 @@ namespace Motion.Animation
             // 获取所有区间并排序
             var sortedKeys = MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
                 .Where(k => !string.IsNullOrEmpty(k))
-                .Select(k => {
+                .Select(k =>
+                {
                     var parts = k.Split('-');
                     if (parts.Length == 2 &&
                         double.TryParse(parts[0], out double start) &&
@@ -358,7 +373,7 @@ namespace Motion.Animation
             // 检查是否已有关联的组
             if (_associatedGroupId.HasValue)
             {
-                var existingGroup = doc.FindObject(_associatedGroupId.Value,false) as GH_Group;
+                var existingGroup = doc.FindObject(_associatedGroupId.Value, false) as GH_Group;
                 if (existingGroup != null)
                 {
                     // 只在需要时更新组名称
@@ -440,8 +455,13 @@ namespace Motion.Animation
                 double.TryParse(parts[1], out max);
             }
 
+            int startOffset = 0;
+            int endOffset = 0;
+            DA.GetData(1, ref startOffset);
+            DA.GetData(2, ref endOffset);
+
             // 设置输出
-            DA.SetData(0, new Interval(min, max));
+            DA.SetData(0, new Interval(min - startOffset, max + endOffset));
         }
     }
 }
