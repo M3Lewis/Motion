@@ -27,10 +27,10 @@ namespace Motion.Toolbar
 
         private void AddUpdateSenderButton()
         {
-            InitializeToolbarGroup();
-            button = new ToolStripButton();
-            Instantiate();
-            AddButtonToToolbars(button);
+            //InitializeToolbarGroup();
+            //button = new ToolStripButton();
+            //Instantiate();
+            //AddButtonToToolbars(button);
         }
 
         public override GH_LoadingInstruction PriorityLoad()

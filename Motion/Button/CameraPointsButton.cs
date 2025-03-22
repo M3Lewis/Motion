@@ -47,7 +47,7 @@ namespace Motion.Toolbar
             button.Name = "Camera Points";
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            button.Image = Properties.Resources.PointOnView; // 需要添加相机图标资源
+            button.Image = Properties.Resources.CameraPointsButton; // 需要添加相机图标资源
             button.ToolTipText = "在画布上放置两个点参数，分别表示当前Rhino窗口的摄像机起始点和目标点";
             button.Click += CreateCameraPoints;
         }
