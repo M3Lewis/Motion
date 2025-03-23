@@ -12,12 +12,12 @@ using System.Collections.Generic;
 
 namespace Motion.Toolbar
 {
-    public class ModifySliderButton : MotionToolbarButton
+    public class ModifySenderButton : MotionToolbarButton
     {
         protected override int ToolbarOrder => 1;
         private ToolStripButton button;
 
-        public ModifySliderButton()
+        public ModifySenderButton()
         {
         }
 
@@ -49,7 +49,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.ModifySliderButton; // 需要添加对应的图标
-            button.ToolTipText = "修改Motion Slider";
+            button.ToolTipText = "修改Motion Sender";
             button.Click += Button_Click;
         }
 
