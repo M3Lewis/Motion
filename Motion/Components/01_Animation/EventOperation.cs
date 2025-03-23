@@ -69,24 +69,25 @@ namespace Motion.Animation
 
             // 获取当前输出端的状态
             bool hasIndex = Params.Output.Any(p => p.Name == "Index");
-            bool hasDomain = Params.Output.Any(p => p.Name == "Domain");
+            bool hasValueDomain = Params.Output.Any(p => p.Name == "Value Domain");
+            bool hasTimeDomain = Params.Output.Any(p => p.Name == "Time Domain");
 
             // 只允许在最后一个参数后添加新参数
             if (index != Params.Output.Count) return false;
 
-            // 如果两个可选参数都不存在
-            if (!hasIndex && !hasDomain) return true;
+            // 如果三个可选参数都不存在
+            if (!hasIndex && !hasValueDomain && !hasTimeDomain) return true;
 
-            // 如果只有一个可选参数存在，且要在它后面添加
-            if ((hasIndex || hasDomain) && Params.Output.Count == 3) return true;
+            // 如果只有一个或两个可选参数存在
+            if (Params.Output.Count < 5) return true;
 
             return false;
         }
 
         public bool CanRemoveParameter(GH_ParameterSide side, int index)
         {
-            // 允许移除 Index 和 Domain 输出端
-            return side == GH_ParameterSide.Output && (index == 2 || index == 3);
+            // 允许移除 Index、Value Domain 和 Time Domain 输出端
+            return side == GH_ParameterSide.Output && (index == 2 || index == 3 || index == 4);
         }
 
         public IGH_Param CreateParameter(GH_ParameterSide side, int index)
@@ -95,10 +96,11 @@ namespace Motion.Animation
             {
                 // 检查当前已存在的参数
                 bool hasIndex = Params.Output.Any(p => p.Name == "Index");
-                bool hasDomain = Params.Output.Any(p => p.Name == "Domain");
+                bool hasValueDomain = Params.Output.Any(p => p.Name == "Value Domain");
+                bool hasTimeDomain = Params.Output.Any(p => p.Name == "Time Domain");
 
-                // 如果 Index 不存在且要创建的是第一个可选参数，或者明确要创建 Index
-                if ((!hasIndex && !hasDomain) || (!hasIndex && index == 2))
+                // 优先创建 Index
+                if (!hasIndex)
                 {
                     return new Param_Integer
                     {
@@ -109,14 +111,26 @@ namespace Motion.Animation
                         Optional = true
                     };
                 }
-                // 否则创建 Domain 参数
-                else
+                // 其次创建 Value Domain
+                else if (!hasValueDomain)
                 {
                     return new Param_Interval
                     {
-                        Name = "Domain",
-                        NickName = "D",
+                        Name = "Value Domain",
+                        NickName = "VD",
                         Description = "当前事件的值域区间",
+                        Access = GH_ParamAccess.item,
+                        Optional = true
+                    };
+                }
+                // 最后创建 Time Domain
+                else if (!hasTimeDomain)
+                {
+                    return new Param_Interval
+                    {
+                        Name = "Time Domain",
+                        NickName = "TD",
+                        Description = "当前事件的时间区间",
                         Access = GH_ParamAccess.item,
                         Optional = true
                     };
@@ -144,10 +158,17 @@ namespace Motion.Animation
                         param.Access = GH_ParamAccess.item;
                         param.Optional = true;
                         break;
-                    case "Domain":
-                        param.Name = "Domain";
-                        param.NickName = "D";
+                    case "Value Domain":
+                        param.Name = "Value Domain";
+                        param.NickName = "VD";
                         param.Description = "当前事件的值域区间";
+                        param.Access = GH_ParamAccess.item;
+                        param.Optional = true;
+                        break;
+                    case "Time Domain":
+                        param.Name = "Time Domain";
+                        param.NickName = "TD";
+                        param.Description = "当前事件的时间区间";
                         param.Access = GH_ParamAccess.item;
                         param.Optional = true;
                         break;
@@ -275,7 +296,7 @@ namespace Motion.Animation
             // 7. 优化输出处理
             double result = GetCurrentValue(timelineSliderValue, sortedTimeIntervals, sortedMappedValues,
                 sortedEventValues, sortedIsReversed, sortedValueDomains,
-                out var currentInterval, out var currentEventValue, out var currentIndex, out var currentDomain);
+                out var currentInterval, out var currentEventValue, out var currentIndex, out var currentValueDomain);
 
             _currentEventValue = currentEventValue;
             _currentMappedEventValue = result;
@@ -307,8 +328,10 @@ namespace Motion.Animation
             {
                 if (outputParams[2].Name == "Index")
                     DA.SetData(2, currentIndex);
-                if (outputParams.Count > 3 && outputParams[3].Name == "Domain")
-                    DA.SetData(3, currentDomain);
+                if (outputParams.Count > 3 && outputParams[3].Name == "Value Domain")
+                    DA.SetData(3, currentValueDomain);
+                if (outputParams.Count > 4 && outputParams[4].Name == "Time Domain")
+                    DA.SetData(4, isInEventInterval ? currentInterval : null);
             }
         }
 
@@ -478,7 +501,7 @@ namespace Motion.Animation
             if (timelineSlider != null)
             {
                 // 获取时间输入参数
-                var timeParam = Params.Input[1];  // "Time" 输入端
+                var timeParam = Params.Input[1];  // "Time" 末端
 
                 // 检查是否已经连接
                 if (!timeParam.Sources.Any())

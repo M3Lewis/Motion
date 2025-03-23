@@ -1,6 +1,7 @@
 using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
 using Motion.General;
 using Rhino.Geometry;
 using System;
@@ -52,7 +53,7 @@ namespace Motion.Animation
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddIntegerParameter(
+            pManager.AddGenericParameter(
                 "Input Data",
                 "I",
                 "输入数据，可接收Motion Sender/Event的输出值",
@@ -233,7 +234,7 @@ namespace Motion.Animation
             // 延迟执行以确保所有组件都已加载
             document.ScheduleSolution(5, doc =>
             {
-                // 监听输入端的变化
+                // 监听末端点的变化
                 this.Params.Input[0].ObjectChanged += Input_ObjectChanged;
 
                 // 检查现有连接
@@ -443,24 +444,45 @@ namespace Motion.Animation
         // 提取解析区间和设置输出的逻辑到单独的方法
         private void SetIntervalOutput(IGH_DataAccess DA)
         {
-            // 解析区间
+            // 检查第一个输入是否为区间数据
+            var firstInput = this.Params.Input[0].VolatileData.AllData(true).FirstOrDefault();
+            if (firstInput is GH_Interval ghInterval)
+            {
+                // 如果是区间数据，直接使用
+                var interval = ghInterval.Value;
+
+                // 获取偏移值
+                int domainStartOffset = 0;
+                int domainEndOffset = 0;
+                DA.GetData(1, ref domainStartOffset);
+                DA.GetData(2, ref domainEndOffset);
+
+                // 应用偏移并输出
+                DA.SetData(0, new Interval(interval.T0 - domainStartOffset, interval.T1 + domainEndOffset));
+                return;
+            }
+            else if (firstInput == null)
+            {
+                DA.SetData(0, null);
+                return;
+            }
+        
+            // 原有的从NickName解析区间的逻辑
             double min = 0;
             double max = 100;
-
-            // 从NickName解析区间
+        
             string[] parts = this.NickName.Split('-');
             if (parts.Length == 2)
             {
                 double.TryParse(parts[0], out min);
                 double.TryParse(parts[1], out max);
             }
-
+        
             int startOffset = 0;
             int endOffset = 0;
             DA.GetData(1, ref startOffset);
             DA.GetData(2, ref endOffset);
-
-            // 设置输出
+        
             DA.SetData(0, new Interval(min - startOffset, max + endOffset));
         }
     }

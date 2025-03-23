@@ -12,7 +12,7 @@ namespace Motion.Animation
     {
         private bool _previousState = false;
         private List<IGH_ActiveObject> _groupComponents = new List<IGH_ActiveObject>();
-
+        private Guid? _currentGroupId = null;
         public IntervalLock()
             : base("Interval Lock", "Lock",
                 "检测时间是否在指定区间内，不在区间内时锁定同组内的组件.",
@@ -36,6 +36,53 @@ namespace Motion.Animation
         {
             try
             {
+                // 检查组内组件数量是否发生变化
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    var currentGroup = doc.Objects
+                        .OfType<GH_Group>()
+                        .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
+
+                    if (currentGroup != null)
+                    {
+                        // 获取当前组内的所有活动组件
+                        var currentComponents = currentGroup.ObjectIDs
+                            .Select(id => doc.FindObject(id, true))
+                            .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
+                            .Cast<IGH_ActiveObject>()
+                            .ToList();
+
+                        // 检查是否有新组件加入
+                        var newComponents = currentComponents.Except(_groupComponents).ToList();
+                        if (newComponents.Any())
+                        {
+                            // 更新缓存列表
+                            _groupComponents = currentComponents;
+                            // 对新加入的组件应用当前的锁定状态
+                            foreach (var component in newComponents)
+                            {
+                                component.Locked = !_previousState;
+                                component.ExpireSolution(false);
+                            }
+                        }
+                        // 检查是否有组件被移除
+                        else if (currentComponents.Count != _groupComponents.Count)
+                        {
+                            var removedComponents = _groupComponents.Except(currentComponents).ToList();
+                            foreach (var component in removedComponents)
+                            {
+                                if (component != null)
+                                {
+                                    component.Locked = false;
+                                    component.ExpireSolution(false);
+                                }
+                            }
+                            _groupComponents = currentComponents;
+                        }
+                    }
+                }
+
                 double time = 0;
                 var domains = new List<Interval>();
 
@@ -48,20 +95,20 @@ namespace Motion.Animation
                 // 设置输出
                 DA.SetData(0, isIncludedInAny);
 
-                // 只在状态变化时更新锁定
-                if (isIncludedInAny != _previousState)
+                // 更新组件列表（如果尚未缓存）
+                if (_groupComponents.Count == 0)
                 {
-                    _previousState = isIncludedInAny;
-                    
-                    // 查找组内组件（如果尚未缓存）
-                    if (_groupComponents.Count == 0)
-                    {
-                        CacheGroupComponents();
-                    }
-                    
-                    // 使用单次ScheduleSolution更新锁定状态
+                    CacheGroupComponents();
+                }
+
+                // 每次都更新锁定状态
+                if (_groupComponents.Count > 0)
+                {
                     OnPingDocument()?.ScheduleSolution(1, doc => SetComponentsLock(!isIncludedInAny));
                 }
+
+                // 更新状态记录
+                _previousState = isIncludedInAny;
             }
             catch (Exception ex)
             {
@@ -71,6 +118,8 @@ namespace Motion.Animation
 
         private void CacheGroupComponents()
         {
+            _groupComponents.Clear();
+
             var doc = OnPingDocument();
             if (doc == null) return;
 
@@ -78,8 +127,13 @@ namespace Motion.Animation
                 .OfType<GH_Group>()
                 .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
 
-            if (currentGroup == null) return;
+            if (currentGroup == null)
+            {
+                _currentGroupId = null;
+                return;
+            }
 
+            _currentGroupId = currentGroup.InstanceGuid;
             _groupComponents = currentGroup.ObjectIDs
                 .Select(id => doc.FindObject(id, true))
                 .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
@@ -115,6 +169,11 @@ namespace Motion.Animation
         {
             base.AddedToDocument(document);
 
+            // 添加文档事件监听
+            document.ObjectsAdded += Document_ObjectsChanged;
+            document.ObjectsDeleted += Document_ObjectsChanged;
+            document.ObjectsDeleted += Document_ObjectsDeleted;
+
             if (this.Params.Input[0].Sources.Count > 0) return;
 
             var doc = OnPingDocument();
@@ -135,10 +194,72 @@ namespace Motion.Animation
             // 缓存组内组件
             document.ScheduleSolution(5, doc => CacheGroupComponents());
         }
-        
+
+        private void Document_ObjectsChanged(object sender, GH_DocObjectEventArgs e)
+        {
+            var doc = OnPingDocument();
+            if (doc == null) return;
+
+            // 查找当前组
+            var currentGroup = doc.Objects
+                .OfType<GH_Group>()
+                .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
+
+            // 解锁所有旧组件
+            foreach (var component in _groupComponents)
+            {
+                if (component != null)
+                {
+                    component.Locked = false;
+                    component.ExpireSolution(false);
+                }
+            }
+
+            // 清空并更新组件列表
+            _groupComponents.Clear();
+            _currentGroupId = currentGroup?.InstanceGuid;
+
+            // 如果存在新组，添加新组件
+            if (currentGroup != null)
+            {
+                _groupComponents = currentGroup.ObjectIDs
+                    .Select(id => doc.FindObject(id, true))
+                    .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
+                    .Cast<IGH_ActiveObject>()
+                    .ToList();
+            }
+
+            // 根据当前状态设置新组件的锁定状态
+            if (_groupComponents.Count > 0)
+            {
+                OnPingDocument()?.ScheduleSolution(1, doc => SetComponentsLock(!_previousState));
+            }
+        }
+
+        private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
+        {
+            // 当有组件被删除时，检查是否需要更新缓存
+            if (_groupComponents.Any(comp => e.Objects.Any(obj => obj.InstanceGuid == comp.InstanceGuid)))
+            {
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    doc.ScheduleSolution(5, d => CacheGroupComponents());
+                }
+            }
+        }
+
         public override void RemovedFromDocument(GH_Document document)
         {
+            if (document != null)
+            {
+                document.ObjectsAdded -= Document_ObjectsChanged;
+                document.ObjectsDeleted -= Document_ObjectsChanged;
+                document.ObjectsDeleted -= Document_ObjectsDeleted;
+            }
+            
             _groupComponents.Clear();
+            _currentGroupId = null;
             base.RemovedFromDocument(document);
         }
 
