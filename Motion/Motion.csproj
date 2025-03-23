@@ -17,7 +17,7 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>0.8.1</Version>
+    <Version>0.8.2</Version>
     <Title>Motion</Title>
     <Company>M3_Lewis</Company>
     <Description>Multi-Event Based Animation Tool for GH</Description>
