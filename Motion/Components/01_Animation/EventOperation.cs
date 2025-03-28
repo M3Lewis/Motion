@@ -303,11 +303,10 @@ namespace Motion.Animation
             _currentEventIndex = currentIndex;
 
             // 8. 优化条件判断并更新消息
-            bool isDefaultInterval = currentInterval.T0 == 0 && currentInterval.T1 == 1;
             bool isInEventInterval = currentInterval.IncludesParameter(timelineSliderValue);
 
             // 构建消息
-            string intervalMessage = isDefaultInterval || !isInEventInterval 
+            string intervalMessage = !isInEventInterval
                 ? "OUTSIDE" 
                 : $"【{currentInterval.T0}-{currentInterval.T1}】";
             
@@ -369,12 +368,16 @@ namespace Motion.Animation
                     currentDomain = valueDomains[i];
                     return currentValue;
                 }
-                
+                else
+                {
+                    currentInterval = Interval.Unset;
+                }
                 // 记录最后一个结束时间小于当前时间的区间
                 if (dom.T1 <= time)
                 {
                     lastValidIndex = i;
                 }
+
             }
 
             // 如果没有找到包含当前时间的区间，使用最后一个有效区间的值
