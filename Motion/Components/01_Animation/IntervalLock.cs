@@ -90,7 +90,7 @@ namespace Motion.Animation
                 if (!DA.GetDataList(1, domains)) return;
 
                 // 检查时间是否在任何区间内
-                bool isIncludedInAny = domains.Any(domain => domain.IncludesParameter(time));
+                bool isIncludedInAny = domains.Any(domain => domain.IncludesParameter(time) && domain.Length != 0);
 
                 // 设置输出
                 DA.SetData(0, isIncludedInAny);
@@ -160,11 +160,6 @@ namespace Motion.Animation
             }
         }
 
-        private void setObjects(bool active)
-        {
-            
-        }
-
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
@@ -190,7 +185,7 @@ namespace Motion.Animation
                 timeParam.WireDisplay = GH_ParamWireDisplay.hidden;
                 ExpireSolution(true);
             }
-            
+
             // 缓存组内组件
             document.ScheduleSolution(5, doc => CacheGroupComponents());
         }
@@ -257,7 +252,7 @@ namespace Motion.Animation
                 document.ObjectsDeleted -= Document_ObjectsChanged;
                 document.ObjectsDeleted -= Document_ObjectsDeleted;
             }
-            
+
             _groupComponents.Clear();
             _currentGroupId = null;
             base.RemovedFromDocument(document);
