@@ -17,7 +17,7 @@ namespace Motion.Animation
 
         public override Guid ComponentGuid => new Guid("D2C75940-DF88-4BFD-B398-4A77A488AF27");
         public SliderInterval()
-            : base("SliderInterval", "SliderInterval", "»ñÈ¡SliderµÄÇø¼ä", "Motion", "01_Animation")
+            : base("SliderInterval", "SliderInterval", "ï¿½ï¿½È¡Sliderï¿½ï¿½ï¿½ï¿½ï¿½ï¿½", "Motion", "01_Animation")
         { }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
@@ -25,24 +25,24 @@ namespace Motion.Animation
             pManager.AddNumberParameter(
                 "Input Data",
                 "I",
-                "ÊäÈëÊý¾Ý,Çë½ÓÈëpOd_Slider",
+                "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½ï¿½ï¿½ï¿½pOd_Slider",
                 GH_ParamAccess.item
             );
             pManager.AddNumberParameter(
                 "Remote Sender",
                 "RS",
-                "Çë½ÓÈëTelepathy.RemoteSender",
+                "ï¿½ï¿½ï¿½ï¿½ï¿½Telepathy.RemoteSender",
                 GH_ParamAccess.item
             );
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddNumberParameter("Output Data", "O", "Êä³öÊý¾Ý", GH_ParamAccess.item);
-            pManager.AddIntervalParameter("Range", "R", "SliderÇø¼ä", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Output Data", "O", "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½", GH_ParamAccess.item);
+            pManager.AddIntervalParameter("Range", "R", "Sliderï¿½ï¿½ï¿½ï¿½", GH_ParamAccess.item);
         }
 
-        public override void AddedToDocument(GH_Document document) //×Ô¶¯Á¬Ïß
+        public override void AddedToDocument(GH_Document document) //ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½
         {
             base.AddedToDocument(document);
 
@@ -142,11 +142,11 @@ namespace Motion.Animation
                 .Sources[0]
                 .Attributes
                 .GetTopLevel
-                .DocObject; //»ñÈ¡ÉÏÒ»¸öµç³Ø
+                .DocObject; //ï¿½ï¿½È¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½
             if (
                 sliderObject.GetType().ToString()
                 == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider"
-            ) //Èç¹ûµç³ØÃû³ÆÎªRichGraphMapper
+            ) //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªRichGraphMapper
             {
                 GH_NumberSlider slider = (GH_NumberSlider)sliderObject;
                 Interval range = new Interval(

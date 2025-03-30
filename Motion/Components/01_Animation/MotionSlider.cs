@@ -27,18 +27,19 @@ namespace Motion.Animation
         protected override Bitmap Icon => Properties.Resources.MotionSlider;
         public MotionSlider()
         {
-            NickName = "Slider";
+            // NickName will be set by UpdateNickNameBasedOnRange
             Name = "Motion Slider";
             Description = "基础Slider，可被Union Slider控制。请先选择该Slider，然后使用工具栏按钮创建一个Union Slider。";
             Category = "Motion";
             SubCategory = "01_Animation";
 
             SetInitialValues();
+            // UpdateNickNameBasedOnRange(); // Called within SetInitialValues
         }
 
         public MotionSlider(decimal minimum, decimal maximum) : base()
         {
-            NickName = "MotionSlider";
+            // NickName will be set by UpdateNickNameBasedOnRange
             Name = "Motion Slider";
             Description = "基础Slider，可被Union Slider控制。请先选择该Slider，然后使用工具栏按钮创建一个Union Slider。";
             Category = "Motion";
@@ -53,6 +54,8 @@ namespace Motion.Animation
             Slider.Minimum = minimum;
             Slider.Maximum = maximum;
             Slider.Value = minimum;
+
+            UpdateNickNameBasedOnRange(); // Set initial NickName based on range
         }
 
         public override void AddedToDocument(GH_Document document)
@@ -246,6 +249,7 @@ namespace Motion.Animation
             {
                 Slider.Minimum = minValue;
                 Slider.Maximum = maxValue;
+                UpdateNickNameBasedOnRange(); // Update NickName when range changes
                 ExpireSolution(true);
             }
         }
@@ -277,6 +281,7 @@ namespace Motion.Animation
             Slider.Value = 0m;
             Slider.DecimalPlaces = 0;
             Slider.Type = GH_SliderAccuracy.Integer;
+            UpdateNickNameBasedOnRange(); // Update NickName after setting initial values
         }
 
         public override void CreateAttributes()
@@ -308,6 +313,7 @@ namespace Motion.Animation
             {
                 Slider.Minimum = minInterval;
                 Slider.Maximum = maxInterval;
+                UpdateNickNameBasedOnRange(); // Update NickName when range changes
 
                 // 触发解决方案更新
                 ExpireSolution(true);
@@ -331,6 +337,13 @@ namespace Motion.Animation
         {
             base.ValuesChanged();
             SynchronizeSenderIntervals();
+        }
+
+        internal void UpdateNickNameBasedOnRange()
+        {
+            NickName = $"{Slider.Minimum}-{Slider.Maximum}";
+            // Optionally trigger a redraw or layout update if needed visually
+            // Attributes?.ExpireLayout(); // Might be needed if NickName affects layout significantly
         }
     }
 

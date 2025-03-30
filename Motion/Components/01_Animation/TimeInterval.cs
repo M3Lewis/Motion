@@ -364,12 +364,140 @@ namespace Motion.Animation
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            // 检查输入连接
-            if (this.Params.Input[0].SourceCount == 0)
-                return;
-
             var doc = OnPingDocument();
-            if (doc == null) return;
+            if (doc == null) return; // Guard Clause: Document unavailable
+
+            // 1. 尝试获取基础区间
+            Interval? baseInterval = TryGetBaseInterval();
+
+            // 2. 如果无法从输入或有效 NickName 获取区间，则处理默认情况或无效输入
+            if (!baseInterval.HasValue)
+            {
+                // 如果没有输入连接，尝试使用 NickName 或默认值
+                if (this.Params.Input[0].SourceCount == 0)
+                {
+                     // 尝试从 NickName 解析（如果之前 TryGetBaseInterval 失败）
+                     if (!string.IsNullOrEmpty(this.NickName))
+                     {
+                         string[] parts = this.NickName.Split('-');
+                         if (parts.Length == 2 &&
+                             double.TryParse(parts[0], out double min) &&
+                             double.TryParse(parts[1], out double max))
+                         {
+                             baseInterval = new Interval(min, max);
+                         }
+                     }
+
+                     // 如果 NickName 也无效，则使用默认值
+                     if (!baseInterval.HasValue)
+                     {
+                         baseInterval = new Interval(0, 100); // Default interval
+                     }
+                }
+                else // 有输入连接，但无法确定区间
+                {
+                    DA.SetData(0, null); // 输出 null
+                    ManageComponentGroup(doc); // 仍然管理组，因为有连接
+                    return; // 区间无效，提前返回
+                }
+            }
+
+            // --- 此时 baseInterval 必有值 (来自输入、NickName 或默认值) ---
+
+            // 3. 管理组件组
+            ManageComponentGroup(doc);
+
+            // 4. 设置输出 (应用偏移)
+            SetIntervalOutput(DA, baseInterval.Value);
+        }
+
+        // --- 新增的辅助方法 ---
+
+        private Interval? TryGetBaseInterval()
+        {
+            var inputParam = this.Params.Input[0];
+
+            // 1. 检查输入源是否为 GH_NumberSlider
+            if (inputParam.SourceCount > 0 && inputParam.Sources[0] is GH_NumberSlider slider)
+            {
+                // 使用 Slider 的 Min/Max 属性创建 Interval
+                try
+                {
+                    // 添加类型转换以确保安全
+                    return new Interval(Convert.ToDouble(slider.Slider.Minimum), Convert.ToDouble(slider.Slider.Maximum));
+                }
+                catch (InvalidCastException ex)
+                {
+                    // 处理可能的转换错误，例如如果 Minimum/Maximum 不是数值类型
+                    this.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"无法从 Slider 获取有效的数值范围: {ex.Message}");
+                    return null;
+                }
+            }
+
+            // 2. 检查输入数据是否为 GH_Interval
+            var firstInput = inputParam.VolatileData.AllData(true).FirstOrDefault();
+            if (firstInput is GH_Interval ghInterval)
+            {
+                return ghInterval.Value;
+            }
+
+            // 3. 尝试从 NickName 解析 (仅当 NickName 格式有效时)
+            // 注意：这一步现在主要用于没有输入连接时的回退，
+            // 因为 SolveInstance 中会再次检查 NickName（如果 TryGetBaseInterval 返回 null 且无输入）
+            if (!string.IsNullOrEmpty(this.NickName))
+            {
+                string[] parts = this.NickName.Split('-');
+                if (parts.Length == 2 &&
+                    double.TryParse(parts[0], out double min) &&
+                    double.TryParse(parts[1], out double max))
+                {
+                    return new Interval(min, max);
+                }
+            }
+
+            // 4. 如果以上都失败，返回 null
+            return null;
+        }
+
+
+        private void ManageComponentGroup(GH_Document doc)
+        {
+            var inputParam = this.Params.Input[0];
+
+            // 仅当有输入连接时才管理组
+            if (inputParam.SourceCount == 0)
+            {
+                // 如果没有输入连接，确保组状态被重置（如果之前有关联）
+                if (_associatedGroupId.HasValue)
+                {
+                    _associatedGroupId = null;
+                    _isGroupCreated = false;
+                }
+                return; // 没有输入，无需管理组
+            }
+
+            // 尝试获取源对象的 NickName，如果源无效则使用默认名称或不处理
+            IGH_DocumentObject sourceObject = null;
+            try {
+                 // 确保源存在且有效
+                 if (inputParam.Sources.Count > 0 && inputParam.Sources[0] != null && inputParam.Sources[0].Attributes != null)
+                 {
+                    sourceObject = inputParam.Sources[0].Attributes.GetTopLevel?.DocObject;
+                 }
+            } catch (Exception ex) {
+                 // 处理可能的异常，例如源对象已被删除但连接仍然存在
+                 this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"无法获取源对象进行组管理: {ex.Message}");
+                 return; // 无法获取源对象，跳过组管理
+            }
+
+            if (sourceObject == null)
+            {
+                 this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "无法获取有效的源对象进行组管理。");
+                 return; // 源对象无效
+            }
+
+            string expectedGroupName = sourceObject.NickName;
+
 
             // 检查是否已有关联的组
             if (_associatedGroupId.HasValue)
@@ -377,113 +505,73 @@ namespace Motion.Animation
                 var existingGroup = doc.FindObject(_associatedGroupId.Value, false) as GH_Group;
                 if (existingGroup != null)
                 {
-                    // 只在需要时更新组名称
-                    string newGroupName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
-                    if (existingGroup.NickName != newGroupName)
+                    // 组存在，检查并更新名称
+                    if (existingGroup.NickName != expectedGroupName)
                     {
-                        existingGroup.NickName = newGroupName;
-                        doc.ScheduleSolution(1, d => { }); // 轻量级刷新
+                        existingGroup.NickName = expectedGroupName;
+                        doc.ScheduleSolution(1); // 轻量级刷新
                     }
-
-                    // 解析区间并设置输出
-                    SetIntervalOutput(DA);
-                    return;
+                    // 确保 _isGroupCreated 状态正确
+                    _isGroupCreated = true;
+                    return; // 找到并处理了关联组
                 }
                 else
                 {
-                    // 组已被删除，重置标志
+                    // 组已被删除，重置标志，继续后续逻辑查找或创建
                     _associatedGroupId = null;
                     _isGroupCreated = false;
                 }
             }
 
-            // 检查是否已经在某个组中
+            // 检查是否已在其他组中 (可能被手动添加)
             var allGroups = doc.Objects.OfType<GH_Group>().ToList();
             foreach (var g in allGroups)
             {
                 if (g.ObjectIDs.Contains(this.InstanceGuid))
                 {
-                    // 更新现有组的名称
-                    string newGroupName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
-                    if (g.NickName != newGroupName)
+                    // 已在组中，更新其名称并记录关联
+                    if (g.NickName != expectedGroupName)
                     {
-                        g.NickName = newGroupName;
+                        g.NickName = expectedGroupName;
+                        // 可能需要刷新，因为我们更改了现有组的名称
+                        // doc.ScheduleSolution(1); // 取决于是否希望立即看到名称更改
                     }
-
                     _associatedGroupId = g.InstanceGuid;
                     _isGroupCreated = true;
-
-                    // 解析区间并设置输出
-                    SetIntervalOutput(DA);
-                    return;
+                    return; // 找到并处理了所在组
                 }
             }
 
-            // 如果没有关联的组，创建新组
-            if (!_isGroupCreated)
+            // 如果没有关联的组且不在任何组中，创建新组
+            // 再次检查 _isGroupCreated 避免并发问题或重复创建
+            if (!_isGroupCreated && !_associatedGroupId.HasValue)
             {
                 GH_Group group = new GH_Group();
                 group.CreateAttributes();
                 group.Colour = Color.FromArgb(60, 150, 150, 150);
                 group.AddObject(this.InstanceGuid);
-                group.NickName = this.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject.NickName + " Param";
+                group.NickName = expectedGroupName;
                 group.Border = GH_GroupBorder.Blob;
                 doc.AddObject(group, false);
 
                 _associatedGroupId = group.InstanceGuid;
                 _isGroupCreated = true;
-
-                // 使用轻量级刷新而不是完全重新求解
-                doc.ScheduleSolution(1, d => { });
+                doc.ScheduleSolution(1); // 创建了新对象，需要刷新
             }
-
-            // 解析区间并设置输出
-            SetIntervalOutput(DA);
         }
 
-        // 提取解析区间和设置输出的逻辑到单独的方法
-        private void SetIntervalOutput(IGH_DataAccess DA)
+
+        // SetIntervalOutput 方法保持不变
+        private void SetIntervalOutput(IGH_DataAccess DA, Interval baseInterval)
         {
-            // 检查第一个输入是否为区间数据
-            var firstInput = this.Params.Input[0].VolatileData.AllData(true).FirstOrDefault();
-            if (firstInput is GH_Interval ghInterval)
-            {
-                // 如果是区间数据，直接使用
-                var interval = ghInterval.Value;
-
-                // 获取偏移值
-                int domainStartOffset = 0;
-                int domainEndOffset = 0;
-                DA.GetData(1, ref domainStartOffset);
-                DA.GetData(2, ref domainEndOffset);
-
-                // 应用偏移并输出
-                DA.SetData(0, new Interval(interval.T0 - domainStartOffset, interval.T1 + domainEndOffset));
-                return;
-            }
-            else if (firstInput == null)
-            {
-                DA.SetData(0, null);
-                return;
-            }
-        
-            // 原有的从NickName解析区间的逻辑
-            double min = 0;
-            double max = 100;
-        
-            string[] parts = this.NickName.Split('-');
-            if (parts.Length == 2)
-            {
-                double.TryParse(parts[0], out min);
-                double.TryParse(parts[1], out max);
-            }
-        
             int startOffset = 0;
             int endOffset = 0;
+            // 从输入参数 1 和 2 获取偏移量
             DA.GetData(1, ref startOffset);
             DA.GetData(2, ref endOffset);
-        
-            DA.SetData(0, new Interval(min - startOffset, max + endOffset));
+
+            // 应用偏移并设置输出参数 0
+            DA.SetData(0, new Interval(baseInterval.T0 - startOffset, baseInterval.T1 + endOffset));
         }
     }
 }
