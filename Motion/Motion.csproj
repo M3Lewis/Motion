@@ -1,204 +1,217 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	
-  <PropertyGroup>
-    <!-- Select the framework(s) you wish to target.
+
+	<PropertyGroup>
+		<!-- Select the framework(s) you wish to target.
         Rhino 6: net45
         Rhino 7: net48
         Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
         Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
     -->
-	<UseWindowsForms>true</UseWindowsForms>
-    <TargetFrameworks>net7.0-windows;net48</TargetFrameworks>
-    <EnableDynamicLoading>true</EnableDynamicLoading>    <TargetExt>.gha</TargetExt>
-    <NoWarn>NU1701</NoWarn>
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
-	<LangVersion>9.0</LangVersion>
-  </PropertyGroup>
-  
-  <PropertyGroup>
-    <!-- Specifies information for Assembly and Yak -->
-    <Version>0.8.2</Version>
-    <Title>Motion</Title>
-    <Company>M3_Lewis</Company>
-    <Description>Multi-Event Based Animation Tool for GH</Description>
-  </PropertyGroup>
-  
-  <ItemGroup>
-    <Compile Remove="NS\**" />
-    <Compile Remove="Resources\**" />
-    <Compile Remove="tele\**" />
-    <Compile Remove="XForm\**" />
-    <EmbeddedResource Remove="NS\**" />
-    <EmbeddedResource Remove="Resources\**" />
-    <EmbeddedResource Remove="tele\**" />
-    <EmbeddedResource Remove="XForm\**" />
-    <None Remove="NS\**" />
-    <None Remove="Resources\**" />
-    <None Remove="tele\**" />
-    <None Remove="XForm\**" />
-    <Page Remove="NS\**" />
-    <Page Remove="Resources\**" />
-    <Page Remove="tele\**" />
-    <Page Remove="XForm\**" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Compile Remove="Button\CreateUnionSliderButton.cs" />
-    <Compile Remove="Components\01_Animation\MergeCameraData.cs" />
-    <Compile Remove="Components\01_Animation\MotionUnionSlider.cs" />
-    <Compile Remove="Components\01_Animation\SliderControlWinform.cs" />
-    <Compile Remove="Components\01_Animation\SliderControlWPF.cs" />
-    <Compile Remove="Components\01_Animation\SliderLocker.cs" />
-    <Compile Remove="Components\03_Utils\AddScribble.cs" />
-    <Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
-    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
-    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
-    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
-    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
-    <Compile Remove="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
-    <Compile Remove="Components\OBSOLETE\FFmpegExceptions.cs" />
-    <Compile Remove="Components\OBSOLETE\FFmpegUtil.cs" />
-    <Compile Remove="Components\OBSOLETE\GraphMapperChanger.cs" />
-    <Compile Remove="Components\OBSOLETE\MergeByCount.cs" />
-    <Compile Remove="Components\OBSOLETE\MergeBySliderCount.cs" />
-    <Compile Remove="Components\OBSOLETE\MergeCameraBase.cs" />
-    <Compile Remove="Components\OBSOLETE\MergeCameraLocation.cs" />
-    <Compile Remove="Components\OBSOLETE\MergeCameraTarget.cs" />
-    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUi.cs" />
-    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiLatest.cs" />
-    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
-    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
-    <Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
-    <Compile Remove="Components\OBSOLETE\MotionSliderControlButton2.cs" />
-    <Compile Remove="Components\OBSOLETE\Motion_ValueListAttributes.cs" />
-    <Compile Remove="Components\OBSOLETE\Motion_ValueListItem.cs" />
-    <Compile Remove="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
-    <Compile Remove="Components\OBSOLETE\RangeSelector.cs" />
-    <Compile Remove="Components\OBSOLETE\SliderInterval.cs" />
-    <Compile Remove="Components\OBSOLETE\SliderLockButton.cs" />
-    <Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
-    <Compile Remove="Toolbar\ExtraButton.cs" />
-    <Compile Remove="Toolbar\ViewSwitchButton.cs" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <None Include="Button\CreateUnionSliderButton.cs" />
-    <None Include="Components\01_Animation\MotionUnionSlider.cs" />
-    <None Include="General\MotilityUtils.cs" />
-    <None Include="Components\OBSOLETE\FFmpegExceptions.cs" />
-    <None Include="Components\OBSOLETE\FFmpegUtil.cs" />
-    <None Include="Components\OBSOLETE\MotionSliderControlButton2.cs" />
-    <None Include="Components\OBSOLETE\Motion_ValueListAttributes.cs" />
-    <None Include="Components\OBSOLETE\Motion_ValueListItem.cs" />
-    <None Include="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
-    <None Include="Components\OBSOLETE\Param_RemoteLocation.cs" />
-    <None Include="Components\OBSOLETE\Param_RemoteTarget.cs" />
-    <None Include="Components\OBSOLETE\Param_RemoteReceiver.cs" />
-    <None Include="Components\OBSOLETE\RangeSelector.cs" />
-    <None Include="Components\OBSOLETE\RemoteComponentsUndoAction.cs" />
-    <None Include="Components\OBSOLETE\AddScribble.cs" />
-    <None Include="Components\OBSOLETE\GraphMapperChanger.cs" />
-    <None Include="Components\OBSOLETE\MergeCameraBase.cs" />
-    <None Include="Components\OBSOLETE\MergeCameraLocation.cs" />
-    <None Include="Components\OBSOLETE\MergeCameraTarget.cs" />
-    <None Include="Components\OBSOLETE\SliderInterval.cs" />
-    <None Include="Components\OBSOLETE\SliderLockButton.cs" />
-    <None Include="Components\OBSOLETE\SliderLocker.cs" />
-    <None Include="Components\OBSOLETE\MergeCameraData.cs" />
-    <None Include="Components\OBSOLETE\Param_RemoteData.cs" />
-    <None Include="Components\OBSOLETE\SliderControlWPFComponent.cs" />
-    <None Include="Components\OBSOLETE\SliderControlWinform.cs" />
-    <None Include="Components\OBSOLETE\ExportRhinoViewport.cs" />
-    <None Include="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
-    <None Include="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
-    <None Include="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
-    <None Include="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
-    <None Include="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
-    <None Include="Components\OBSOLETE\MergeByCount.cs" />
-    <None Include="Components\OBSOLETE\MergeBySliderCount.cs" />
-    <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUi.cs" />
-    <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiLatest.cs" />
-    <None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
-    <None Include="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
-    <None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
-    <None Include="Components\OBSOLETE\TimelineRange.cs" />
-    <None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
-  </ItemGroup>
-  
-	
-	
-  <ItemGroup>
-    <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.11" />
-  </ItemGroup>
+		<UseWindowsForms>true</UseWindowsForms>
+		<TargetFrameworks>net7.0-windows;net48</TargetFrameworks>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<TargetExt>.gha</TargetExt>
+		<NoWarn>NU1701</NoWarn>
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
+		<LangVersion>9.0</LangVersion>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!-- Specifies information for Assembly and Yak -->
+		<Version>0.8.2</Version>
+		<Title>Motion</Title>
+		<Company>M3_Lewis</Company>
+		<Description>Multi-Event Based Animation Tool for GH</Description>
+		<keywords>Animation, Timeline, Slider, Event</keywords>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="NS\**" />
+		<Compile Remove="Resources\**" />
+		<Compile Remove="tele\**" />
+		<Compile Remove="XForm\**" />
+		<EmbeddedResource Remove="NS\**" />
+		<EmbeddedResource Remove="Resources\**" />
+		<EmbeddedResource Remove="tele\**" />
+		<EmbeddedResource Remove="XForm\**" />
+		<None Remove="NS\**" />
+		<None Remove="Resources\**" />
+		<None Remove="tele\**" />
+		<None Remove="XForm\**" />
+		<Page Remove="NS\**" />
+		<Page Remove="Resources\**" />
+		<Page Remove="tele\**" />
+		<Page Remove="XForm\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Remove="Button\CreateUnionSliderButton.cs" />
+		<Compile Remove="Components\01_Animation\MergeCameraData.cs" />
+		<Compile Remove="Components\01_Animation\MotionUnionSlider.cs" />
+		<Compile Remove="Components\01_Animation\SliderControlWinform.cs" />
+		<Compile Remove="Components\01_Animation\SliderControlWPF.cs" />
+		<Compile Remove="Components\01_Animation\SliderLocker.cs" />
+		<Compile Remove="Components\03_Utils\AddScribble.cs" />
+		<Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
+		<Compile Remove="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
+		<Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
+		<Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
+		<Compile Remove="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
+		<Compile Remove="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
+		<Compile Remove="Components\OBSOLETE\FFmpegExceptions.cs" />
+		<Compile Remove="Components\OBSOLETE\FFmpegUtil.cs" />
+		<Compile Remove="Components\OBSOLETE\GraphMapperChanger.cs" />
+		<Compile Remove="Components\OBSOLETE\MergeByCount.cs" />
+		<Compile Remove="Components\OBSOLETE\MergeBySliderCount.cs" />
+		<Compile Remove="Components\OBSOLETE\MergeCameraBase.cs" />
+		<Compile Remove="Components\OBSOLETE\MergeCameraLocation.cs" />
+		<Compile Remove="Components\OBSOLETE\MergeCameraTarget.cs" />
+		<Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUi.cs" />
+		<Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiLatest.cs" />
+		<Compile Remove="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
+		<Compile Remove="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
+		<Compile Remove="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
+		<Compile Remove="Components\OBSOLETE\MotionSliderControlButton2.cs" />
+		<Compile Remove="Components\OBSOLETE\Motion_ValueListAttributes.cs" />
+		<Compile Remove="Components\OBSOLETE\Motion_ValueListItem.cs" />
+		<Compile Remove="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
+		<Compile Remove="Components\OBSOLETE\RangeSelector.cs" />
+		<Compile Remove="Components\OBSOLETE\SliderInterval.cs" />
+		<Compile Remove="Components\OBSOLETE\SliderLockButton.cs" />
+		<Compile Remove="Components\OBSOLETE\TimelineRange.cs" />
+		<Compile Remove="Toolbar\ExtraButton.cs" />
+		<Compile Remove="Toolbar\ViewSwitchButton.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="Button\CreateUnionSliderButton.cs" />
+		<None Include="Components\01_Animation\MotionUnionSlider.cs" />
+		<None Include="General\MotilityUtils.cs" />
+		<None Include="Components\OBSOLETE\FFmpegExceptions.cs" />
+		<None Include="Components\OBSOLETE\FFmpegUtil.cs" />
+		<None Include="Components\OBSOLETE\MotionSliderControlButton2.cs" />
+		<None Include="Components\OBSOLETE\Motion_ValueListAttributes.cs" />
+		<None Include="Components\OBSOLETE\Motion_ValueListItem.cs" />
+		<None Include="Components\OBSOLETE\Param_RemoteCameraPointBase.cs" />
+		<None Include="Components\OBSOLETE\Param_RemoteLocation.cs" />
+		<None Include="Components\OBSOLETE\Param_RemoteTarget.cs" />
+		<None Include="Components\OBSOLETE\Param_RemoteReceiver.cs" />
+		<None Include="Components\OBSOLETE\RangeSelector.cs" />
+		<None Include="Components\OBSOLETE\RemoteComponentsUndoAction.cs" />
+		<None Include="Components\OBSOLETE\AddScribble.cs" />
+		<None Include="Components\OBSOLETE\GraphMapperChanger.cs" />
+		<None Include="Components\OBSOLETE\MergeCameraBase.cs" />
+		<None Include="Components\OBSOLETE\MergeCameraLocation.cs" />
+		<None Include="Components\OBSOLETE\MergeCameraTarget.cs" />
+		<None Include="Components\OBSOLETE\SliderInterval.cs" />
+		<None Include="Components\OBSOLETE\SliderLockButton.cs" />
+		<None Include="Components\OBSOLETE\SliderLocker.cs" />
+		<None Include="Components\OBSOLETE\MergeCameraData.cs" />
+		<None Include="Components\OBSOLETE\Param_RemoteData.cs" />
+		<None Include="Components\OBSOLETE\SliderControlWPFComponent.cs" />
+		<None Include="Components\OBSOLETE\SliderControlWinform.cs" />
+		<None Include="Components\OBSOLETE\ExportRhinoViewport.cs" />
+		<None Include="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
+		<None Include="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
+		<None Include="Components\OBSOLETE\ExportRhinoViewportNewTwo.cs" />
+		<None Include="Components\OBSOLETE\ExportRhinoViewportNoUiLatest.cs" />
+		<None Include="Components\OBSOLETE\ExportRhinoViewportWithUiLatest.cs" />
+		<None Include="Components\OBSOLETE\MergeByCount.cs" />
+		<None Include="Components\OBSOLETE\MergeBySliderCount.cs" />
+		<None Include="Components\OBSOLETE\MotionSliderAnimatorNoUi.cs" />
+		<None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiLatest.cs" />
+		<None Include="Components\OBSOLETE\MotionSliderAnimatorNoUiThree.cs" />
+		<None Include="Components\OBSOLETE\MotionSliderAnimatorOne.cs" />
+		<None Include="Components\OBSOLETE\MotionSliderAnimatorWithUi.cs" />
+		<None Include="Components\OBSOLETE\TimelineRange.cs" />
+		<None Include="Components\OBSOLETE\ViewSwitchButton.cs" />
+	</ItemGroup>
+
+
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
+		<PackageReference Include="System.Drawing.Common" Version="8.0.11" />
+	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Grasshopper" Version="7.34.23267.11001" Condition="$(TargetFramework) == 'net48'" ExcludeAssets="runtime" />
 		<PackageReference Include="Grasshopper" Version="8.0.23304.9001" Condition="!$(TargetFramework.StartsWith('net4'))" ExcludeAssets="runtime" />
 	</ItemGroup>
-  <ItemGroup>
-    <Reference Include="System.Windows.Forms">
-      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-  
-  <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-  
-  <!-- For Windows only builds -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4'))">
-    <UseWpf>true</UseWpf>
-  </PropertyGroup>
+	<ItemGroup>
+		<Reference Include="System.Windows.Forms">
+			<HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.dll</HintPath>
+		</Reference>
+	</ItemGroup>
 
-  <Target Name="CopyPdbForMonoDebugging" AfterTargets="AfterBuild">
-    <!-- Enable debugging in Rhino 6/7 on Mac -->
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFiles="$(TargetDir)$(TargetName).gha.pdb" Condition="$([MSBuild]::IsOSPlatform(OSX)) and $(TargetFramework.StartsWith('net4')) and Exists('$(TargetDir)$(TargetName).pdb')" />
-  </Target>
+	<ItemGroup>
+		<Compile Update="Properties\Resources.Designer.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>Resources.resx</DependentUpon>
+		</Compile>
+	</ItemGroup>
 
-  <Target Name="BuildYakPackage" AfterTargets="DispatchToInnerBuilds">
-    <PropertyGroup>
-      <YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(windows)) and Exists('C:\Program Files\Rhino 8\System\Yak.exe')">C:\Program Files\Rhino 8\System\Yak.exe</YakExecutable>
-      <YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(macos)) and Exists('/Applications/Rhino 8.app/Contents/Resources/bin/yak')">/Applications/Rhino 8.app/Contents/Resources/bin/yak</YakExecutable>
-      
-      <BuildYakPackage Condition="$(BuildYakPackage) == '' and $(YakExecutable) != '' and Exists($(YakExecutable))">True</BuildYakPackage>
-    </PropertyGroup>
-    
-    <Warning Text="Could not find Yak executable" Condition="$(YakExecutable) == ''" />
+	<ItemGroup>
+		<EmbeddedResource Update="Properties\Resources.resx">
+			<Generator>PublicResXFileCodeGenerator</Generator>
+			<LastGenOutput>Resources.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
+	</ItemGroup>
 
-    <ItemGroup>
-      <YakPackagesToDelete Include="$(OutputPath)\*.yak;$(OutputPath)\**\manifest.yml" />
-    </ItemGroup>
-    
-    <Delete Files="@(YakPackagesToDelete)" />
+	<!-- For Windows only builds -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4'))">
+		<UseWpf>true</UseWpf>
+	</PropertyGroup>
 
-    <Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
-    <Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
+	<Target Name="CopyPdbForMonoDebugging" AfterTargets="AfterBuild">
+		<!-- Enable debugging in Rhino 6/7 on Mac -->
+		<Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFiles="$(TargetDir)$(TargetName).gha.pdb" Condition="$([MSBuild]::IsOSPlatform(OSX)) and $(TargetFramework.StartsWith('net4')) and Exists('$(TargetDir)$(TargetName).pdb')" />
+	</Target>
 
-    <!-- Rhino 7 -->
-    <Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)net48\" Condition="$(BuildYakPackage) == 'True'" />
-    <Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)net48\" Condition="$(BuildYakPackage) == 'True'" />
-    
-    <ItemGroup>
-      <YakPackageToMove Include="$(BaseOutputPath)$(Configuration)\net48\*.yak" />
-    </ItemGroup>
-    <Move SourceFiles="@(YakPackageToMove)" DestinationFolder="$(BaseOutputPath)$(Configuration)\" Condition="$(BuildYakPackage) == 'True'" />
-  
-	<Move SourceFiles="$(OutputPath)net7.0-windows\Motion.gha" DestinationFiles="$(OutputPath)net7.0-windows\Motion(Core).gha" Condition="Exists('$(OutputPath)net7.0-windows\Motion.gha')" />
-  </Target>
+	<Target Name="BuildYakPackage" AfterTargets="DispatchToInnerBuilds">
+		<PropertyGroup>
+			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(windows)) and Exists('C:\Program Files\Rhino 8\System\Yak.exe')">C:\Program Files\Rhino 8\System\Yak.exe</YakExecutable>
+			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(macos)) and Exists('/Applications/Rhino 8.app/Contents/Resources/bin/yak')">/Applications/Rhino 8.app/Contents/Resources/bin/yak</YakExecutable>
+
+			<BuildYakPackage Condition="$(BuildYakPackage) == '' and $(YakExecutable) != '' and Exists($(YakExecutable))">True</BuildYakPackage>
+		</PropertyGroup>
+
+		<Warning Text="Could not find Yak executable" Condition="$(YakExecutable) == ''" />
+
+		<ItemGroup>
+			<YakPackagesToDelete Include="$(OutputPath)\*.yak;$(OutputPath)\**\manifest.yml" />
+		</ItemGroup>
+
+		<Delete Files="@(YakPackagesToDelete)" />
+
+		<Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
+		<Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
+
+		<!-- Rhino 7 -->
+		<Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)net48\" Condition="$(BuildYakPackage) == 'True'" />
+		<Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)net48\" Condition="$(BuildYakPackage) == 'True'" />
+
+		<ItemGroup>
+			<YakPackageToMove Include="$(BaseOutputPath)$(Configuration)\net48\*.yak" />
+		</ItemGroup>
+		<Move SourceFiles="@(YakPackageToMove)" DestinationFolder="$(BaseOutputPath)$(Configuration)\" Condition="$(BuildYakPackage) == 'True'" />
+
+		<Move SourceFiles="$(OutputPath)net7.0-windows\Motion.gha" DestinationFiles="$(OutputPath)net7.0-windows\Motion(Core).gha" Condition="Exists('$(OutputPath)net7.0-windows\Motion.gha')" />
+	</Target>
+	
+	<!--<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;" />
+		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />
+	</Target>-->
+
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-  <Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;" />
-		<!--<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\McNeel\Rhinoceros\packages\8.0\Motion\0.7.10\net48\$(ProjectName).gha&quot;" />-->
-  <Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />
-</Target>
+		<Exec Command="dotNET_Reactor.Console.exe -file &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; -anti_debug 1 -hide_calls 1 -control_flow_obfuscation 1 -flow_level 5" IgnoreExitCode="true" ContinueOnError="true" />
+		<Exec Command="dotNET_Reactor.Console.exe -file &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net7.0-windows\Motion(Core).gha&quot; -anti_debug 1 -hide_calls 1 -control_flow_obfuscation 1 -flow_level 5" IgnoreExitCode="true" ContinueOnError="true" />
+
+		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion_Secure\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;" IgnoreExitCode="true" ContinueOnError="true" />
+		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" IgnoreExitCode="true" ContinueOnError="true" />
+
+		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion_Secure\Motion.gha&quot; &quot;F:\Motion插件发布\MotionLatest\net48\Motion.gha&quot;" IgnoreExitCode="true" ContinueOnError="true" />
+		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net7.0-windows\Motion_Secure\Motion(Core).gha&quot; &quot;F:\Motion插件发布\MotionLatest\net7.0-windows\Motion(Core).gha&quot;" IgnoreExitCode="true" ContinueOnError="true" />
+	</Target>
 </Project>
