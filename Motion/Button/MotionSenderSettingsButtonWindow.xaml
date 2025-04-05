@@ -23,7 +23,6 @@
             <ComboBox x:Name="GraphSelectComboBox"  Width ="140" Text="Graph Select" Margin="15,5,0,5" SelectionChanged="Graph_SelectionChanged"/>
         </StackPanel>
         
-        
         <Button Grid.Row="2" Content="确定" Width="50" Height="25" HorizontalAlignment="Center" VerticalAlignment="Center"
                 Click="ConfirmButton_Click"/>
     </Grid>

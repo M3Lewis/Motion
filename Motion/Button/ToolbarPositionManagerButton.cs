@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.IO;
+using System.Xml.Serialization;
 
 namespace Motion.Toolbar
 {
@@ -17,6 +19,13 @@ namespace Motion.Toolbar
         protected override int ToolbarOrder => 0; // 放在最前面
         private ToolStripButton button;
         private ContextMenuStrip buttonContextMenu;
+        private ToolStrip grasshopperToolStrip;
+        private ToolStripItemCollection grasshopperToolStripItems;
+
+        // 文件路径常量，用于保存和加载位置设置
+        private static readonly string SettingsFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Grasshopper", "Motion", "ToolbarSettings.xml");
 
         public ToolbarPositionManagerButton()
         {
@@ -42,6 +51,9 @@ namespace Motion.Toolbar
             GH_DocumentEditor editor = Instances.DocumentEditor;
             if (editor == null) return;
             AddToolbarPositionManagerButton();
+
+            // 加载上次保存的位置设置并应用
+            LoadAndApplyPositionSettings();
         }
 
         private void Instantiate()
@@ -50,7 +62,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             UpdateButtonImage(); // 替换原来的直接赋值
-            
+
             button.ToolTipText = "管理工具栏位置";
             button.Click += Button_Click;
 
@@ -106,9 +118,13 @@ namespace Motion.Toolbar
             // 更新按钮图标
             UpdateButtonImage();
 
+            // 保存位置设置到文件
+            SavePositionSettings(position);
+
             // 显示位置变更消息
             ShowTemporaryMessage(Instances.ActiveCanvas, $"工具栏已移动到: {position}");
         }
+
         private void CreateContextMenu()
         {
             buttonContextMenu = new ContextMenuStrip();
@@ -230,7 +246,7 @@ namespace Motion.Toolbar
                 grasshopperToolbar.Items.Add(new ToolStripSeparator());
             }
         }
-        
+
 
         private List<ToolStripItem> CollectItemsToMove()
         {
@@ -393,7 +409,7 @@ namespace Motion.Toolbar
             }
         }
 
-        // 新方法：获取按钮的ToolbarOrder
+        // 获取按钮的ToolbarOrder
         private int GetToolbarOrder(MotionToolbarButton button)
         {
             // 如果按钮为null，返回默认值0
@@ -467,6 +483,94 @@ namespace Motion.Toolbar
             }
 
             return -1; // 如果没找到则返回-1
+        }
+
+        // 创建一个可序列化的设置类
+        [Serializable]
+        public class ToolbarSettings
+        {
+            public ToolbarPosition Position { get; set; }
+
+            public ToolbarSettings()
+            {
+                Position = ToolbarPosition.OnToolbar; // 默认位置
+            }
+
+            public ToolbarSettings(ToolbarPosition position)
+            {
+                Position = position;
+            }
+        }
+
+        // 保存位置设置到文件
+        private void SavePositionSettings(ToolbarPosition position)
+        {
+            try
+            {
+                // 确保目录存在
+                string directory = Path.GetDirectoryName(SettingsFilePath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // 创建设置对象
+                ToolbarSettings settings = new ToolbarSettings(position);
+
+                // 序列化到XML
+                XmlSerializer serializer = new XmlSerializer(typeof(ToolbarSettings));
+                using (StreamWriter writer = new StreamWriter(SettingsFilePath))
+                {
+                    serializer.Serialize(writer, settings);
+                }
+
+                Rhino.RhinoApp.WriteLine($"已保存工具栏位置设置: {position}");
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"保存工具栏位置设置失败: {ex.Message}");
+            }
+        }
+
+        // 加载位置设置并应用
+        private void LoadAndApplyPositionSettings()
+        {
+            try
+            {
+                // 检查设置文件是否存在
+                if (!File.Exists(SettingsFilePath))
+                {
+                    return; // 如果不存在，使用默认设置
+                }
+
+                // 反序列化XML
+                XmlSerializer serializer = new XmlSerializer(typeof(ToolbarSettings));
+                ToolbarSettings settings;
+
+                using (StreamReader reader = new StreamReader(SettingsFilePath))
+                {
+                    settings = (ToolbarSettings)serializer.Deserialize(reader);
+                }
+
+                // 应用加载的设置
+                if (settings != null)
+                {
+                    // 使用延迟执行，确保UI已经完全加载
+                    System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+                    timer.Interval = 1000; // 1秒后执行
+                    timer.Tick += (sender, e) =>
+                    {
+                        timer.Stop();
+                        MoveToolbarItems(settings.Position);
+                        Rhino.RhinoApp.WriteLine($"已应用工具栏位置设置: {settings.Position}");
+                    };
+                    timer.Start();
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"加载工具栏位置设置失败: {ex.Message}");
+            }
         }
     }
 }
