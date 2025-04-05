@@ -12,27 +12,28 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using System.Xml.Serialization;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Motion.Toolbar
 {
-    // 创建一个可序列化的设置类
     [Serializable]
     public class MotionSenderSettingsData
     {
         public int FramesPerSecond { get; set; }
         public string DoubleClickGraphType { get; set; }
+        public bool IsActive { get; set; }  // 新增属性，用于保存按钮的active状态
 
         public MotionSenderSettingsData()
         {
             FramesPerSecond = 60; // 默认每秒60帧
             DoubleClickGraphType = "Graph Mapper"; // 默认图表类型
+            IsActive = false; // 默认按钮状态为非激活
         }
 
-        public MotionSenderSettingsData(int fps, string graphType)
+        public MotionSenderSettingsData(int fps, string graphType, bool isActive)
         {
             FramesPerSecond = fps;
             DoubleClickGraphType = graphType;
+            IsActive = isActive;
         }
     }
 
@@ -40,7 +41,6 @@ namespace Motion.Toolbar
     {
         protected override int ToolbarOrder => 101;
         private ToolStripButton button;
-        private bool isActive = false;
 
         private static readonly string SettingsFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -53,6 +53,19 @@ namespace Motion.Toolbar
             private set
             {
                 _framesPerSecond = value;
+                SaveSettings();
+            }
+        }
+
+        private bool isActive = false; // 保留实例变量用于UI状态
+        // 添加静态变量存储全局状态
+        private static bool _isActiveState = false;
+        public static bool IsActiveState
+        {
+            get { return _isActiveState; }
+            private set
+            {
+                _isActiveState = value;
                 SaveSettings();
             }
         }
@@ -71,6 +84,7 @@ namespace Motion.Toolbar
         public MotionSenderSettings()
         {
             LoadSettings();
+            isActive = _isActiveState; // 加载后同步到实例变量
         }
 
         private void AddMotionSliderSettingsButton()
@@ -104,7 +118,12 @@ namespace Motion.Toolbar
             button.ToolTipText = "鼠标左键：显示Slider帧数对应的时间\n鼠标右键：设置帧数及Graph组件类型";
             button.Click += LeftClickButton;
             button.MouseDown += RightClickButton;
+
+            // 设置按钮初始状态
+            isActive = _isActiveState; // 确保同步
+            button.BackColor = isActive ? Color.Orange : Color.FromArgb(255, 255, 255);
         }
+
 
         private void LeftClickButton(object sender, EventArgs e)
         {
@@ -114,7 +133,10 @@ namespace Motion.Toolbar
 
         private void OpenMotionSenderTimeTextShowing()
         {
+            // 同时更新实例变量和静态变量
             isActive = !isActive;
+            _isActiveState = isActive;
+            SaveSettings(); // 保存当前状态
         }
 
         private void ChangeButtonBackgroundColor()
@@ -179,7 +201,7 @@ namespace Motion.Toolbar
                 }
 
                 // 创建设置对象
-                MotionSenderSettingsData settings = new MotionSenderSettingsData(_framesPerSecond, _doubleClickGraphType);
+                MotionSenderSettingsData settings = new MotionSenderSettingsData(_framesPerSecond, _doubleClickGraphType, _isActiveState);
 
                 // 序列化到XML
                 XmlSerializer serializer = new XmlSerializer(typeof(MotionSenderSettingsData));
@@ -188,7 +210,7 @@ namespace Motion.Toolbar
                     serializer.Serialize(writer, settings);
                 }
 
-                Rhino.RhinoApp.WriteLine($"已保存Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}");
+                Rhino.RhinoApp.WriteLine($"已保存Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}, IsActive={_isActiveState}");
             }
             catch (Exception ex)
             {
@@ -220,7 +242,8 @@ namespace Motion.Toolbar
                 {
                     _framesPerSecond = settings.FramesPerSecond;
                     _doubleClickGraphType = settings.DoubleClickGraphType;
-                    Rhino.RhinoApp.WriteLine($"已加载Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}");
+                    _isActiveState = settings.IsActive;
+                    Rhino.RhinoApp.WriteLine($"已加载Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}, IsActive={_isActiveState}");
                 }
             }
             catch (Exception ex)
@@ -302,18 +325,21 @@ namespace Motion.Toolbar
                 targetToolbar = customToolbar;
             }
 
-            if (targetToolbar == null) return false;
+            if (targetToolbar == null) return _isActiveState; // 如果找不到工具栏，返回保存的状态
 
+            // 优先使用找到的按钮状态
             foreach (ToolStripItem item in targetToolbar.Items)
             {
                 if (item.Name == "Motion Sender Settings" && item is ToolStripButton button)
                 {
                     var settings = button.Tag as MotionSenderSettings;
-                    return settings?.isActive ?? false;
+                    if (settings != null)
+                        return settings.isActive;
                 }
             }
 
-            return false;
+            // 如果没有找到按钮，则使用保存的状态
+            return _isActiveState;
         }
     }
 }
