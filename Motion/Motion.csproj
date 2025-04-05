@@ -18,7 +18,7 @@
 
 	<PropertyGroup>
 		<!-- Specifies information for Assembly and Yak -->
-		<Version>0.8.2</Version>
+		<Version>0.8.3</Version>
 		<Title>Motion</Title>
 		<Company>M3_Lewis</Company>
 		<Description>Multi-Event Based Animation Tool for GH</Description>
@@ -52,6 +52,7 @@
 		<Compile Remove="Components\01_Animation\SliderControlWPF.cs" />
 		<Compile Remove="Components\01_Animation\SliderLocker.cs" />
 		<Compile Remove="Components\03_Utils\AddScribble.cs" />
+		<Compile Remove="Components\03_Utils\MotionCamera.cs" />
 		<Compile Remove="Components\OBSOLETE\ExportRhinoViewport.cs" />
 		<Compile Remove="Components\OBSOLETE\ExportRhinoViewportNew.cs" />
 		<Compile Remove="Components\OBSOLETE\ExportRhinoViewportNewThree.cs" />
@@ -86,6 +87,7 @@
 	<ItemGroup>
 		<None Include="Button\CreateUnionSliderButton.cs" />
 		<None Include="Components\01_Animation\MotionUnionSlider.cs" />
+		<None Include="Components\03_Utils\MotionCamera.cs" />
 		<None Include="General\MotilityUtils.cs" />
 		<None Include="Components\OBSOLETE\FFmpegExceptions.cs" />
 		<None Include="Components\OBSOLETE\FFmpegUtil.cs" />

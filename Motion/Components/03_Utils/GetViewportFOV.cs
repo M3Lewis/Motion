@@ -82,6 +82,6 @@ namespace Motion.Utils
 
         public override Guid ComponentGuid => new Guid("1E8A4F5B-B7C9-4D3E-8A01-F9C7B2E1D0F0"); // Generate a new unique GUID
 
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.quarternary;
     }
 }

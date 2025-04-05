@@ -18,8 +18,8 @@ namespace Motion.Utils
     {
         public IntervalSwitcher()
           : base("Interval Switcher", "IntSwitch",
-              "根据布尔开关在输入区间和滑块范围之间切换，并可锁定下游组件。\nSwitches between an input interval and a slider's range based on a boolean toggle, and can lock downstream components.",
-              "Motion", "03_Utils")
+              "请和V-Ray插件的V-Ray Timeline Component以及Metahopper插件的Set Slider Properties Component配合使用。\nUse with the V-Ray Timeline Component of the V-Ray plug-in and the Set Slider Properties Component of the Metahopper plug-in.",
+              "Motion", "01_Animation")
         {
         }
 
@@ -32,10 +32,10 @@ namespace Motion.Utils
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddNumberParameter("Frames", "F", "帧数 (滑块最大值 - 最小值 + 1)\nNumber of frames (Slider Max - Min + 1)", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Start", "St", "区间的起始值\nStart value of the interval", GH_ParamAccess.item);
-            pManager.AddNumberParameter("End", "En", "区间的结束值\nEnd value of the interval", GH_ParamAccess.item);
-            pManager.AddGenericParameter("Slider Object", "Sld", "获取到的滑块对象\nThe retrieved slider object", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Frames", "Frames", "帧数 (滑块最大值 - 最小值 + 1)\nNumber of frames (Slider Max - Min + 1)", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Start", "Start", "区间的起始值\nStart value of the interval", GH_ParamAccess.item);
+            pManager.AddNumberParameter("End", "End", "区间的结束值\nEnd value of the interval", GH_ParamAccess.item);
+            pManager.AddGenericParameter("Slider Object", "Slider", "获取到的滑块对象\nThe retrieved slider object", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -131,7 +131,7 @@ namespace Motion.Utils
             DA.SetData(2, endValue);
             DA.SetData(3, numberSlider);
         }
-
+        public override GH_Exposure Exposure => GH_Exposure.tertiary;
         protected override System.Drawing.Bitmap Icon => /*Motion.Properties.Resources.TimeInterval*/ null;
 
         public override Guid ComponentGuid => new Guid("a8d4b1e0-3f5c-4a9e-8b1d-7e2c9f0a1b3e");
