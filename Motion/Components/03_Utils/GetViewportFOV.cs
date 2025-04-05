@@ -78,7 +78,7 @@ namespace Motion.Utils
             DA.SetData(1, horizontalFov);
         }
 
-        protected override System.Drawing.Bitmap Icon => null;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.GetViewportFOV;
 
         public override Guid ComponentGuid => new Guid("1E8A4F5B-B7C9-4D3E-8A01-F9C7B2E1D0F0"); // Generate a new unique GUID
 

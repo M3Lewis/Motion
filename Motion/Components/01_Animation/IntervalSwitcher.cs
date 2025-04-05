@@ -132,7 +132,7 @@ namespace Motion.Utils
             DA.SetData(3, numberSlider);
         }
         public override GH_Exposure Exposure => GH_Exposure.tertiary;
-        protected override System.Drawing.Bitmap Icon => /*Motion.Properties.Resources.TimeInterval*/ null;
+        protected override System.Drawing.Bitmap Icon => Motion.Properties.Resources.IntervalSwitcher;
 
         public override Guid ComponentGuid => new Guid("a8d4b1e0-3f5c-4a9e-8b1d-7e2c9f0a1b3e");
     }

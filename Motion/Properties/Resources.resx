@@ -160,6 +160,9 @@
   <data name="FilletEdgeIndex" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\FilletEdgeIndex.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="GetViewportFOV" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\GetViewportFOV.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="GraphMapperChanger" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\GraphMapperChanger.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -168,6 +171,9 @@
   </data>
   <data name="IntervalLock" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\IntervalLock.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="IntervalSwitcher" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\IntervalSwitcher.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="JumpToAffectedComponent" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\JumpToAffectedComponent.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

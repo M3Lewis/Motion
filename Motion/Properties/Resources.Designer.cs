@@ -203,6 +203,16 @@ namespace Motion.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap GetViewportFOV {
+            get {
+                object obj = ResourceManager.GetObject("GetViewportFOV", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap GraphMapperChanger {
             get {
                 object obj = ResourceManager.GetObject("GraphMapperChanger", resourceCulture);
@@ -226,6 +236,16 @@ namespace Motion.Properties {
         public static System.Drawing.Bitmap IntervalLock {
             get {
                 object obj = ResourceManager.GetObject("IntervalLock", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap IntervalSwitcher {
+            get {
+                object obj = ResourceManager.GetObject("IntervalSwitcher", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
