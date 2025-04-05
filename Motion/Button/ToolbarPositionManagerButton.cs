@@ -524,7 +524,7 @@ namespace Motion.Toolbar
                     serializer.Serialize(writer, settings);
                 }
 
-                Rhino.RhinoApp.WriteLine($"已保存工具栏位置设置: {position}");
+                //Rhino.RhinoApp.WriteLine($"已保存工具栏位置设置: {position}");
             }
             catch (Exception ex)
             {
@@ -562,7 +562,7 @@ namespace Motion.Toolbar
                     {
                         timer.Stop();
                         MoveToolbarItems(settings.Position);
-                        Rhino.RhinoApp.WriteLine($"已应用工具栏位置设置: {settings.Position}");
+                        //Rhino.RhinoApp.WriteLine($"已应用工具栏位置设置: {settings.Position}");
                     };
                     timer.Start();
                 }
