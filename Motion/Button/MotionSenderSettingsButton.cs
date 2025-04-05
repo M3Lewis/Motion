@@ -210,7 +210,7 @@ namespace Motion.Toolbar
                     serializer.Serialize(writer, settings);
                 }
 
-                Rhino.RhinoApp.WriteLine($"已保存Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}, IsActive={_isActiveState}");
+                //Rhino.RhinoApp.WriteLine($"已保存Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}, IsActive={_isActiveState}");
             }
             catch (Exception ex)
             {
@@ -243,7 +243,7 @@ namespace Motion.Toolbar
                     _framesPerSecond = settings.FramesPerSecond;
                     _doubleClickGraphType = settings.DoubleClickGraphType;
                     _isActiveState = settings.IsActive;
-                    Rhino.RhinoApp.WriteLine($"已加载Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}, IsActive={_isActiveState}");
+                    //Rhino.RhinoApp.WriteLine($"已加载Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}, IsActive={_isActiveState}");
                 }
             }
             catch (Exception ex)
