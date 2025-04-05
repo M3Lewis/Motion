@@ -35,38 +35,31 @@ namespace Motion.Animation
                 var graphMapperObject = source.Attributes.GetTopLevel.DocObject;
                 switch (graphMapperObject)
                 {
-                    case GH_GraphMapper graphMapper:
-                        if (graphMapper?.Sources.Count > 0)
+                    case GH_GraphMapper currentGraphMapper when currentGraphMapper?.Sources.Count > 0:
+                    case GH_Component mapperComponent when mapperComponent != null:
+                        EventComponent targetEventComponent = null;
+
+                        switch (graphMapperObject)
                         {
-                            var eventComponent = graphMapper.Sources[0].Attributes.GetTopLevel.DocObject as EventComponent;
-                            if (eventComponent != null)
-                            {
-                                // 解析区间最小值和最大值
-                                string[] parts = eventComponent.NickName.Split('-');
-                                if (parts.Length == 2 &&
-                                    double.TryParse(parts[0], out double minValue) &&
-                                    double.TryParse(parts[1], out double maxValue))
-                                {
-                                    menuItems.Add((eventComponent, eventComponent.NickName, minValue, maxValue));
-                                }
-                            }
+                            case GH_GraphMapper graphMapper:
+                                IGH_DocumentObject documentObject = graphMapper.Sources[0];
+                                targetEventComponent = documentObject.Attributes.GetTopLevel?.DocObject as EventComponent;
+                                break;
+
+                            case GH_Component component:
+                                bool isGraphMapperPlus = component.NickName.StartsWith("Mapper+");
+                                IGH_Param inputParameter = component.Params.Input[isGraphMapperPlus ? 2 : 0];
+
+                                if (inputParameter?.Sources.Count == 0) break;
+
+                                IGH_DocumentObject sourceObject = inputParameter.Sources[0];
+                                targetEventComponent = sourceObject.Attributes.GetTopLevel?.DocObject as EventComponent;
+                                break;
                         }
-                        break;
-                    case GH_Component mapperComp:
-                        if (mapperComp?.Params.Input[0].Sources.Count > 0)
+
+                        if (targetEventComponent != null && TryParseIntervalFromNickname(targetEventComponent.NickName, out double minimumValue, out double maximumValue))
                         {
-                            var eventComponent = mapperComp.Params.Input[0].Sources[0].Attributes.GetTopLevel.DocObject as EventComponent;
-                            if (eventComponent != null)
-                            {
-                                // 解析区间最小值和最大值
-                                string[] parts = eventComponent.NickName.Split('-');
-                                if (parts.Length == 2 &&
-                                    double.TryParse(parts[0], out double minValue) &&
-                                    double.TryParse(parts[1], out double maxValue))
-                                {
-                                    menuItems.Add((eventComponent, eventComponent.NickName, minValue, maxValue));
-                                }
-                            }
+                            menuItems.Add((targetEventComponent, targetEventComponent.NickName, minimumValue, maximumValue));
                         }
                         break;
                 }
@@ -102,7 +95,15 @@ namespace Motion.Animation
 
         }
 
+        private bool TryParseIntervalFromNickname(string componentNickname, out double parsedMinimum, out double parsedMaximum)
+        {
+            parsedMinimum = parsedMaximum = 0;
+            string[] nicknameParts = componentNickname.Split('-');
 
+            return nicknameParts.Length == 2
+                   && double.TryParse(nicknameParts[0], out parsedMinimum)
+                   && double.TryParse(nicknameParts[1], out parsedMaximum);
+        }
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
             base.Render(canvas, graphics, channel);

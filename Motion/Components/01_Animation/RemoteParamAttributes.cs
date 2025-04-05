@@ -334,12 +334,12 @@ namespace Motion.Animation
                             graphMapperPlus.CreateAttributes();
                             graphMapperPlus.Attributes.Pivot = new PointF(
                                 eventComp.Attributes.Pivot.X + 200,
-                                eventComp.Attributes.Pivot.Y + 66
+                                eventComp.Attributes.Pivot.Y - 25
                             );
 
                             doc.AddObject(graphMapperPlus, false);
 
-                            graphMapperPlus.Params.Input[0].AddSource(eventComp.Params.Output[0]);
+                            graphMapperPlus.Params.Input[2].AddSource(eventComp.Params.Output[0]);
 
                             graphMapperPlus.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
 

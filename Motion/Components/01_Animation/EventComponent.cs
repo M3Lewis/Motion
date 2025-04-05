@@ -344,8 +344,10 @@ namespace Motion.Animation
                     var component = topLevelObj as GH_Component;
                     if (component != null && component.Params.Input.Count > 0)
                     {
-                        // 假设第一个输入端连接到 Event Component
-                        if (component.Params.Input[0].Sources.Contains(this.Params.Output[0]))
+                        bool isGraphMapperPlus = component.NickName.StartsWith("Mapper+");
+                        IGH_Param inputParameter = component.Params.Input[isGraphMapperPlus ? 2 : 0];
+
+                        if (inputParameter.Sources.Contains(this.Params.Output[0]))
                         {
                             targetOperation = component;
                         }
