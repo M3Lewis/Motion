@@ -50,14 +50,7 @@ namespace Motion.Animation
             };
         }
 
-        public override void AddedToDocument(GH_Document document)
-        {
-            base.AddedToDocument(document);
-            SolutionExpired += (sender, args) =>
-            {
-                ((GH_Component)sender).Params.Input[0].DataMapping = GH_DataMapping.Flatten;
-            };
-        }
+
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddNumberParameter("Events", "E", "事件值列表", GH_ParamAccess.list);
@@ -497,6 +490,10 @@ namespace Motion.Animation
         public override void AddedToDocument(GH_Document document)
         {
             base.AddedToDocument(document);
+            SolutionExpired += (sender, args) =>
+            {
+                ((GH_Component)sender).Params.Input[0].DataMapping = GH_DataMapping.Flatten;
+            };
             ConnectToTimelineSlider();
         }
 
