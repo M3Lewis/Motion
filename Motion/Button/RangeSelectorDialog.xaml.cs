@@ -37,7 +37,7 @@ namespace Motion.Views
             if (TimeIntervalComboBox.SelectedItem == null)
                 return;
 
-            string timeIntervalStr = (string)TimeIntervalComboBox.SelectedItem;
+            SelectedTimeIntervalStr = (string)TimeIntervalComboBox.SelectedItem;
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
@@ -49,7 +49,6 @@ namespace Motion.Views
                 return;
             }
 
-            SelectedTimeIntervalStr = (string)TimeIntervalComboBox.SelectedItem;
             IsConfirmed = true;
             Close();
         }

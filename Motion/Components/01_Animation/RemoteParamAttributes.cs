@@ -150,7 +150,7 @@ namespace Motion.Animation
             }
         }
         // 添加一个新的方法来绘制区间长度
-        private void DrawRangeLength(GH_Canvas canvas,Graphics graphics)
+        private void DrawRangeLength(GH_Canvas canvas, Graphics graphics)
         {
             if (!this.Selected) return;
             var _sender = Owner as MotionSender;
@@ -163,13 +163,12 @@ namespace Motion.Animation
             if (graphics == null) return;
 
             // 计算区间长度
-            double length = Math.Abs(_senderRange.Max - _senderRange.Min+1);
-            string message = $"[{length}f | {Math.Round(length/MotionSenderSettings.FramesPerSecond,2)}s]";
+            double length = Math.Abs(_senderRange.Max - _senderRange.Min + 1);
+            string message = $"[{length}f | {Math.Round(length / MotionSenderSettings.FramesPerSecond, 2)}s]";
 
-            // 设置消息位置（在组件上方）
             PointF location = new PointF(
-                this.Bounds.Left-70,
-                this.Bounds.Top+5
+                this.Bounds.Left - 80,
+                this.Bounds.Top + 5
             );
             var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 8);
             // 计算文本大小
@@ -244,57 +243,144 @@ namespace Motion.Animation
 
                 eventComp.LinkToSender(senderParam);
 
+
                 ghDoc.ScheduleSolution(5, doc =>
                 {
-                    var graphMapperGuid = new Guid("bc984576-7aa6-491f-a91d-e444c33675a7");
-                    var graphMapper = Grasshopper.Instances.ComponentServer.EmitObject(graphMapperGuid) as GH_GraphMapper;
-                    if (graphMapper == null) return;
+                    switch (MotionSenderSettings.DoubleClickGraphType)
+                    { 
+                        case "Graph Mapper":
+                            var graphMapperGuid = new Guid("bc984576-7aa6-491f-a91d-e444c33675a7");
+                            var graphMapper = Grasshopper.Instances.ComponentServer.EmitObject(graphMapperGuid) as GH_GraphMapper;
+                            if (graphMapper == null) return;
 
-                    graphMapper.CreateAttributes();
-                    graphMapper.Attributes.Pivot = new PointF(
-                        eventComp.Attributes.Pivot.X + 100,
-                        eventComp.Attributes.Pivot.Y - 75
-                    );
+                            graphMapper.CreateAttributes();
+                            graphMapper.Attributes.Pivot = new PointF(
+                                eventComp.Attributes.Pivot.X + 100,
+                                eventComp.Attributes.Pivot.Y - 75
+                            );
 
-                    doc.AddObject(graphMapper, false);
+                            doc.AddObject(graphMapper, false);
 
-                    graphMapper.AddSource(eventComp.Params.Output[0]);
+                            graphMapper.AddSource(eventComp.Params.Output[0]);
 
-                    var bezierGraph = Grasshopper.Instances.ComponentServer.EmitGraph(new GH_BezierGraph().GraphTypeID);
-                    if (bezierGraph != null)
-                    {
-                        bezierGraph.PrepareForUse();
-                        var container = graphMapper.Container;
-                        graphMapper.Container = null;
+                            var bezierGraph = Grasshopper.Instances.ComponentServer.EmitGraph(new GH_BezierGraph().GraphTypeID);
+                            if (bezierGraph != null)
+                            {
+                                bezierGraph.PrepareForUse();
+                                var container = graphMapper.Container;
+                                graphMapper.Container = null;
 
-                        if (container == null)
-                        {
-                            container = new GH_GraphContainer(bezierGraph);
-                        }
-                        else
-                        {
-                            container.Graph = bezierGraph;
-                        }
+                                if (container == null)
+                                {
+                                    container = new GH_GraphContainer(bezierGraph);
+                                }
+                                else
+                                {
+                                    container.Graph = bezierGraph;
+                                }
 
-                        container.X0 = 0;
-                        container.X1 = 1;
-                        container.Y0 = 0;
-                        container.Y1 = 1;
+                                container.X0 = 0;
+                                container.X1 = 1;
+                                container.Y0 = 0;
+                                container.Y1 = 1;
 
-                        graphMapper.Container = container;
+                                graphMapper.Container = container;
+                            }
+
+                            graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
+
+                            senderParam.Attributes.Selected = false;
+                            graphMapper.Attributes.Selected = true;
+                            eventComp.Attributes.Selected = true;
+
+                            doc.ScheduleSolution(10, d =>
+                            {
+                                graphMapper.ExpireSolution(true);
+                                eventComp.ExpireSolution(true);
+                            });
+                            break;
+                        case "V-Ray Graph":
+                            var vrayGraphGuid = new Guid("6b30c365-2690-4d61-b2ca-8ec5f2118665");
+                            var vrayGraph = Grasshopper.Instances.ComponentServer.EmitObject(vrayGraphGuid) as GH_Component;
+                            if (vrayGraph == null) return;
+
+                            vrayGraph.CreateAttributes();
+                            vrayGraph.Attributes.Pivot = new PointF(
+                                eventComp.Attributes.Pivot.X + 100,
+                                eventComp.Attributes.Pivot.Y - 57
+                            );
+
+                            doc.AddObject(vrayGraph, false);
+
+                            vrayGraph.Params.Input[0].AddSource(eventComp.Params.Output[0]);
+
+                            vrayGraph.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
+
+                            senderParam.Attributes.Selected = false;
+                            vrayGraph.Attributes.Selected = true;
+                            eventComp.Attributes.Selected = true;
+
+                            doc.ScheduleSolution(10, d =>
+                            {
+                                vrayGraph.ExpireSolution(true);
+                                eventComp.ExpireSolution(true);
+                            });
+                            break;
+                        case "Graph-Mapper +":
+                            var graphMapperPlusGuid = new Guid("310f9597-267e-4471-a7d7-048725557528");
+                            var graphMapperPlus = Grasshopper.Instances.ComponentServer.EmitObject(graphMapperPlusGuid) as GH_Component;
+                            if (graphMapperPlus == null) return;
+
+                            graphMapperPlus.CreateAttributes();
+                            graphMapperPlus.Attributes.Pivot = new PointF(
+                                eventComp.Attributes.Pivot.X + 200,
+                                eventComp.Attributes.Pivot.Y + 66
+                            );
+
+                            doc.AddObject(graphMapperPlus, false);
+
+                            graphMapperPlus.Params.Input[0].AddSource(eventComp.Params.Output[0]);
+
+                            graphMapperPlus.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
+
+                            senderParam.Attributes.Selected = false;
+                            graphMapperPlus.Attributes.Selected = true;
+                            eventComp.Attributes.Selected = true;
+
+                            doc.ScheduleSolution(10, d =>
+                            {
+                                graphMapperPlus.ExpireSolution(true);
+                                eventComp.ExpireSolution(true);
+                            });
+                            break;
+                        case "Rich Graph Mapper":
+                            var richGraphMapperGuid = new Guid("e2996e6c-e067-42fa-8f44-2192c6763262");
+                            var richGraphMapper = Grasshopper.Instances.ComponentServer.EmitObject(richGraphMapperGuid) as GH_Component;
+                            if (richGraphMapper == null) return;
+
+                            richGraphMapper.CreateAttributes();
+                            richGraphMapper.Attributes.Pivot = new PointF(
+                                eventComp.Attributes.Pivot.X + 100,
+                                eventComp.Attributes.Pivot.Y - 15
+                            );
+
+                            doc.AddObject(richGraphMapper, false);
+
+                            richGraphMapper.Params.Input[0].AddSource(eventComp.Params.Output[0]);
+
+                            richGraphMapper.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
+
+                            senderParam.Attributes.Selected = false;
+                            richGraphMapper.Attributes.Selected = true;
+                            eventComp.Attributes.Selected = true;
+
+                            doc.ScheduleSolution(10, d =>
+                            {
+                                richGraphMapper.ExpireSolution(true);
+                                eventComp.ExpireSolution(true);
+                            });
+                            break;
                     }
-
-                    graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
-
-                    senderParam.Attributes.Selected = false;
-                    graphMapper.Attributes.Selected = true;
-                    eventComp.Attributes.Selected = true;
-
-                    doc.ScheduleSolution(10, d =>
-                    {
-                        graphMapper.ExpireSolution(true);
-                        eventComp.ExpireSolution(true);
-                    });
                 });
 
                 sender.Refresh();
