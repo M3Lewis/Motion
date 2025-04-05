@@ -7,23 +7,70 @@ using Motion.Properties;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
+using System.Xml.Serialization;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Motion.Toolbar
 {
+    // 创建一个可序列化的设置类
+    [Serializable]
+    public class MotionSenderSettingsData
+    {
+        public int FramesPerSecond { get; set; }
+        public string DoubleClickGraphType { get; set; }
+
+        public MotionSenderSettingsData()
+        {
+            FramesPerSecond = 60; // 默认每秒60帧
+            DoubleClickGraphType = "Graph Mapper"; // 默认图表类型
+        }
+
+        public MotionSenderSettingsData(int fps, string graphType)
+        {
+            FramesPerSecond = fps;
+            DoubleClickGraphType = graphType;
+        }
+    }
+
     public class MotionSenderSettings : MotionToolbarButton
     {
         protected override int ToolbarOrder => 101;
         private ToolStripButton button;
         private bool isActive = false;
-        public static int FramesPerSecond { get; private set; } = 60; // 默认每秒60帧
-        public static string DoubleClickGraphType { get; private set; } = "Graph Mapper";
+
+        private static readonly string SettingsFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Grasshopper", "Motion", "MotionSenderSettings.xml");
+
+        private static int _framesPerSecond = 60;
+        public static int FramesPerSecond
+        {
+            get { return _framesPerSecond; }
+            private set
+            {
+                _framesPerSecond = value;
+                SaveSettings();
+            }
+        }
+
+        private static string _doubleClickGraphType = "Graph Mapper";
+        public static string DoubleClickGraphType
+        {
+            get { return _doubleClickGraphType; }
+            private set
+            {
+                _doubleClickGraphType = value;
+                SaveSettings();
+            }
+        }
 
         public MotionSenderSettings()
         {
+            LoadSettings();
         }
 
         private void AddMotionSliderSettingsButton()
@@ -104,7 +151,8 @@ namespace Motion.Toolbar
             settingsWindow.CurrentFPS = FramesPerSecond;
             settingsWindow.FPSChanged += (fps) =>
             {
-                FramesPerSecond = fps;
+                _framesPerSecond = fps; // 更新值
+                SaveSettings(); // 保存设置
             };
         }
 
@@ -113,8 +161,72 @@ namespace Motion.Toolbar
             settingsWindow.CurrentGraphType = DoubleClickGraphType;
             settingsWindow.GraphTypeChanged += (graphType) =>
             {
-                DoubleClickGraphType = graphType;
+                _doubleClickGraphType = graphType; // 更新值
+                SaveSettings(); // 保存设置
             };
+        }
+
+        // 保存设置到文件
+        private static void SaveSettings()
+        {
+            try
+            {
+                // 确保目录存在
+                string directory = Path.GetDirectoryName(SettingsFilePath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // 创建设置对象
+                MotionSenderSettingsData settings = new MotionSenderSettingsData(_framesPerSecond, _doubleClickGraphType);
+
+                // 序列化到XML
+                XmlSerializer serializer = new XmlSerializer(typeof(MotionSenderSettingsData));
+                using (StreamWriter writer = new StreamWriter(SettingsFilePath))
+                {
+                    serializer.Serialize(writer, settings);
+                }
+
+                Rhino.RhinoApp.WriteLine($"已保存Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}");
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"保存Motion Sender设置失败: {ex.Message}");
+            }
+        }
+
+        // 加载设置并应用
+        private static void LoadSettings()
+        {
+            try
+            {
+                // 检查设置文件是否存在
+                if (!File.Exists(SettingsFilePath))
+                {
+                    return; // 如果不存在，使用默认设置
+                }
+
+                // 反序列化XML
+                XmlSerializer serializer = new XmlSerializer(typeof(MotionSenderSettingsData));
+                MotionSenderSettingsData settings;
+                using (StreamReader reader = new StreamReader(SettingsFilePath))
+                {
+                    settings = (MotionSenderSettingsData)serializer.Deserialize(reader);
+                }
+
+                // 应用加载的设置
+                if (settings != null)
+                {
+                    _framesPerSecond = settings.FramesPerSecond;
+                    _doubleClickGraphType = settings.DoubleClickGraphType;
+                    Rhino.RhinoApp.WriteLine($"已加载Motion Sender设置: FPS={_framesPerSecond}, GraphType={_doubleClickGraphType}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"加载Motion Sender设置失败: {ex.Message}");
+            }
         }
 
         private List<string> InitializeMotionSenderDoubleClickGraph()
@@ -164,6 +276,7 @@ namespace Motion.Toolbar
             }
             return loadedGraphPluginNameList;
         }
+
         public static double ConvertSecondsToFrames(double seconds)
         {
             return seconds * FramesPerSecond;
@@ -202,6 +315,5 @@ namespace Motion.Toolbar
 
             return false;
         }
-
     }
 }
