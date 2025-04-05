@@ -49,12 +49,21 @@ namespace Motion.Animation
                 currentGroup.NickName = GroupMessage.Trim();
             };
         }
-        
+
+        public override void AddedToDocument(GH_Document document)
+        {
+            base.AddedToDocument(document);
+            SolutionExpired += (sender, args) =>
+            {
+                ((GH_Component)sender).Params.Input[0].DataMapping = GH_DataMapping.Flatten;
+            };
+        }
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddNumberParameter("Events", "E", "事件值列表", GH_ParamAccess.list);
             pManager.AddNumberParameter("Time", "T", "当前时间", GH_ParamAccess.item);
             pManager[1].Optional = true;
+            
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
