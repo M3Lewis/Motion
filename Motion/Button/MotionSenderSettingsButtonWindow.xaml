@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Motion Sender Settings" 
-        Height="150" Width="250"
+        Height="160" Width="270"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
     <Grid Margin="10">
@@ -12,19 +12,19 @@
             <RowDefinition Height="40"/>
         </Grid.RowDefinitions>
         
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,0">
             <TextBlock Text="Frames Per Second:" VerticalAlignment="Center"/>
-            <TextBox x:Name="FPSTextBox" Width="50" Margin="10,0,0,0" 
-                     TextAlignment="Center" VerticalAlignment="Center"/>
+            <TextBox x:Name="FPSTextBox" Width="100" Margin="20,5,0,5" 
+                     TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Right"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal">
             <TextBlock Text="Graph Select:" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-            <ComboBox x:Name="GraphSelectComboBox" Width ="140" Text="Graph Select" Margin="5" SelectionChanged="Graph_SelectionChanged"/>
+            <ComboBox x:Name="GraphSelectComboBox"  Width ="140" Text="Graph Select" Margin="15,5,0,5" SelectionChanged="Graph_SelectionChanged"/>
         </StackPanel>
         
         
-        <Button Grid.Row="2" Content="确定" Width="80" Height="25" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <Button Grid.Row="2" Content="确定" Width="50" Height="25" HorizontalAlignment="Center" VerticalAlignment="Center"
                 Click="ConfirmButton_Click"/>
     </Grid>
 </Window> 
