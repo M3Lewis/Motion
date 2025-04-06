@@ -113,6 +113,7 @@ namespace Motion.Utils
 
 
             var recipients = Params.Output[3].Recipients;
+            bool anyLockStateChanged = false;
             if (recipients.Count > 0)
             {
                  IGH_Param recipientParam = recipients[0];
@@ -121,9 +122,15 @@ namespace Motion.Utils
                      if (activeObj.Locked != toggle)
                      {
                          activeObj.Locked = toggle;
-                         activeObj.ExpireSolution(true);
-                     }
+                         
+                        anyLockStateChanged = true;
+                    }
                  }
+                if (anyLockStateChanged)
+                {
+                    // This will trigger a solution for the entire document, but only once
+                    Grasshopper.Instances.ActiveCanvas?.Document?.ExpireSolution();
+                }
             }
 
             DA.SetData(0, frameCount);

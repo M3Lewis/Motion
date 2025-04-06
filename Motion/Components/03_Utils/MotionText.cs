@@ -324,7 +324,7 @@ namespace Motion.Utils
                         if (finalMesh != null && finalMesh.Faces.Count > 0)
                         {
                             // 检查颜色输入参数（索引 8）是否有连接源
-                            if (Params.Input[8].SourceCount > 0)
+                            if (Params.Input[8].SourceCount > 0||Params.Input[8].VolatileDataCount > 0)
                             {
                                 // 设置颜色 (仅当提供了颜色输入时)
                                 Color meshColor = Color.White; // 如果列表为空但有连接，则为默认值

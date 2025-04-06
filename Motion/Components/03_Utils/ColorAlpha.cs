@@ -12,7 +12,7 @@ namespace Motion.Utils
 
         public ColorAlpha()
             : base("Color Alpha", "Alpha",
-                "修改颜色的 alpha（透明度）值",
+                "修改颜色的 alpha（透明度）值，当alpha值为0时，将锁定下游组件。",
                 "Motion", "03_Utils")
         {
             UpdateMessage(); // Initialize message on creation
@@ -72,56 +72,79 @@ namespace Motion.Utils
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            Color inputColor = Color.Black;
-            double alphaInput = 0; // Use a different variable for input
+            if (!TryGetInputData(DA, out Color inputColor, out double alphaInput))
+                return;
 
-            if (!DA.GetData(0, ref inputColor)) return;
-            if (!DA.GetData(1, ref alphaInput)) return;
+            int finalAlpha = CalculateFinalAlpha(alphaInput, _isAlphaMode0To1);
+            UpdateActiveObjectLockState(alphaInput, _isAlphaMode0To1);
 
-            double alphaProcessed; // The final alpha value in 0-255 range
-
-            if (_isAlphaMode0To1)
-            {
-                // Mode 0-1
-                if (alphaInput <= 0)
-                {
-                    alphaProcessed = 1.0; // Map 0 or less to 1 (which is 1/255 * 255)
-                }
-                else
-                {
-                    // Clamp input between 1/255 and 1, then scale to 1-255
-                    alphaProcessed = Math.Max(1.0 / 255.0, Math.Min(1.0, alphaInput)) * 255.0;
-                }
-                 // Ensure minimum is 1 after scaling
-                alphaProcessed = Math.Max(1.0, alphaProcessed);
-            }
-            else
-            {
-                // Mode 0-255
-                if (alphaInput <= 0)
-                {
-                    alphaProcessed = 1.0; // Map 0 or less to 1
-                }
-                else
-                {
-                    // Clamp input between 1 and 255
-                    alphaProcessed = Math.Max(1.0, Math.Min(255.0, alphaInput));
-                }
-            }
-
-            // Ensure the final value is an integer between 1 and 255
-            int finalAlpha = (int)Math.Round(Math.Max(1.0, Math.Min(255.0, alphaProcessed)));
-
-
-            // 创建新的颜色，保持RGB值不变，只修改alpha值
-            Color resultColor = Color.FromArgb(
-                finalAlpha,
-                inputColor.R,
-                inputColor.G,
-                inputColor.B
-            );
-
+            Color resultColor = CreateResultColor(inputColor, finalAlpha);
             DA.SetData(0, resultColor);
+        }
+
+        private bool TryGetInputData(IGH_DataAccess DA, out Color inputColor, out double alphaInput)
+        {
+            inputColor = Color.Black;
+            alphaInput = 0;
+            return DA.GetData(0, ref inputColor) && DA.GetData(1, ref alphaInput);
+        }
+
+        private int CalculateFinalAlpha(double alphaInput, bool isAlphaMode0To1)
+        {
+            double alphaProcessed = isAlphaMode0To1
+                ? ProcessAlphaIn0To1Mode(alphaInput)
+                : ProcessAlphaIn0To255Mode(alphaInput);
+
+            return (int)Math.Round(Math.Max(0.0, Math.Min(255.0, alphaProcessed)));
+        }
+
+        private double ProcessAlphaIn0To1Mode(double alphaInput)
+        {
+            if (alphaInput <= 0)
+                return 0.0;
+
+            return Math.Max(0.0, Math.Min(1.0, alphaInput)) * 255.0;
+        }
+
+        private double ProcessAlphaIn0To255Mode(double alphaInput)
+        {
+            if (alphaInput <= 0)
+                return 0.0;
+
+            return Math.Max(0.0, Math.Min(255.0, alphaInput));
+        }
+
+        private void UpdateActiveObjectLockState(double originalAlpha, bool isAlphaMode0To1)
+        {
+            bool shouldLock = originalAlpha <= 0;
+
+
+            bool anyLockStateChanged = false;
+
+            for (int i = 0; i < Params.Output[0].Recipients.Count; i++)
+            {
+                GH_ActiveObject activeObj = Params.Output[0].Recipients[i].Attributes.GetTopLevel.DocObject as GH_ActiveObject;
+                if (activeObj != null)
+                {
+                    if (activeObj.Locked != shouldLock) // Only track changes if lock state changed
+                    {
+                        activeObj.Locked = shouldLock;
+                        anyLockStateChanged = true;
+                    }
+                }
+            }
+
+            // Only expire solution once after all lock states have been updated
+            if (anyLockStateChanged)
+            {
+                // This will trigger a solution for the entire document, but only once
+                Grasshopper.Instances.ActiveCanvas?.Document?.ExpireSolution();
+            }
+        }
+
+        private Color CreateResultColor(Color inputColor, int alpha)
+        {
+            return Color.FromArgb(alpha, inputColor.R, inputColor.G, inputColor.B);
         }
 
         // Persist state
