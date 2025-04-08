@@ -13,25 +13,12 @@ namespace Motion.Toolbar
         private static ToolbarPosition _currentPosition = ToolbarPosition.OnToolbar;
         public static ToolbarPosition CurrentPosition => _currentPosition;
 
-        // Add transparency property
-        private static int _backgroundAlpha = 128;
-        public static int BackgroundAlpha
-        {
-            get => _backgroundAlpha;
-            set
-            {
-                _backgroundAlpha = Math.Max(0, Math.Min(255, value)); // Ensure value is between 0-255
-                UpdateBackgroundColor();
-            }
-        }
-
         public CustomMotionToolbar()
         {
             // 初始化工具栏属性
             customMotionToolbar.ImageScalingSize = new Size(24, 24);
             customMotionToolbar.Padding = new Padding(1);
             customMotionToolbar.GripStyle = ToolStripGripStyle.Hidden;
-            UpdateBackgroundColor(); // Use our method instead of direct assignment
             customMotionToolbar.ShowItemToolTips = true;
 
             // 设置初始位置和大小
@@ -40,12 +27,6 @@ namespace Motion.Toolbar
             customMotionToolbar.Width = 40;
             customMotionToolbar.Height = Instances.ActiveCanvas?.Height ?? 600;
             customMotionToolbar.LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow;
-        }
-
-        // Add method to update background color with current alpha
-        private static void UpdateBackgroundColor()
-        {
-            customMotionToolbar.BackColor = Color.FromArgb(_backgroundAlpha, 240, 240, 240);
         }
 
         public static void SetPosition(ToolbarPosition position)
@@ -98,24 +79,6 @@ namespace Motion.Toolbar
             {
                 customMotionToolbar.Visible = true;
                 customMotionToolbar.BringToFront();
-            }
-        }
-
-        // Add a resizing handler for when the canvas size changes
-        public static void UpdateToolbarSize()
-        {
-            if (!customMotionToolbar.Visible) return;
-
-            switch (_currentPosition)
-            {
-                case ToolbarPosition.Top:
-                case ToolbarPosition.Bottom:
-                    customMotionToolbar.Width = Instances.ActiveCanvas?.Width ?? 800;
-                    break;
-                case ToolbarPosition.Left:
-                case ToolbarPosition.Right:
-                    customMotionToolbar.Height = Instances.ActiveCanvas?.Height ?? 600;
-                    break;
             }
         }
     }

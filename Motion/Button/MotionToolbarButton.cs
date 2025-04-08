@@ -73,37 +73,6 @@ namespace Motion.Toolbar
             {
                 // 获取或创建自定义工具栏实例
                 CustomMotionToolbar.customMotionToolbar.Visible = true;
-
-                // Subscribe to canvas resize events if not already
-                if (!_canvasEventsRegistered)
-                {
-                    RegisterCanvasEvents();
-                }
-            }
-        }
-
-        // Track canvas event registration
-        private static bool _canvasEventsRegistered = false;
-
-        // Register events to handle canvas resizing
-        private void RegisterCanvasEvents()
-        {
-            if (_canvasEventsRegistered) return;
-
-            if (Instances.ActiveCanvas != null)
-            {
-                // Handle canvas size changes
-                Instances.ActiveCanvas.SizeChanged += (sender, e) => {
-                    CustomMotionToolbar.UpdateToolbarSize();
-                };
-
-                // Listen for canvas redraws to update toolbar sizing
-                // Note: Removed ZoomChanged as it's not available
-                Instances.ActiveCanvas.CanvasPrePaintObjects += (sender) => {
-                    CustomMotionToolbar.UpdateToolbarSize();
-                };
-
-                _canvasEventsRegistered = true;
             }
         }
 
@@ -118,17 +87,6 @@ namespace Motion.Toolbar
         protected virtual void OnButtonClicked(object sender, EventArgs e) { }
         protected void AddButtonToToolbars(ToolStripItem originalButton)
         {
-            // Ensure button size is maintained
-            if (originalButton is ToolStripButton button)
-            {
-                button.AutoSize = false;
-                button.Size = new Size(28, 28);
-
-                // Add click handler if not already present
-                button.Click -= Button_Click;
-                button.Click += Button_Click;
-            }
-
             // 根据设置添加到不同的工具栏
             switch (PreferredToolbarType)
             {
@@ -264,12 +222,6 @@ namespace Motion.Toolbar
                 timer.Dispose();
             };
             timer.Start();
-        }
-
-        // Add methods to control toolbar transparency
-        protected void SetToolbarTransparency(int alpha)
-        {
-            CustomMotionToolbar.BackgroundAlpha = alpha;
         }
     }
 }
