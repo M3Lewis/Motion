@@ -88,13 +88,13 @@ graph TD
 | **ModifySliderButton** | **批量创建/修改 Slider**<br>• 输入 "0,30,60" 创建三个 Slider。<br>• 支持分割、合并、替换 Slider 区间值。 |
 | **SliderControlButton** | **控制 Slider**<br>• 双向更新数值，支持输入回车。<br>• 右键点击 +/- 可连续增减，MIN/MAX 跳转极值。 |
 | **UpdateSenderButton** | 为所有 `Motion Slider` 自动连接对应区间的 `Motion Sender`。 |
-| **ConnectToMultiple...** | **智能连接**<br>• 选中多个 `Graph Mapper` 自动连接/创建 `Event Operation`。<br>• 智能归组 (GH_Group) 管理。 |
+| **ConnectToMultipleButton** | **智能连接**<br>• 选中多个 `Graph Mapper` 自动连接/创建 `Event Operation`。<br>• 智能归组 (GH_Group) 管理。 |
 | **ClickFinderButton** | **组件查找**<br>• 左键闪烁显示所有 GH 物件的 BoundingBox。<br>• 点击 Rhino 视窗内物件跳转至 GH 画布位置。 |
 | **AddScribbleWPFButton** | **增强版 Scribble**<br>• 突破字体大小限制，支持 5 种字体，自动换行预览。 |
 | **RangeSelectorWPFButton** | **区间选择**<br>• 提取选中项的最小值和最大值创建区间 Param。 |
 | **NamedViewSwitchButton** | **视窗切换**<br>• 开启后使用 `CTRL + +/-` 循环切换 Named View。 |
-| **JumpToAffected...** | **双向跳转**<br>• 点选 `Event` 跳转至受控组件。<br>• 点选组件跳转至控制它的 `Event`。 |
-| **MotionSliderSettings...** | **时间显示**<br>• 在 `Motion Slider` 左侧显示基于帧数的时间，右键可修改 FPS。 |
+| **JumpToAffectedButton** | **双向跳转**<br>• 点选 `Event` 跳转至受控组件。<br>• 点选组件跳转至控制它的 `Event`。 |
+| **MotionSliderSettingsButton** | **时间显示**<br>• 在 `Motion Slider` 左侧显示基于帧数的时间，右键可修改 FPS。 |
 
 ---
 
@@ -108,9 +108,9 @@ graph TD
 3.  **重启**: 重启 Rhino 和 Grasshopper 以加载插件。
 4.  **开始使用**:
     *   放置一个 `Motion Slider`。
-    *   连接 `Motion Sender` 并设置时间区间。
-    *   创建 `Event` 控制组件显隐。
-    *   连接 `Event Operation` 驱动动画参数。
+    *   连接 `Motion Sender` 并利用 `ModifySliderButton` 设置时间区间，快速创建多个 `Motion Sender`。
+    *   双击`Sender`，创建 `Event` 控制组件显隐。
+    *   利用`ConnectToMultipleButton`快速新建并连接到一个 `Event Operation`，驱动动画参数。
 
 ---
 
