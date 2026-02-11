@@ -13,7 +13,6 @@ graph TD
     Slider[Motion Slider] -->|Time| Op[Event Operation]
     Slider -->|Value| Sender[Motion Sender]
     Sender -->|Link| Event[Event Component]
-    Event -.->|Hide/Lock| Comp[Target Component]
     Event -->|Data| Graph[Graph Mapper]
     Graph -->|Mapped Data| Op
     Op -->|Value| Param[Target Parameter]
