@@ -1,12 +1,19 @@
+[English](./README.md) | [中文](./README_zh.md)
+
 # Motion 🚀
 
-`Motion` 是一个专为 Grasshopper (GH) 设计的动画插件，参考了多种优秀的动画工具及核心思路，旨在为用户提供流畅、直观的 GH 动画制作体验。
+`Motion` is an animation plugin designed specially for Grasshopper (GH). Inspired by various excellent animation tools and core concepts, it aims to provide users with a smooth and intuitive GH animation creation experience.
+
+## 📺 Tutorials
+
+*   [Motion Plugin Demo 1 (Bilibili)](https://www.bilibili.com/video/BV1nMXWYgEBi)
+*   [Motion Plugin Demo 2 (Bilibili)](https://www.bilibili.com/video/BV1eBRvYKE6E)
 
 ---
 
-## 🏗️ 核心架构 (Architecture)
+## 🏗️ Architecture
 
-Motion 采用**单控制器**架构，通过唯一的 `Motion Slider` 驱动整个动画系统。
+Motion adopts a **Single Controller** architecture, driving the entire animation system through a unique `Motion Slider`.
 
 ```mermaid
 graph TD
@@ -20,101 +27,101 @@ graph TD
 
 ---
 
-## 🧩 组件详解 (Component Details)
+## 🧩 Component Details
 
 ### 01_Animation
 
-#### Motion Slider (核心控制器)
-全局唯一的时间轴控制器。每个文档仅允许放置一个。
-*   **智能连接**: 放置时会自动寻找并连接所有 `EventOperation` 的 `Time` 输入端。
-*   **双击交互**: 双击文本框可直接输入 `min-max` (如 "0-100") 快速修改区间。
-*   **秒数显示**: 在左侧实时显示当前帧对应的时间（如 "0.0s-5.0s"），受 FPS 设置影响。
-*   **自动同步**: 当连接的 `Motion Sender` 区间超出当前范围时，Slider 会自动扩展以包含所有 Sender。
+#### Motion Slider (Core Controller)
+The unique timeline controller globally. Only one is allowed per document.
+*   **Smart Connection**: Automatically finds and connects to the `Time` input of all `EventOperation` components when placed.
+*   **Double-click Interaction**: Double-click the text box to directly input `min-max` (e.g., "0-100") to quickly modify the range.
+*   **Seconds Display**: Real-time display of the time corresponding to the current frame on the left side (e.g., "0.0s-5.0s"), affected by FPS settings.
+*   **Auto Sync**: When the range of a connected `Motion Sender` exceeds the current range, the Slider automatically expands to include all Senders.
 
-#### Motion Sender (信号发射器)
-用于将时间信号分发给各个 Event。
-*   **就近连接**: 创建时会自动寻找距离最近的 `Motion Slider` 并连接。
-*   **快速定义**: 通过修改 `NickName` (如 "0-30") 定义该 Sender 的有效区间。
-*   **快速跳转**: 右键菜单包含 **"跳转到 Event"** 列表，按 Group 分组显示，点击可快速定位到对应的 Event 组件。
+#### Motion Sender (Signal Transmitter)
+Used to distribute time signals to various Events.
+*   **Proximity Connection**: Automatically finds and connects to the nearest `Motion Slider` upon creation.
+*   **Quick Definition**: Define the effective range of the Sender by modifying `NickName` (e.g., "0-30").
+*   **Quick Jump**: The context menu includes a **"Jump to Event"** list, grouped by Group, allowing quick positioning to the corresponding Event component by clicking.
 
-#### Event (事件)
-*   **控制逻辑**:
-    *   **HIDE**: 在事件时间范围外隐藏组件。
-    *   **LOCK**: 在事件时间范围外锁定组件。
-*   **可视化**: 鼠标悬停会自动绘制指示线，指向受控组件。
-*   **双击跳转**: 双击组件主体可跳转至对应的 `EventOperation`。
+#### Event
+*   **Control Logic**:
+    *   **HIDE**: Hide components outside the event time range.
+    *   **LOCK**: Lock components outside the event time range.
+*   **Visualization**: Hovering automatically draws a guide line pointing to the controlled component.
+*   **Double-click Jump**: Double-click the component body to jump to the corresponding `EventOperation`.
 
-#### EventOperation (核心处理器)
-处理多个 Event 的状态并输出控制值。
-*   **动态参数 (ZUI)**: 放大组件点击 `+` 号可添加以下输出端：
-    *   `Index`: 当前生效事件的序号。
-    *   `Value Domain`: 当前事件的值域。
-    *   `Time Domain`: 当前事件的时间区间。
-*   **状态反馈**: 组件下方实时显示当前状态（如 `OUTSIDE` 或当前时间区间）及所属 Group 名称。
-*   **组名同步**: 右键菜单支持 **"命名当前组名称为 Event 名称"**，方便批量管理组名。
-*   **Interval Lock**: 指定区间并将组件编组，时间在区间外时锁定组内所有组件。
+#### EventOperation (Core Processor)
+Processes the status of multiple Events and outputs control values.
+*   **Dynamic Parameters (ZUI)**: Zoom in on the component and click the `+` sign to add the following outputs:
+    *   `Index`: The index of the currently active event.
+    *   `Value Domain`: The value domain of the current event.
+    *   `Time Domain`: The time interval of the current event.
+*   **Status Feedback**: Real-time display of the current status (e.g., `OUTSIDE` or current time interval) and the belonging Group name below the component.
+*   **Group Name Sync**: The context menu supports **"Name Current Group as Event Name"** for convenient batch management of group names.
+*   **Interval Lock**: Specify an interval and group components; locks all components in the group when time is outside the interval.
 
 ### 02_Export
 
 #### ExportSliderAnimation
-*   **导出**: 支持 `.png` 格式透明背景导出。
-*   **渲染**: 支持 `Raytraced` 模式及采样数设置。
-*   **控制**: 自定义导出区间，点击 `Open` 跳转文件夹，按 ESC 停止导出。
+*   **Export**: Supports `.png` format transparency background export.
+*   **Render**: Supports `Raytraced` mode and sample count settings.
+*   **Control**: Customize export range, click `Open` to jump to the folder, press ESC to stop export.
 
 ### 03_Utils
 
-#### 辅助工具
-*   **AdjustSearchCount**: 调整组件最大搜索数量 (Max 30)。
-*   **FilletEdgeIndex**: 配合 `FilletEdge` 根据点确定边序号。
-*   **ZDepth**: 开启深度图显示模式 (类似 `ShowZBuffer`) 并支持自定义比例导出。
-*   **Arrange Tab Components**: 将指定插件 Tab 的所有电池分组列出。
-*   **Dynamic Output**: 自动根据输入数据结构 (List/Tree) 生成对应数量的输出端。
-*   **Color Alpha**: 修改颜色的 Alpha 值。
+#### Auxiliary Tools
+*   **AdjustSearchCount**: Adjust component maximum search count (Max 30).
+*   **FilletEdgeIndex**: Determine edge index based on point, used with `FilletEdge`.
+*   **ZDepth**: Enable depth map display mode (similar to `ShowZBuffer`) and support custom scale export.
+*   **Arrange Tab Components**: Group and list all components of a specified plugin Tab.
+*   **Dynamic Output**: Automatically generate corresponding number of output terminals based on input data structure (List/Tree).
+*   **Color Alpha**: Modify the Alpha value of a color.
 
-#### 视觉与材质
-*   **Motion Text**: 设置文字属性、字间距、多色渐变，输出 Mesh 和边缘线。
-*   **Motion Image Preview**: 预览材质。
-*   **Motion Material**: 支持 Diffuse, Transparency, Environment, Bump 贴图 (路径或 Bitmap 对象)。
-*   **Motion Image Selector**: 读取文件夹图片，根据 Index 输出。
-*   **Image Transform Settings**: 修改贴图的 Transform 属性。
-*   **Point On View**: 配合 Human 插件渲染物体到屏幕，提供视窗预览和导出坐标。
+#### Visuals & Materials
+*   **Motion Text**: Set text attributes, letter spacing, multi-color gradients, output Mesh and boundary lines.
+*   **Motion Image Preview**: Preview materials.
+*   **Motion Material**: Support Diffuse, Transparency, Environment, Bump maps (paths or Bitmap objects).
+*   **Motion Image Selector**: Read folder images and output based on Index.
+*   **Image Transform Settings**: Modify texture Transform attributes.
+*   **Point On View**: Render objects to screen with Human plugin, providing viewport preview and coordinate export.
 
 ---
 
-## 🛠️ 工具栏按钮 (Toolbar)
+## 🛠️ Toolbar Buttons
 
-| 按钮 | 功能描述 |
+| Button | Description |
 | :--- | :--- |
-| **ModifySliderButton** | **批量创建/修改 Slider**<br>• 输入 "0,30,60" 创建三个 Slider。<br>• 支持分割、合并、替换 Slider 区间值。 |
-| **SliderControlButton** | **控制 Slider**<br>• 双向更新数值，支持输入回车。<br>• 右键点击 +/- 可连续增减，MIN/MAX 跳转极值。 |
-| **UpdateSenderButton** | 为所有 `Motion Slider` 自动连接对应区间的 `Motion Sender`。 |
-| **ConnectToMultipleButton** | **智能连接**<br>• 选中多个 `Graph Mapper` 自动连接/创建 `Event Operation`。<br>• 智能归组 (GH_Group) 管理。 |
-| **ClickFinderButton** | **组件查找**<br>• 左键闪烁显示所有 GH 物件的 BoundingBox。<br>• 点击 Rhino 视窗内物件跳转至 GH 画布位置。 |
-| **AddScribbleWPFButton** | **增强版 Scribble**<br>• 突破字体大小限制，支持 5 种字体，自动换行预览。 |
-| **RangeSelectorWPFButton** | **区间选择**<br>• 提取选中项的最小值和最大值创建区间 Param。 |
-| **NamedViewSwitchButton** | **视窗切换**<br>• 开启后使用 `CTRL + +/-` 循环切换 Named View。 |
-| **JumpToAffectedButton** | **双向跳转**<br>• 点选 `Event` 跳转至受控组件。<br>• 点选组件跳转至控制它的 `Event`。 |
-| **MotionSliderSettingsButton** | **时间显示**<br>• 在 `Motion Slider` 左侧显示基于帧数的时间，右键可修改 FPS。 |
+| **ModifySliderButton** | **Batch Create/Modify Slider**<br>• Input "0,30,60" to create three Sliders.<br>• Supports splitting, merging, and replacing Slider range values. |
+| **SliderControlButton** | **Control Slider**<br>• Two-way value update, supports Enter key input.<br>• Right-click +/- for continuous increase/decrease, MIN/MAX to jump to extremes. |
+| **UpdateSenderButton** | Automatically connect `Motion Sender` of corresponding range for all `Motion Slider`s. |
+| **ConnectToMultipleButton** | **Smart Connection**<br>• Select multiple `Graph Mapper`s to automatically connect/create `Event Operation`.<br>• Smart grouping (GH_Group) management. |
+| **ClickFinderButton** | **Component Finder**<br>• Left-click to flash BoundingBox of all GH objects.<br>• Click objects in Rhino viewport to jump to GH canvas position. |
+| **AddScribbleWPFButton** | **Enhanced Scribble**<br>• Breaks font size limit, supports 5 fonts, auto-wrap preview. |
+| **RangeSelectorWPFButton** | **Range Selection**<br>• Extract min and max values of selected items to create Param interval. |
+| **NamedViewSwitchButton** | **Viewport Switch**<br>• Enable to cycle switch Named View using `CTRL + +/-`. |
+| **JumpToAffectedButton** | **Bi-directional Jump**<br>• Click `Event` to jump to controlled component.<br>• Click component to jump to its controlling `Event`. |
+| **MotionSliderSettingsButton** | **Time Display**<br>• Display frame-based time on the left of `Motion Slider`, right-click to modify FPS. |
 
 ---
 
-## 🚀 快速开始 (Quick Start)
+## 🚀 Quick Start
 
-1.  **下载**: 获取最新版本的 `.gha` 文件。
-2.  **安装**:
-    *   在 Grasshopper 中点击 `File` -> `Special Folders` -> `Components Folder`。
-    *   将 `.gha` 文件复制到该文件夹中。
-    *   **解锁**: 右键点击文件 -> 属性 -> 勾选 `Unblock` (解锁) -> 确定。
-3.  **重启**: 重启 Rhino 和 Grasshopper 以加载插件。
-4.  **开始使用**:
-    *   放置一个 `Motion Slider`。
-    *   连接 `Motion Sender` 并利用 `ModifySliderButton` 设置时间区间，快速创建多个 `Motion Sender`。
-    *   双击`Sender`，创建 `Event` 控制组件显隐。
-    *   利用`ConnectToMultipleButton`快速新建并连接到一个 `Event Operation`，驱动动画参数。
+1.  **Download**: Get the latest version of the `.gha` file.
+2.  **Install**:
+    *   In Grasshopper, click `File` -> `Special Folders` -> `Components Folder`.
+    *   Copy the `.gha` file to this folder.
+    *   **Unblock**: Right-click the file -> Properties -> Check `Unblock` -> OK.
+3.  **Restart**: Restart Rhino and Grasshopper to load the plugin.
+4.  **Start Using**:
+    *   Place a `Motion Slider`.
+    *   Connect `Motion Sender` and use `ModifySliderButton` to set time intervals, quickly creating multiple `Motion Sender`s.
+    *   Double-click `Sender` to create `Event` to control component visibility/hiding.
+    *   Use `ConnectToMultipleButton` to quickly create and connect to an `Event Operation` to drive animation parameters.
+
 
 ---
 
-## 🤝 参与贡献
+## 🤝 Extra Notes
 
-欢迎提交 Issue 或 Pull Request 来改进插件。
-
+This plugin has no future maintenance plans and is for reference only.
