@@ -1,252 +1,121 @@
-# Motion
+# Motion 🚀
 
-`Motion`是一个GH动画插件，参考了多种动画插件以及烟灰动画课程中的核心思路，旨在更方便地进行GH动画的制作。
+`Motion` 是一个专为 Grasshopper (GH) 设计的动画插件，参考了多种优秀的动画工具及核心思路，旨在为用户提供流畅、直观的 GH 动画制作体验。
 
+---
 
+## 🏗️ 核心架构 (Architecture)
 
-## 组件
+Motion 采用**单控制器**架构，通过唯一的 `Motion Slider` 驱动整个动画系统。
+
+```mermaid
+graph TD
+    Slider[Motion Slider] -->|Time| Op[Event Operation]
+    Slider -->|Value| Sender[Motion Sender]
+    Sender -->|Link| Event[Event Component]
+    Event -.->|Hide/Lock| Comp[Target Component]
+    Event -->|Data| Graph[Graph Mapper]
+    Graph -->|Mapped Data| Op
+    Op -->|Value| Param[Target Parameter]
+```
+
+---
+
+## 🧩 组件详解 (Component Details)
 
 ### 01_Animation
 
-#### Motion Slider
+#### Motion Slider (核心控制器)
+全局唯一的时间轴控制器。每个文档仅允许放置一个。
+*   **智能连接**: 放置时会自动寻找并连接所有 `EventOperation` 的 `Time` 输入端。
+*   **双击交互**: 双击文本框可直接输入 `min-max` (如 "0-100") 快速修改区间。
+*   **秒数显示**: 在左侧实时显示当前帧对应的时间（如 "0.0s-5.0s"），受 FPS 设置影响。
+*   **自动同步**: 当连接的 `Motion Sender` 区间超出当前范围时，Slider 会自动扩展以包含所有 Sender。
 
-* 点击区间文本框直接修改Slider区间
-* 配合工具栏上的`CreateUnionSliderButton`，创建`Motion Union Slider`，之后可以复制粘贴`Motion Slider`，并修改其区间，`Motion Union Slider`的区间会自动进行更新
-* `Motion Union Slider`的值与`Motion Slider`的值是联动的
-* `Union Slider`点击右键菜单可以连接到所有`EventOperation`和`Interval Lock`的时间输入端，避免特殊情况下断开连接后无法重连
+#### Motion Sender (信号发射器)
+用于将时间信号分发给各个 Event。
+*   **就近连接**: 创建时会自动寻找距离最近的 `Motion Slider` 并连接。
+*   **快速定义**: 通过修改 `NickName` (如 "0-30") 定义该 Sender 的有效区间。
+*   **快速跳转**: 右键菜单包含 **"跳转到 Event"** 列表，按 Group 分组显示，点击可快速定位到对应的 Event 组件。
 
+#### Event (事件)
+*   **控制逻辑**:
+    *   **HIDE**: 在事件时间范围外隐藏组件。
+    *   **LOCK**: 在事件时间范围外锁定组件。
+*   **可视化**: 鼠标悬停会自动绘制指示线，指向受控组件。
+*   **双击跳转**: 双击组件主体可跳转至对应的 `EventOperation`。
 
-
-#### Motion Sender
-
-* 将`Motion Sender`放在`Motion Slider`的输出端旁边，会自动连接它的输出端，并显示其区间范围
-* 双击`Motion Sender`可以快速创建`Event`以及后接的`Graph Mapper`，`Graph Mapper`的默认模式为`Bezier`
-
-
-
-#### Event
-
-* 输入端`Time`接收`Motion Sender`传来的值
-* 输入端`Domain`确定想改变的数值范围
-* 选择某个组件，点击`HIDE`可以在这个Event的时间范围之外隐藏组件显示，点击`LOCK`可以在这个`Event`的时间范围之外锁定组件
-* 鼠标移动到按钮范围内，会自动绘制指示线，来显示哪些组件被这个`Event`隐藏/锁定
-* 双击`Event`可跳转到该`Event`对应的`EventOperation`
-* 右键菜单
-  * 使用空值模式时，只有在组件接收不到值时才会进行对指定组件的隐藏/锁定操作
-  * 可选择区间，和指定区间的`Motion Sender`进行连接
-
-
-
-#### EventOperation
-
-* 选中多个位于`Event`后面的`Graph Mapper` ，点击工具栏按钮`ConnectToEventOprationButton`，将创建一个`EventOperation`，并自动与选中的所有`Graph Mapper`相连。如果之前已经正确创建了`Union Slider`，那么其第二个输入端`Time`也会自动和`Union Slider`相连。
-* 输入端`Event`前会显示当前事件的值【0-1】
-* 输出端`Remapped Value`会显示当前事件输出的值，也就是在`Event`的第二个输入端的区间中所对应的值
-* 放大组件可以点击`+`按钮，增加两个输出端
-  * 输出当前事件在所有事件中的序号
-  * 输出当前事件的值域区间
-* 双击组件可以弹出菜单，菜单中会显示所有区间的值，点击指定区间会跳转至对应的`Event`
-
-* `Interval Lock`
-  * 指定区间，并将这个组件与指定组件放在一个`Group`内，时间在区间外时会对组内的所有组件进行锁定
-
-
+#### EventOperation (核心处理器)
+处理多个 Event 的状态并输出控制值。
+*   **动态参数 (ZUI)**: 放大组件点击 `+` 号可添加以下输出端：
+    *   `Index`: 当前生效事件的序号。
+    *   `Value Domain`: 当前事件的值域。
+    *   `Time Domain`: 当前事件的时间区间。
+*   **状态反馈**: 组件下方实时显示当前状态（如 `OUTSIDE` 或当前时间区间）及所属 Group 名称。
+*   **组名同步**: 右键菜单支持 **"命名当前组名称为 Event 名称"**，方便批量管理组名。
+*   **Interval Lock**: 指定区间并将组件编组，时间在区间外时锁定组内所有组件。
 
 ### 02_Export
 
 #### ExportSliderAnimation
-
-* 导出`.png`格式图片，透明背景
-* `Raytraced(光线追踪)`显示模式导出帧，可设置采样数
-* 自定义区间导出帧
-* 导出完毕后点击`Open`按钮直接跳转至导出文件夹
-* 中途可按ESC停止导出
-
-
+*   **导出**: 支持 `.png` 格式透明背景导出。
+*   **渲染**: 支持 `Raytraced` 模式及采样数设置。
+*   **控制**: 自定义导出区间，点击 `Open` 跳转文件夹，按 ESC 停止导出。
 
 ### 03_Utils
 
-#### AdjustSearchCount
-
-* 调整最大组件搜索数量，最大值为30个
-
-
-
-#### FilletEdgeIndex
-
-* 根据Brep和输入的点确定边的序号，配合`FilletEdge`进行倒角
-
-
-
-#### ZDepth
-
-* 开启深度图显示模式，类似Rhino中的`ShowZBuffer`命令
-* 导出深度图
-* 自定义导出深度图的比例，基础分辨率基于当前工作视窗。
-
-
-
-#### Arrange Tab Components
-
-* 指定插件`Tab`名称，分组列出所有该插件的电池放置在画布上
-
-
-
-#### Dynamic Output
-
-* 自动根据输入端的数据生成对应数量的输出端
-  * 如果是一个`list`，则每个输出端都会输出list中的1个数据，并显示**Out+序号**
-  * 如果是一个`tree`，则每个输出端都会输出一个路径下的所有数据，并显示**路径号**，例如{0;1}
-
-
-
-#### Color Alpha
-
-* 修改颜色的`Alpha`值
-
-
-
-#### Motion Text
-
-* 设置文字的各类属性
-* 可设置文字字符间距
-* 可输入多种颜色，颜色会均分到每个字符
-* 输出文字Mesh
-* 输出文字边缘线
-* 可以控制文字的包围矩形大小
-
-
-
-#### Motion Image Preview
-
-* 读取`Motion Material`提供的材质
-
-
-
-#### Motion Material
-
-* 支持所有材质相关参数修改
-
-* 支持输入`Diffuse/Transparency/Environment/Bump`贴图
-  * 可输入图片的路径
-  * 也可直接输入 **Javid** 和  **Bitmap+** 插件输出的`System.Drawing.Bitmap`格式作为贴图
-
-
-
-#### Motion Image Selector
-
-* 读取指定文件夹路径，可根据`Index`输出对应序号的图片
-
-
-
-#### Image Transform Settings
-
-* 修改`Diffuse` / `Transparency` / `Bump(暂时有问题) `贴图的Transform
-
-
-
-#### Point On View
-
-* 配合`Human`插件的`Render xxx to Screen`，可将Mesh等物体渲染到屏幕
-* 输出端1用于视窗预览，方便确定位置
-* 输出端2用于导出，是物体在导出图片中的实际位置
-
-
-
-## 工具栏按钮
-
-#### ModifySliderButton
-
-* 批量创建`Motion Slider`
-  * 例如输入`0,30,60,90`，点击创建，生成区间为0-30,30-60,60-90的三个新的`Motion Slider`
-* 分割选中的`Motion Slider`区间并新建
-  * 例如文本框内显示`0,30`，可以将其修改为`0,15,30`，这样会创建出0-15,15-30两个新的`Motion Slider`
-* 合并选中的`Motion Slider`区间并新建
-  * 先选择想合并的`Motion Slider`，例如0-30,30-60,60-90区间的三个`Motion Slider`
-  * 点击合并按钮后，画布上会创建出一个新的`Motion Slider`，区间为0-90
-* 替换选中的`Motion Slider`区间值
-  * 例如选中的`Motion Slider`区间值分别为0-30,30-60,60-90，此时文本框内会出现`0,30,60,90`，将30改为33，60改为66，点击替换按钮，然后所有区间值都会进行相应修改
-
-
-
-#### SliderControlButton
-
-* 控制`UnionSlider`，双向更新
-* 支持输入数值，按`Enter`确定
-* 点击`+` /`-` 增减值
-  * 鼠标右键点击按钮，可连续增加/减少值
-* 点击`MIN` / `MAX` 跳转到最小值
-
-
-
-#### UpdateSenderButton
-
-* 为所有`Motion Slider`连接到对应区间的`Motion Sender`
-
-
-
-#### CreateUnionSliderButton
-
-* 先选择`MotionSlider`，点击左键，可创建一个`Union Slider`
-* 之后只需要将`Motion Slider`和`Motion Sender`一起复制，即可自动联动`Union Slider`与`Motion Slider`的值和区间
-* 右键可解除联动关系
-
-
-
-#### ConnectToMultipleEventOperationButton
-
-* 选择多个`Graph Mapper`，点击按钮，新建`Event Operation`并自动连好连线
-* 新建的`Event Operation`会自动和`Union Slider`连接
-* 如果同时选中了已存在的`Event Operation`和`Graph Mapper`，点击左键也会多对一连接
-* 连接时，将与其连接的所有`Event`和`Graph`归到一个`GH_Group`内
-  * 如果已有`EventOperation`和`GH_Group`，则将新的`Event`和`Graph Mapper`添加至这个组。
-
-* 如果选中了一个`Graph Mapper`，它没有连接到`Event Operation`，但是与它在同个`GH_Group`的`Graph Mapper`已经连接到一个`Event Operation`，那么点击按钮，选中的`Graph Mapper`就会连接至这个`Event Operation`
-
-
-
-#### ClickFinderButton
-
-* 点击左键，会闪烁显示当前模型空间内所有GH物件的`BoundingBox`
-* 点击Rhino视窗内的GH物件，会自动选择该物件并跳转到其在GH画布的位置
-
-
-
-#### AddScribbleWPFButton
-
-* 创建`Scribble`
-* 突破字体大小限制
-* 可设置5种字体样式
-* 直接点击下拉列表选择字体
-* 可按单行最大字符数来分行，预览显示
-
-
-
-#### RangeSelectorWPFButton
-
-* 选择已存在区间的所有值，作为区间的最小值和最大值，并组成区间
-* 区间`Param`会自动创建到画布中央
-
-
-
-#### NamedViewSwitchButton
-
-* 切换状态，默认开启
-* 开启时，如果当前Grasshopper文档已经有Named View，按下CTRL+ `+`/ `-`键，进行`Named View`的循环切换
-* 如果没有创建`Named View`，按键后会进行提示
-
-
-
-#### JumpToAffectedComponentButton
-
-* 选择`Event`（点选），按钮会变亮，点击按钮跳转至被`HIDE`/`LOCK`的组件
-
-* 选择被`Event`组件`HIDE`/`LOCK`的组件（点选），按钮会变亮，点击按钮跳转至对应`Event`组件
-
-
-
-#### MotionSliderSettingsButton
-
-* 点击按钮后，变为开启状态。此时会在`Motion Slider`的左侧显示时间
-* 时间取决于每秒帧数。可以右键点击按钮，修改每秒帧数。显示的时间会根据帧数做出相应变化。
+#### 辅助工具
+*   **AdjustSearchCount**: 调整组件最大搜索数量 (Max 30)。
+*   **FilletEdgeIndex**: 配合 `FilletEdge` 根据点确定边序号。
+*   **ZDepth**: 开启深度图显示模式 (类似 `ShowZBuffer`) 并支持自定义比例导出。
+*   **Arrange Tab Components**: 将指定插件 Tab 的所有电池分组列出。
+*   **Dynamic Output**: 自动根据输入数据结构 (List/Tree) 生成对应数量的输出端。
+*   **Color Alpha**: 修改颜色的 Alpha 值。
+
+#### 视觉与材质
+*   **Motion Text**: 设置文字属性、字间距、多色渐变，输出 Mesh 和边缘线。
+*   **Motion Image Preview**: 预览材质。
+*   **Motion Material**: 支持 Diffuse, Transparency, Environment, Bump 贴图 (路径或 Bitmap 对象)。
+*   **Motion Image Selector**: 读取文件夹图片，根据 Index 输出。
+*   **Image Transform Settings**: 修改贴图的 Transform 属性。
+*   **Point On View**: 配合 Human 插件渲染物体到屏幕，提供视窗预览和导出坐标。
+
+---
+
+## 🛠️ 工具栏按钮 (Toolbar)
+
+| 按钮 | 功能描述 |
+| :--- | :--- |
+| **ModifySliderButton** | **批量创建/修改 Slider**<br>• 输入 "0,30,60" 创建三个 Slider。<br>• 支持分割、合并、替换 Slider 区间值。 |
+| **SliderControlButton** | **控制 Slider**<br>• 双向更新数值，支持输入回车。<br>• 右键点击 +/- 可连续增减，MIN/MAX 跳转极值。 |
+| **UpdateSenderButton** | 为所有 `Motion Slider` 自动连接对应区间的 `Motion Sender`。 |
+| **ConnectToMultiple...** | **智能连接**<br>• 选中多个 `Graph Mapper` 自动连接/创建 `Event Operation`。<br>• 智能归组 (GH_Group) 管理。 |
+| **ClickFinderButton** | **组件查找**<br>• 左键闪烁显示所有 GH 物件的 BoundingBox。<br>• 点击 Rhino 视窗内物件跳转至 GH 画布位置。 |
+| **AddScribbleWPFButton** | **增强版 Scribble**<br>• 突破字体大小限制，支持 5 种字体，自动换行预览。 |
+| **RangeSelectorWPFButton** | **区间选择**<br>• 提取选中项的最小值和最大值创建区间 Param。 |
+| **NamedViewSwitchButton** | **视窗切换**<br>• 开启后使用 `CTRL + +/-` 循环切换 Named View。 |
+| **JumpToAffected...** | **双向跳转**<br>• 点选 `Event` 跳转至受控组件。<br>• 点选组件跳转至控制它的 `Event`。 |
+| **MotionSliderSettings...** | **时间显示**<br>• 在 `Motion Slider` 左侧显示基于帧数的时间，右键可修改 FPS。 |
+
+---
+
+## 🚀 快速开始 (Quick Start)
+
+1.  **下载**: 获取最新版本的 `.gha` 文件。
+2.  **安装**:
+    *   在 Grasshopper 中点击 `File` -> `Special Folders` -> `Components Folder`。
+    *   将 `.gha` 文件复制到该文件夹中。
+    *   **解锁**: 右键点击文件 -> 属性 -> 勾选 `Unblock` (解锁) -> 确定。
+3.  **重启**: 重启 Rhino 和 Grasshopper 以加载插件。
+4.  **开始使用**:
+    *   放置一个 `Motion Slider`。
+    *   连接 `Motion Sender` 并设置时间区间。
+    *   创建 `Event` 控制组件显隐。
+    *   连接 `Event Operation` 驱动动画参数。
+
+---
+
+## 🤝 参与贡献
+
+欢迎提交 Issue 或 Pull Request 来改进插件。
 
