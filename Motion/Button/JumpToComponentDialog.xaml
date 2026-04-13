@@ -1,32 +1,42 @@
 <Window x:Class="Motion.Animation.JumpToComponentDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="跳转到组件" Height="130" Width="300"
+        Title="跳转到组件" Height="160" Width="300"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize">
-    <Grid Margin="10">
+        ResizeMode="NoResize"
+        Background="#F5F5F5" FontFamily="Segoe UI">
+    <Window.Resources>
+    <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="/Motion;component/Button/MotionButtonStyles.xaml"/>
+        </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid Margin="20,15">
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <ComboBox x:Name="ComponentsComboBox" 
-                  Grid.Row="0" 
-                  Margin="0,0,0,10"
+        <TextBlock Grid.Row="0" Text="选择组件:" Margin="0,0,0,8" Foreground="#444444"/>
+        <ComboBox x:Name="ComponentsComboBox"
+                  Grid.Row="1"
                   DisplayMemberPath="DisplayName"/>
 
-        <StackPanel Grid.Row="1" 
-                    Orientation="Horizontal" 
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
                     HorizontalAlignment="Right">
-            <Button Content="确定" 
-                    Width="75" 
-                    Height="25" 
-                    Margin="0,0,10,0" 
+            <Button Content="确定"
+                    Width="80"
+                   
+                    Margin="0,0,10,0"
                     Click="OkButton_Click"/>
-            <Button Content="取消" 
-                    Width="75" 
-                    Height="25" 
+            <Button Content="取消"
+                    Width="80"
+                   
                     Click="CancelButton_Click"/>
         </StackPanel>
     </Grid>
-</Window> 
+</Window>
