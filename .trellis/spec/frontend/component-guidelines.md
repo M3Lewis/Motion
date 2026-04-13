@@ -38,9 +38,8 @@ Questions to answer:
 
 ## Styling Patterns
 
-<!-- How styles are applied (CSS modules, styled-components, Tailwind, etc.) -->
-
-(To be filled by the team)
+- **Window Layout**: Prefer structured `Grid` layouts with `ColumnDefinitions` for complex windows over long `StackPanel` lists inside a `ScrollViewer`. This improves information density and readability on larger screens.
+- **Min/Max Size**: Always set `MinHeight` and `MinWidth` for windows to prevent UI breakage when resized.
 
 ---
 
