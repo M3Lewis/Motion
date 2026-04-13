@@ -388,3 +388,7 @@ Thumbs.db
 
 # Windows Shortcuts
 *.lnk
+
+.claude
+.agents
+.codex
