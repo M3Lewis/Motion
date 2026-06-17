@@ -1,51 +1,27 @@
-# State Management
+# State Synchronization Guidelines
 
-> How state is managed in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's state management conventions here.
-
-Questions to answer:
-- What state management solution do you use?
-- How is local vs global state decided?
-- How do you handle server state?
-- What are the patterns for derived state?
--->
-
-(To be filled by the team)
+> Managing slider timeline sync, event state tracking, and controlled component lock/hide states.
 
 ---
 
-## State Categories
+## 1. Timeline Synchronization
 
-<!-- Local state, global state, server state, URL state -->
-
-(To be filled by the team)
-
----
-
-## When to Use Global State
-
-<!-- Criteria for promoting state to global -->
-
-(To be filled by the team)
+Motion uses a Single Controller model where the `Motion Slider` globally broadcasts time frames.
+- **Smart Connection**: Senders and solver operations automatically wire themselves to the nearest/active `Motion Slider`.
+- **Auto-Sync Bounds**: If a downstream `Motion Sender` defines a time domain exceeding the current slider range, the slider must dynamically expand its minimum/maximum limits.
+- Call `slider.Slider.Maximum = Math.Max(slider.Slider.Maximum, senderLimit)` and expire the solution.
 
 ---
 
-## Server State
+## 2. Event Group States
 
-<!-- How server data is cached and synchronized -->
-
-(To be filled by the team)
+- **Group Locking**: When the current timeline frame falls outside a component's event time range, all controlled components within its registered `GH_Group` must be locked (`component.Locked = true`).
+- **Group Hiding**: Similarly, components outside the active range should be hidden on the canvas (`component.Hidden = true`).
+- Maintain bidirectional navigation links between event definitions and controlled components.
 
 ---
 
-## Common Mistakes
+## 3. Propagation Safety
 
-<!-- State management mistakes your team has made -->
-
-(To be filled by the team)
+- Do not trigger infinite solver expiration loops. When modifying another component's state (e.g. updating a slider value or changing its bounds), ensure you check if the target state has already changed before expiring the document solution.
+- Use `ExpireSolution(false)` or schedule solution recalculation safely via `GH_Document.ScheduleSolution`.

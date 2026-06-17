@@ -1,12 +1,12 @@
-# Frontend Development Guidelines
+# Frontend (UI & Interaction) Development Guidelines
 
-> Best practices for frontend development in this project.
+> Best practices for custom canvas rendering, WPF/WinForms controls, and double-click interactions.
 
 ---
 
 ## Overview
 
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
+This directory contains guidelines for the frontend layer of the Motion plugin. In Grasshopper, "frontend" refers to custom drawing attributes, canvas rendering, double-click UI interactions, and WinForms/WPF dialog panels.
 
 ---
 
@@ -14,26 +14,17 @@ This directory contains guidelines for frontend development. Fill in each file w
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| [Directory Structure](./directory-structure.md) | Location of custom UI elements, buttons, and dialogs | Active |
+| [Canvas UI & Custom Attributes](./component-guidelines.md) | Custom `GH_ComponentAttributes`, canvas rendering overrides | Active |
+| [Interaction & Event Hooks](./hook-guidelines.md) | Mouse double-click events, canvas context menus, and keys | Active |
+| [State Synchronization](./state-management.md) | Range syncing, timeline frames, and Group locking/hiding states | Active |
+| [Type Safety in Attributes](./type-safety.md) | Safe conversion of GH parameters, objects, and attributes | Active |
+| [UI Quality & Layout](./quality-guidelines.md) | WPF styling, fonts, layouts, and canvas drawing guides | Active |
 
 ---
 
 ## How to Fill These Guidelines
 
-For each guideline file:
+All guidelines are designed for Rhino/Grasshopper custom drawing and UI controls.
 
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+**Language**: All documentation is written in **English**.

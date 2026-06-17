@@ -1,51 +1,33 @@
 # Logging Guidelines
 
-> How logging is done in this project.
+> Guidelines for emitting diagnostic messages and user notifications in the Rhino/Grasshopper context.
 
 ---
 
-## Overview
+## 1. Grasshopper Runtime Messages
 
-<!--
-Document your project's logging conventions here.
+Use the Grasshopper built-in component message mechanism to notify users of status, warnings, and errors directly on the canvas.
 
-Questions to answer:
-- What logging library do you use?
-- What are the log levels and when to use each?
-- What should be logged?
-- What should NOT be logged (PII, secrets)?
--->
-
-(To be filled by the team)
+- `GH_RuntimeMessageLevel.Error`: Used when the solve operation cannot complete (e.g. missing inputs, invalid file types, exceptions).
+- `GH_RuntimeMessageLevel.Warning`: Used when the solver succeeded but with unexpected parameters (e.g. customized range exceeds slider bounds).
+- `GH_RuntimeMessageLevel.Remark`: Information messages, non-intrusive notes.
 
 ---
 
-## Log Levels
+## 2. Rhino Command Line Output
 
-<!-- When to use each level: debug, info, warn, error -->
+For longer operations (e.g., animation exporting sequence), write progress to the Rhino command line window to allow tracking.
 
-(To be filled by the team)
+- Use `RhinoApp.WriteLine(string)` or `RhinoApp.Write(string)`.
+- Include timestamps for start/end actions.
 
----
-
-## Structured Logging
-
-<!-- Log format, required fields -->
-
-(To be filled by the team)
+```csharp
+RhinoApp.WriteLine($"Render {(wasAborted ? "cancelled" : "finished")} at {DateTime.Now:HH:mm:ss}");
+```
 
 ---
 
-## What to Log
+## 3. Debug Output
 
-<!-- Important events to log -->
-
-(To be filled by the team)
-
----
-
-## What NOT to Log
-
-<!-- Sensitive data, PII, secrets -->
-
-(To be filled by the team)
+- For internal developer tracing, use `System.Diagnostics.Debug.WriteLine` or `Console.WriteLine`.
+- Ensure heavy debug logging is compiled out in Release builds or wrapped in `#if DEBUG` directives.

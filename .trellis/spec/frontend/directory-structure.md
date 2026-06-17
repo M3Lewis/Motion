@@ -1,54 +1,16 @@
-# Directory Structure
+# Directory Structure (UI & Interaction)
 
-> How frontend code is organized in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's frontend directory structure here.
-
-Questions to answer:
-- Where do components live?
-- How are features/modules organized?
-- Where are shared utilities?
-- How are assets organized?
--->
-
-(To be filled by the team)
+> Where UI controls, custom attributes, and WPF views are located.
 
 ---
 
-## Directory Layout
+## UI Components Layout
 
-```
-<!-- Replace with your actual structure -->
-src/
-├── ...
-└── ...
-```
-
----
-
-## Module Organization
-
-<!-- How should new features be organized? -->
-
-(To be filled by the team)
-
----
-
-## Naming Conventions
-
-<!-- File and folder naming rules -->
-
-(To be filled by the team)
-
----
-
-## Examples
-
-<!-- Link to well-organized modules as examples -->
-
-(To be filled by the team)
+- **`Motion/Components/UI/`**
+  - Contains core reusable custom attributes templates and custom button parameters (e.g., `MotionButton`, `MotionButtonAttributes`).
+- **`Motion/Components/01_Animation/`**
+  - Contains custom drawing attributes for specific animation parameters, such as `RemoteParamAttributes` for the `Motion Sender` component.
+- **`Motion/Button/`**
+  - Custom WPF and WinForms button controls and dialogs that extend Grasshopper canvas (e.g. `ModifySliderWindow`, `ScribbleWPFWindow`).
+- **`Motion/Toolbar/`**
+  - Main menu registrations, toolbar icons loader, and layout configurations.

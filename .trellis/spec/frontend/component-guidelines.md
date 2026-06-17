@@ -1,58 +1,55 @@
-# Component Guidelines
+# Canvas UI & Custom Attributes
 
-> How components are built in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's component conventions here.
-
-Questions to answer:
-- What component patterns do you use?
-- How are props defined?
-- How do you handle composition?
-- What accessibility standards apply?
--->
-
-(To be filled by the team)
+> Guidelines for writing custom `GH_ComponentAttributes` and drawing custom UI controls directly on the Grasshopper Canvas.
 
 ---
 
-## Component Structure
+## 1. Canvas Layout & Bounds Inflation
 
-<!-- Standard structure of a component file -->
+When adding custom UI elements (like buttons, sliders, or status texts) to a component:
+- Override `Layout()`.
+- Call `base.Layout()` first to calculate the standard component box size.
+- Expand `Bounds` (inflate width or height) to accommodate your custom drawing elements.
 
-(To be filled by the team)
-
----
-
-## Props Conventions
-
-<!-- How props should be defined and typed -->
-
-(To be filled by the team)
-
----
-
-## Styling Patterns
-
-- **Window Layout**: Prefer structured `Grid` layouts with `ColumnDefinitions` for complex windows over long `StackPanel` lists inside a `ScrollViewer`. This improves information density and readability on larger screens.
-- **Min/Max Size**: Always set `MinHeight` and `MinWidth` for windows to prevent UI breakage when resized.
+```csharp
+protected override void Layout()
+{
+    base.Layout();
+    // Increase height by 40 units to fit two custom buttons at the bottom
+    Bounds = new RectangleF(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height + 40);
+}
+```
 
 ---
 
-## Accessibility
+## 2. Rendering with Capsules
 
-<!-- A11y requirements and patterns -->
+- Always check that `channel == GH_CanvasChannel.Objects` before drawing custom visual elements to prevent double-draw or rendering artifacts.
+- Use `GH_Capsule.CreateCapsule` to draw buttons/containers matching Grasshopper's native style.
+- Dispose of drawing brushes, capsules, and fonts (or use the built-in `GH_FontServer` fonts) to prevent graphics memory leaks.
 
-(To be filled by the team)
+```csharp
+protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
+{
+    base.Render(canvas, graphics, channel);
+    if (channel == GH_CanvasChannel.Objects)
+    {
+        RectangleF buttonRect = new RectangleF(Bounds.X, Bounds.Bottom - 20, Bounds.Width, 20.0f);
+        buttonRect.Inflate(-2.0f, -2.0f);
+
+        using (GH_Capsule capsule = GH_Capsule.CreateCapsule(buttonRect, PressedOpen ? GH_Palette.Grey : GH_Palette.Black))
+        {
+            capsule.Render(graphics, Selected, Owner.Locked, Owner.Hidden);
+        }
+    }
+}
+```
 
 ---
 
-## Common Mistakes
+## 3. Mouse Event Responses
 
-<!-- Component-related mistakes your team has made -->
-
-(To be filled by the team)
+- Override `RespondToMouseDown` and `RespondToMouseUp` to capture clicks on custom button rects.
+- Always check if the click location (`e.CanvasLocation`) is within your custom buttons bounding box.
+- Trigger actions, change button state properties (e.g. `PressedExport = true`), call `sender.Refresh()`, and return `GH_ObjectResponse.Handled` to consume the click.
+- In `RespondToMouseUp`, reset pressed states and call `sender.Refresh()`.

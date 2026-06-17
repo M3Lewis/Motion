@@ -1,51 +1,38 @@
-# Type Safety
+# Type Safety & Parameter Casting
 
-> Type safety patterns in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's type safety conventions here.
-
-Questions to answer:
-- What type system do you use?
-- How are types organized?
-- What validation library do you use?
-- How do you handle type inference?
--->
-
-(To be filled by the team)
+> Guidelines for safe casting and parameter checks in Grasshopper components.
 
 ---
 
-## Type Organization
+## 1. Parameter Conversion
 
-<!-- Where types are defined, shared types vs local types -->
+Grasshopper inputs can be fed with varied or incorrect data types from users. Always validate parameter conversion safely:
 
-(To be filled by the team)
+- **Check Types**: Do not perform direct type casts (`(GH_Interval)data`). Instead, use the `is` keyword or `as` keyword checks to verify data types before extraction.
+- **Handling Defaults**: Provide sensible fallbacks or default values when parameters are optional and empty.
 
----
-
-## Validation
-
-<!-- Runtime validation patterns (Zod, Yup, io-ts, etc.) -->
-
-(To be filled by the team)
-
----
-
-## Common Patterns
-
-<!-- Type utilities, generics, type guards -->
-
-(To be filled by the team)
+```csharp
+var rangeGoo = this.Params.Input[7].VolatileData.AllData(true).FirstOrDefault();
+if (rangeGoo != null && rangeGoo is GH_Interval ghInterval)
+{
+    parameters.Range = ghInterval.Value;
+    parameters.IsCustomRange = true;
+}
+```
 
 ---
 
-## Forbidden Patterns
+## 2. Canvas Object Verification
 
-<!-- any, type assertions, etc. -->
+When searching for connected components or sliders on the document canvas:
+- Iterate objects using type filters, e.g. `doc.Objects.OfType<GH_NumberSlider>()`.
+- Verify the object is not null and matches expected ID or Nickname formats.
+- When inspecting target source inputs, check types:
 
-(To be filled by the team)
+```csharp
+var source = this.Params.Input[9].Sources[0];
+if (source is MotionSlider motionSlider)
+{
+    // safe to use motionSlider
+}
+```

@@ -1,51 +1,50 @@
-# Error Handling
+# Error & Resource Management Guidelines
 
-> How errors are handled in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's error handling conventions here.
-
-Questions to answer:
-- What error types do you define?
-- How are errors propagated?
-- How are errors logged?
-- How are errors returned to clients?
--->
-
-(To be filled by the team)
+> Guidelines for crash prevention, async safety, and resource cleanups in Grasshopper.
 
 ---
 
-## Error Types
+## 1. Exception Boundaries
 
-<!-- Custom error classes/types -->
+Rhino is a single-process application. An unhandled exception inside a Grasshopper solver cycle or mouse handler can freeze or crash Rhino entirely.
 
-(To be filled by the team)
-
----
-
-## Error Handling Patterns
-
-<!-- Try-catch patterns, error propagation -->
-
-(To be filled by the team)
+- **Catch All**: Wrap heavy operations and external process calls in `try-catch` blocks.
+- **Feedback**: Display error diagnostics via `AddRuntimeMessage(GH_RuntimeMessageLevel.Error, ex.Message)` rather than failing silently.
 
 ---
 
-## API Error Responses
+## 2. Asynchronous Safety & cancellation
 
-<!-- Standard error response format -->
+When running async tasks (e.g., rendering views, saving images, scanning folders):
+- Always instantiate a `CancellationTokenSource`.
+- Ensure the cancellation token is propagated down to the animator or exporter.
+- Listen to keyboard hooks (like pressing `ESC`) to trigger token cancellation.
 
-(To be filled by the team)
+```csharp
+Action<int, int> updateProgress = (frame, total) =>
+{
+    if (Control.ModifierKeys == Keys.Escape && _cancellationTokenSource != null)
+    {
+        _cancellationTokenSource.Cancel();
+    }
+};
+```
 
 ---
 
-## Common Mistakes
+## 3. Resource Disposal Lifecycle
 
-<!-- Error handling mistakes your team has made -->
+- Components that manage `CancellationTokenSource`, file streams, or GDI bitmaps MUST implement `Dispose` or override the component's clean-up methods to release unmanaged objects.
+- Always clear references to event handlers when components are removed or garbage-collected to prevent memory leaks.
 
-(To be filled by the team)
+```csharp
+protected override void Dispose()
+{
+    if (_cancellationTokenSource != null)
+    {
+        _cancellationTokenSource.Dispose();
+        _cancellationTokenSource = null;
+    }
+    base.Dispose();
+}
+```

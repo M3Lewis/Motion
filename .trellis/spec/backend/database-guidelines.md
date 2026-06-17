@@ -1,51 +1,42 @@
-# Database Guidelines
+# Solver & Data Flow Guidelines
 
-> Database patterns and conventions for this project.
-
----
-
-## Overview
-
-<!--
-Document your project's database conventions here.
-
-Questions to answer:
-- What ORM/query library do you use?
-- How are migrations managed?
-- What are the naming conventions for tables/columns?
-- How do you handle transactions?
--->
-
-(To be filled by the team)
+> Best practices for parameter registration, input extraction, and solver calculations in Grasshopper Components.
 
 ---
 
-## Query Patterns
+## 1. Parameter Registration
 
-<!-- How should queries be written? Batch operations? -->
+- Define human-readable Name, Nickname, and Description for all input/output parameters.
+- Mark optional parameters explicitly as `.Optional = true` to avoid Solver compilation warnings.
+- Prefer system-default standard parameters (e.g., `Param_FilePath`, `GH_Interval`) over plain text strings when managing typed data.
 
-(To be filled by the team)
-
----
-
-## Migrations
-
-<!-- How to create and run migrations -->
-
-(To be filled by the team)
-
----
-
-## Naming Conventions
-
-<!-- Table names, column names, index names -->
-
-(To be filled by the team)
+```csharp
+protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+{
+    pManager.AddTextParameter("View Name", "V", "视图名称", GH_ParamAccess.item, "Perspective");
+    pManager.AddIntervalParameter("Range Domain", "D", "导出范围（可选）", GH_ParamAccess.item);
+    pManager[1].Optional = true; // explicitly optional
+}
+```
 
 ---
 
-## Common Mistakes
+## 2. Parameter Retrieval
 
-<!-- Database-related mistakes your team has made -->
+- Always perform structured validation in `SolveInstance` or local parameter extraction helpers.
+- Use `DA.GetData` or `VolatileData.AllData` safely.
+- Avoid raw index access without first checking bounds, especially on dynamic outputs.
 
-(To be filled by the team)
+---
+
+## 3. Data Tree Operations
+
+- When processing lists or data trees, use `GH_Structure` or `List<T>` as appropriate.
+- Ensure that if inputs are changed, you properly invalidate downstream data using `ExpireSolution(true)`.
+
+---
+
+## 4. Performance & Solvers
+
+- Avoid heavy computation inside `SolveInstance` on the main UI thread.
+- If performing rendering or export (e.g., exporting frames, processing audio files), use asynchronous code (`async`/`Task.Run`) and handle UI updates on `RhinoApp.InvokeOnUiThread`.

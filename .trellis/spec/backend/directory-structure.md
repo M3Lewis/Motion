@@ -1,54 +1,38 @@
-# Directory Structure
+# Directory Structure (C# / .NET)
 
-> How backend code is organized in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's backend directory structure here.
-
-Questions to answer:
-- How are modules/packages organized?
-- Where does business logic live?
-- Where are API endpoints defined?
-- How are utilities and helpers organized?
--->
-
-(To be filled by the team)
+> How the Motion plugin source code is organized.
 
 ---
 
 ## Directory Layout
 
+```text
+Motion/
+├── Button/            # Custom toolbar buttons (WPF/WinForms buttons)
+├── Components/        # Grasshopper components, grouped by category
+│   ├── 01_Animation/  # Timeline slider, senders, events, remote params
+│   ├── 02_Export/     # Rendering, viewports, cycles export animators
+│   ├── 03_Utils/      # Layout arrange, dynamic outputs, color, viewport FOV
+│   └── UI/            # Reusable button controls and custom attributes templates
+├── General/           # Shared utility classes and extension methods
+├── Icons/             # Component and button image resources
+├── Properties/        # Assembly metadata and resources configuration (Resources.resx)
+└── Toolbar/           # Toolbar launch priority and menus integration
 ```
-<!-- Replace with your actual structure -->
-src/
-├── ...
-└── ...
-```
 
 ---
 
-## Module Organization
+## Namespaces Mapping
 
-<!-- How should new features/modules be organized? -->
-
-(To be filled by the team)
-
----
-
-## Naming Conventions
-
-<!-- File and folder naming rules -->
-
-(To be filled by the team)
+- `Motion.Animation`: Core animation timeline, sender, receiver, event logic.
+- `Motion.Export`: Rendering execution, Cycle passes, image export, Directory Opus integration.
+- `Motion.UI`: Custom Canvas UI controls, drawing attributes templates.
+- `Motion.Utils`: Math utilities, color conversion, layout arranging, viewport manipulation.
+- `ExtraButtons` / `Toolbar`: Assembly priority load (`GH_AssemblyPriority`), toolbar initialization.
 
 ---
 
-## Examples
+## Code Reuse Rule
 
-<!-- Link to well-organized modules as examples -->
-
-(To be filled by the team)
+- Always search `General/` or other utility classes before writing a helper function.
+- Do NOT repeat rendering or canvas-related utility functions across components; group them in `General/` or use extension methods.

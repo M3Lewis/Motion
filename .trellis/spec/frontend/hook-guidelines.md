@@ -1,51 +1,37 @@
-# Hook Guidelines
+# Interaction & Event Hooks
 
-> How hooks are used in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's hook conventions here.
-
-Questions to answer:
-- What custom hooks do you have?
-- How do you handle data fetching?
-- What are the naming conventions?
-- How do you share stateful logic?
--->
-
-(To be filled by the team)
+> Guidelines for extending user interactions, double-click behaviors, and context menu options.
 
 ---
 
-## Custom Hook Patterns
+## 1. Double-click Interactions
 
-<!-- How to create and structure custom hooks -->
-
-(To be filled by the team)
-
----
-
-## Data Fetching
-
-<!-- How data fetching is handled (React Query, SWR, etc.) -->
-
-(To be filled by the team)
+In Motion, double-clicking component bodies triggers navigation or parameter setting commands.
+- Override `RespondToMouseDoubleClick` or add a double-click handler inside custom attributes.
+- Use double-clicks to jump to corresponding views or event controllers (e.g., jumping from `Event` component to its `EventOperation`).
 
 ---
 
-## Naming Conventions
+## 2. Custom Canvas Context Menus
 
-<!-- Hook naming rules (use*, etc.) -->
+When adding context menus to components:
+- Override `AppendAdditionalMenuItems(ToolStripDropDown menu)`.
+- Use `GH_DocumentObject.Menu_AppendItem` to add custom actions, toggle parameters, or open WPF dialog windows.
+- Always check state bounds and verify the component context before modifying parameter properties.
 
-(To be filled by the team)
+```csharp
+public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+{
+    base.AppendAdditionalMenuItems(menu);
+    Menu_AppendItem(menu, "Name Current Group as Event Name", (sender, e) => {
+        SyncGroupNames();
+    });
+}
+```
 
 ---
 
-## Common Mistakes
+## 3. Global Assembly Priority Hooks
 
-<!-- Hook-related mistakes your team has made -->
-
-(To be filled by the team)
+- Startup patches, custom menu overrides, and assembly resolutions should run inside a class extending `GH_AssemblyPriority` (e.g., `ToolbarLaunchPriority`).
+- Keep priority load logic lightweight to avoid slowing down Grasshopper loading time.
