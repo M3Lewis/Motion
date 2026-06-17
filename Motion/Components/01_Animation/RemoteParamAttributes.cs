@@ -1,4 +1,4 @@
-﻿using Grasshopper.GUI;
+using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
@@ -19,21 +19,6 @@ namespace Motion.Animation
     {
         private Rectangle m_textBounds; //maintain a rectangle of the text bounds
         private GH_StateTagList m_stateTags;
-        // 添加锁定按钮相关字段
-        private RectangleF HideButtonBounds;
-        private RectangleF LockButtonBounds;
-        private RectangleF DataButtonBounds;
-
-        private readonly int ButtonWidth = 18;
-        private readonly int ButtonHeight = 18;
-        private readonly int ButtonSpacing = 4;
-
-        // 添加折叠按钮相关字段
-        private RectangleF CollapseButtonBounds;
-        public bool IsCollapsed { get; private set; } = false;
-
-        // 添加鼠标悬停状态字段
-        private bool mouseOver = false;
 
         public RemoteParamAttributes(IGH_Param owner) : base(owner)
         {
@@ -196,30 +181,6 @@ namespace Motion.Animation
             }
 
             GH_GraphicsUtil.RenderCenteredText(graphics, "\u27aa", new Font("Arial", 10F), arrowColor, new PointF(loc.X, loc.Y));
-        }
-        public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
-        {
-            System.Drawing.Point point = GH_Convert.ToPoint(e.CanvasLocation);
-            if (e.Button != 0)
-            {
-                return base.RespondToMouseMove(sender, e);
-            }
-            RectangleF unionButtonBounds = RectangleF.Union(HideButtonBounds, LockButtonBounds);
-            if (unionButtonBounds.Contains(point))
-            {
-                if (!mouseOver)
-                {
-                    mouseOver = true;
-                    sender.Invalidate();
-                }
-                return GH_ObjectResponse.Capture;
-            }
-            if (mouseOver)
-            {
-                mouseOver = false;
-                sender.Invalidate();
-            }
-            return GH_ObjectResponse.Release;
         }
 
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)

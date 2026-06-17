@@ -28,10 +28,6 @@ namespace Motion.Animation
         public bool HideButtonDown;
         public bool LockButtonDown;
 
-        private readonly int ButtonWidth = 18;
-        private readonly int ButtonHeight = 18;
-        private readonly int ButtonSpacing = 4;
-
         private readonly string EmptyModeText = "Empty Mode";
 
         public EventComponentAttributes(EventComponent owner) : base(owner)

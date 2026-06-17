@@ -1,4 +1,4 @@
-﻿using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Special;
 using System;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
@@ -19,8 +19,6 @@ namespace Motion.Toolbar
         private bool _isDragging = false;
         private double _pendingValue = 0;
         private System.Windows.Threading.DispatcherTimer _updateTimer;
-        private System.Windows.Threading.DispatcherTimer _buttonRepeatTimer;
-        private System.Windows.Controls.Button _currentButton;
         private bool _isAutoIncrementing = false;
         private bool _isAutoDecrementing = false;
         private System.Windows.Threading.DispatcherTimer _autoUpdateTimer;

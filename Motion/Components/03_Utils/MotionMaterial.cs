@@ -21,7 +21,6 @@ namespace Motion.Utils
         private readonly Dictionary<string, Texture> _textureCache;
 
         private string _ImageFolder;
-        private string[] _ImageFiles;
         public string ImageFolder
         {
             get { return _ImageFolder; }
@@ -62,7 +61,7 @@ namespace Motion.Utils
                 if (File.Exists(filePath))
                     File.Delete(filePath);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // 忽略删除失败的错误
             }

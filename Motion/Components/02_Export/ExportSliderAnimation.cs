@@ -67,11 +67,11 @@ namespace Motion.Export
 
         public override void CreateAttributes()
         {
-            Attributes = new MotionButton(this, "Export", "Open", async (sender, e, isExport) =>
+            Attributes = new MotionButton(this, "Export", "Open", (sender, e, isExport) =>
             {
                 if (isExport)
                 {
-                    await ExecuteRenderingAsync();
+                    _ = ExecuteRenderingAsync();
                     return;
                 }
 
@@ -100,7 +100,7 @@ namespace Motion.Export
             return pathData?.ToString();
         }
 
-        protected override async void SolveInstance(IGH_DataAccess DA)
+        protected override void SolveInstance(IGH_DataAccess DA)
         {
             // 获取所有输入参数
             if (!GetInputParams(DA, out RenderParameters parameters))
@@ -109,7 +109,7 @@ namespace Motion.Export
             if (!parameters.Run)
                 return;
 
-            await ExecuteRenderingWithParams(parameters, DA);
+            _ = ExecuteRenderingWithParams(parameters, DA);
         }
 
         private async Task ExecuteRenderingAsync()

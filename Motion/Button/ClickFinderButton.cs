@@ -98,7 +98,11 @@ namespace Motion.Toolbar
                     DisplayPipeline.DrawForeground -= DisplayPipeline_DrawForeground;
                 }
                 
-                previewMesh = null;
+                if (previewMesh != null)
+                {
+                    previewMesh.Dispose();
+                    previewMesh = null;
+                }
                 previewMaterial = null;
                 RhinoDoc.ActiveDoc.Views.Redraw();
             }
@@ -117,7 +121,11 @@ namespace Motion.Toolbar
                         button.Checked = false;
                         isActive = false;
                         checkTimer.Stop();
-                        previewMesh = null;
+                        if (previewMesh != null)
+                        {
+                            previewMesh.Dispose();
+                            previewMesh = null;
+                        }
                         previewMaterial = null;
                         
                         RhinoDoc.ActiveDoc?.Views.Redraw();
@@ -137,6 +145,10 @@ namespace Motion.Toolbar
         {
             previewObjects = new List<IGH_DocumentObject>();
             boundingBoxes = new List<BoundingBox>();
+            if (previewMesh != null)
+            {
+                previewMesh.Dispose();
+            }
             previewMesh = new Mesh();
             
             foreach (IGH_DocumentObject obj in Instances.ActiveCanvas.Document.Objects)
@@ -178,11 +190,13 @@ namespace Motion.Toolbar
                     boundingBoxes.Add(box);
                     
                     // 创建预览用的box mesh
-                    Mesh boxMesh = Mesh.CreateFromBox(box, 1, 1, 1);
-                    if (boxMesh != null && boxMesh.IsValid)
+                    using (Mesh boxMesh = Mesh.CreateFromBox(box, 1, 1, 1))
                     {
-                        boxMesh.Compact();
-                        previewMesh.Append(boxMesh);
+                        if (boxMesh != null && boxMesh.IsValid)
+                        {
+                            boxMesh.Compact();
+                            previewMesh.Append(boxMesh);
+                        }
                     }
                 }
             }

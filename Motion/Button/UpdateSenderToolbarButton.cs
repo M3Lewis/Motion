@@ -18,7 +18,7 @@ namespace Motion.Toolbar
     public class UpdateSenderToolbarButton : MotionToolbarButton
     {
         public override int ToolbarOrder => 10;
-        private ToolStripButton button;
+        // private ToolStripButton button;
         private List<GH_NumberSlider> allTimelineSliders = new List<GH_NumberSlider>();
 
         public UpdateSenderToolbarButton()
@@ -47,15 +47,15 @@ namespace Motion.Toolbar
             AddUpdateSenderButton();
         }
 
-        private void Instantiate()
-        {
-            button.Name = "Update Sender";
-            button.Size = new Size(24, 24);
-            button.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            button.Image = Properties.Resources.UpdateSender; // 确保有对应的图标资源
-            button.ToolTipText = "在多个Motion Slider输出端旁创建Motion Sender";
-            button.Click += UpdateSender_Click;
-        }
+        // private void Instantiate()
+        // {
+        //     button.Name = "Update Sender";
+        //     button.Size = new Size(24, 24);
+        //     button.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        //     button.Image = Properties.Resources.UpdateSender; // 确保有对应的图标资源
+        //     button.ToolTipText = "在多个Motion Slider输出端旁创建Motion Sender";
+        //     button.Click += UpdateSender_Click;
+        // }
 
         private void UpdateSender_Click(object sender, EventArgs e)
         {

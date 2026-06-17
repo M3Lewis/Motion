@@ -20,8 +20,6 @@ namespace Motion.Animation
     {
         private bool _isPositionInitialized = false;
 
-        public event EventHandler<decimal> ValueChanged;
-
         public override Guid ComponentGuid => new Guid("A6704806-4EE3-42AF-B742-3C348C5F7F38");
 
         protected override Bitmap Icon => Properties.Resources.MotionSlider;
@@ -350,7 +348,6 @@ namespace Motion.Animation
     public class MotionSliderAttributes : GH_ResizableAttributes<GH_NumberSlider>
     {
         private readonly new MotionSlider Owner;
-        private bool _isDraggingSlider = false;
         private int _dragMode = 0;
         protected override Size MinimumSize => new Size(
             (int)(TEXT_BOX_WIDTH + 100),  // 文本框宽度 + 最小滑块宽度
@@ -545,7 +542,6 @@ namespace Motion.Animation
             if (Owner.Slider.MouseDown(e.WinFormsEventArgs, e.CanvasLocation))
             {
                 _dragMode = 1;
-                _isDraggingSlider = true;
                 sender.Invalidate();
 
                 // 计算滑块的捕捉距离
@@ -571,7 +567,6 @@ namespace Motion.Animation
                     Owner.Slider.MouseUp(e.WinFormsEventArgs, e.CanvasLocation);
                 }
                 _dragMode = 0;
-                _isDraggingSlider = false;
                 sender.Invalidate();
                 return GH_ObjectResponse.Release;
             }
@@ -667,7 +662,7 @@ namespace Motion.Animation
                     Owner.SynchronizeSenderIntervals(); // 确保这里调用了 SynchronizeSenderIntervals
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
             }
         }
