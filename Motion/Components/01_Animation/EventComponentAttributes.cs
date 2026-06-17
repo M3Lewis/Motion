@@ -376,9 +376,12 @@ namespace Motion.Animation
                         mapperComp = component;
 
                         if (mapperComp == null) return GH_ObjectResponse.Ignore;
-                        eventOperation = mapperComp.Params.Output[0].Recipients[0].Attributes.GetTopLevel.DocObject;
-                        MotilityUtils.GoComponent(eventOperation);
-                        return GH_ObjectResponse.Handled;
+                        if (mapperComp.Params.Output.Count > 0 && mapperComp.Params.Output[0].Recipients.Count > 0)
+                        {
+                            eventOperation = mapperComp.Params.Output[0].Recipients[0].Attributes.GetTopLevel.DocObject;
+                            MotilityUtils.GoComponent(eventOperation);
+                            return GH_ObjectResponse.Handled;
+                        }
                     }
                 }
 

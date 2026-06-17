@@ -1,4 +1,4 @@
-﻿using Grasshopper.GUI;
+using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
@@ -47,7 +47,7 @@ namespace Motion.Animation
                                 break;
 
                             case GH_Component component:
-                                bool isGraphMapperPlus = component.NickName.StartsWith("Mapper+");
+                                bool isGraphMapperPlus = component.ComponentGuid == new Guid("310f9597-267e-4471-a7d7-048725557528");
                                 IGH_Param inputParameter = component.Params.Input[isGraphMapperPlus ? 2 : 0];
 
                                 if (inputParameter?.Sources.Count == 0) break;

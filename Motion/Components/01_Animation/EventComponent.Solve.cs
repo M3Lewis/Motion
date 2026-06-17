@@ -69,7 +69,7 @@ namespace Motion.Animation
                     var component = topLevelObj as GH_Component;
                     if (component != null && component.Params.Input.Count > 0)
                     {
-                        bool isGraphMapperPlus = component.NickName.StartsWith("Mapper+");
+                        bool isGraphMapperPlus = component.ComponentGuid == new Guid("310f9597-267e-4471-a7d7-048725557528");
                         IGH_Param inputParameter = component.Params.Input[isGraphMapperPlus ? 2 : 0];
 
                         if (inputParameter.Sources.Contains(this.Params.Output[0]))

@@ -331,6 +331,43 @@ namespace Motion.Animation
 
                             richGraphMapper.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
 
+                            // Set up a default graph preset (Bezier2Graph) for the Rich Graph Mapper
+                            try
+                            {
+                                var bezier2GraphGuid = new Guid("34afa8f2-fee6-4e3b-82da-b980ffeb87aa");
+                                var customGraph = Grasshopper.Instances.ComponentServer.EmitGraph(bezier2GraphGuid);
+                                if (customGraph != null)
+                                {
+                                    customGraph.PrepareForUse();
+                                    var containerProp = richGraphMapper.GetType().GetProperty("Container");
+                                    if (containerProp != null)
+                                    {
+                                        var container = containerProp.GetValue(richGraphMapper, null) as GH_GraphContainer;
+                                        containerProp.SetValue(richGraphMapper, null, null);
+
+                                        if (container == null)
+                                        {
+                                            container = new GH_GraphContainer(customGraph);
+                                        }
+                                        else
+                                        {
+                                            container.Graph = customGraph;
+                                        }
+
+                                        container.X0 = 0;
+                                        container.X1 = 1;
+                                        container.Y0 = 0;
+                                        container.Y1 = 1;
+
+                                        containerProp.SetValue(richGraphMapper, container, null);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Rhino.RhinoApp.WriteLine($"[Motion] Failed to set default graph for Rich Graph Mapper: {ex.Message}");
+                            }
+
                             senderParam.Attributes.Selected = false;
                             richGraphMapper.Attributes.Selected = true;
                             eventComp.Attributes.Selected = true;

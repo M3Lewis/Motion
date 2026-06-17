@@ -67,7 +67,6 @@ namespace Motion.Toolbar
                     return;
                 }
 
-                const float EVENT_WIDTH = 100f;
                 const float VERTICAL_SPACING = 120f;
                 const float HORIZONTAL_OFFSET = 300f;
 
@@ -117,13 +116,41 @@ namespace Motion.Toolbar
                                     eventComp.Attributes.Pivot = new PointF(targetPos.X,targetPos.Y+10f);
                                     eventComp.Attributes.Selected = false;
                                 }
-                                else if (comp is GH_GraphMapper mapper)
+                                else
                                 {
-                                    mapper.Attributes.Pivot = new PointF(
-                                        targetPos.X + EVENT_WIDTH,
-                                        targetPos.Y - 65f
-                                    );
-                                    mapper.Attributes.Selected = false;
+                                    var guid = comp.ComponentGuid;
+                                    if (guid == new Guid("bc984576-7aa6-491f-a91d-e444c33675a7")) // Graph Mapper
+                                    {
+                                        comp.Attributes.Pivot = new PointF(
+                                            targetPos.X + 100f,
+                                            targetPos.Y - 65f
+                                        );
+                                        comp.Attributes.Selected = false;
+                                    }
+                                    else if (guid == new Guid("6b30c365-2690-4d61-b2ca-8ec5f2118665")) // V-Ray Graph
+                                    {
+                                        comp.Attributes.Pivot = new PointF(
+                                            targetPos.X + 100f,
+                                            targetPos.Y - 47f
+                                        );
+                                        comp.Attributes.Selected = false;
+                                    }
+                                    else if (guid == new Guid("310f9597-267e-4471-a7d7-048725557528")) // Graph-Mapper +
+                                    {
+                                        comp.Attributes.Pivot = new PointF(
+                                            targetPos.X + 200f,
+                                            targetPos.Y - 15f
+                                        );
+                                        comp.Attributes.Selected = false;
+                                    }
+                                    else if (guid == new Guid("e2996e6c-e067-42fa-8f44-2192c6763262")) // Rich Graph Mapper
+                                    {
+                                        comp.Attributes.Pivot = new PointF(
+                                            targetPos.X + 100f,
+                                            targetPos.Y - 5f
+                                        );
+                                        comp.Attributes.Selected = false;
+                                    }
                                 }
                             }
                         }
