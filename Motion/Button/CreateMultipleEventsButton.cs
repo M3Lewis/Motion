@@ -15,7 +15,7 @@ namespace Motion.Toolbar
     public class CreateMultipleEventsButton : MotionToolbarButton
     {
         private ToolStripButton button;
-        protected override int ToolbarOrder => 40;
+        public override int ToolbarOrder => 40;
         public override GH_LoadingInstruction PriorityLoad()
         {
             Instances.CanvasCreated += Instances_CanvasCreated;

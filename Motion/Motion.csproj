@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<!-- Select the framework(s) you wish to target.
@@ -8,7 +8,7 @@
         Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
     -->
 		<UseWindowsForms>true</UseWindowsForms>
-		<TargetFrameworks>net7.0-windows;net48</TargetFrameworks>
+		<TargetFrameworks>net7.0-windows</TargetFrameworks>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 		<TargetExt>.gha</TargetExt>
 		<NoWarn>NU1701</NoWarn>
@@ -27,18 +27,22 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Compile Remove="Components\OBSOLETE\**" />
 		<Compile Remove="NS\**" />
 		<Compile Remove="Resources\**" />
 		<Compile Remove="tele\**" />
 		<Compile Remove="XForm\**" />
+		<EmbeddedResource Remove="Components\OBSOLETE\**" />
 		<EmbeddedResource Remove="NS\**" />
 		<EmbeddedResource Remove="Resources\**" />
 		<EmbeddedResource Remove="tele\**" />
 		<EmbeddedResource Remove="XForm\**" />
+		<None Remove="Components\OBSOLETE\**" />
 		<None Remove="NS\**" />
 		<None Remove="Resources\**" />
 		<None Remove="tele\**" />
 		<None Remove="XForm\**" />
+		<Page Remove="Components\OBSOLETE\**" />
 		<Page Remove="NS\**" />
 		<Page Remove="Resources\**" />
 		<Page Remove="tele\**" />
@@ -141,9 +145,13 @@
 		<PackageReference Include="Grasshopper" Version="7.34.23267.11001" Condition="$(TargetFramework) == 'net48'" ExcludeAssets="runtime" />
 		<PackageReference Include="Grasshopper" Version="8.0.23304.9001" Condition="!$(TargetFramework.StartsWith('net4'))" ExcludeAssets="runtime" />
 	</ItemGroup>
-	<ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net48'">
 		<Reference Include="System.Windows.Forms">
 			<HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.dll</HintPath>
+		</Reference>
+		<Reference Include="System.Resources.Extensions">
+			<HintPath>$(NuGetPackageRoot)system.resources.extensions\4.7.1\lib\net461\System.Resources.Extensions.dll</HintPath>
+			<Private>true</Private>
 		</Reference>
 	</ItemGroup>
 
@@ -165,6 +173,9 @@
 	<!-- For Windows only builds -->
 	<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4'))">
 		<UseWpf>true</UseWpf>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net48'">
+		<GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
 	</PropertyGroup>
 
 	<Target Name="CopyPdbForMonoDebugging" AfterTargets="AfterBuild">

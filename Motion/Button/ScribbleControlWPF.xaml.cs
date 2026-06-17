@@ -202,7 +202,7 @@ namespace Motion.Windows
             {
 
                 var selectedGroups = _document?.SelectedObjects().OfType<GH_Group>().ToList();
-                
+
                 if (selectedGroups.Any())
                 {
                     foreach (var group in selectedGroups)
@@ -215,9 +215,9 @@ namespace Motion.Windows
                     CreateAndAddScribble(null);
                 }
 
-                
+
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 MessageBox.Show("Please create a new grasshopper file!");
             }

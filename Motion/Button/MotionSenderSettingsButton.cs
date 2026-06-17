@@ -39,7 +39,7 @@ namespace Motion.Toolbar
 
     public class MotionSenderSettings : MotionToolbarButton
     {
-        protected override int ToolbarOrder => 101;
+        public override int ToolbarOrder => 101;
         private ToolStripButton button;
 
         private static readonly string SettingsFilePath = Path.Combine(

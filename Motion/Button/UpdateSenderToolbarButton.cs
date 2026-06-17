@@ -17,7 +17,7 @@ namespace Motion.Toolbar
 {
     public class UpdateSenderToolbarButton : MotionToolbarButton
     {
-        protected override int ToolbarOrder => 10;
+        public override int ToolbarOrder => 10;
         private ToolStripButton button;
         private List<GH_NumberSlider> allTimelineSliders = new List<GH_NumberSlider>();
 

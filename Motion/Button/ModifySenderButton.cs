@@ -14,7 +14,7 @@ namespace Motion.Toolbar
 {
     public class ModifySenderButton : MotionToolbarButton
     {
-        protected override int ToolbarOrder => 1;
+        public override int ToolbarOrder => 1;
         private ToolStripButton button;
 
         public ModifySenderButton()

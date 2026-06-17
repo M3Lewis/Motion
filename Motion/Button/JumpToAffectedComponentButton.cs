@@ -13,7 +13,7 @@ namespace Motion.Toolbar
 {
     public class JumpToAffectedComponentButton : MotionToolbarButton
     {
-        protected override int ToolbarOrder => 95;
+        public override int ToolbarOrder => 95;
         private ToolStripButton button;
 
         public JumpToAffectedComponentButton()

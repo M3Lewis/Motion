@@ -14,7 +14,7 @@ namespace Motion.Toolbar
     public class CreateUnionSliderButton : MotionToolbarButton
     {
         private ToolStripButton button;
-        protected override int ToolbarOrder => 20;
+        public override int ToolbarOrder => 20;
 
         public CreateUnionSliderButton()
         {

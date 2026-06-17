@@ -16,7 +16,7 @@ namespace Motion.Toolbar
     public class ConnectToEventOperationButton : MotionToolbarButton
     {
         private ToolStripButton _button;
-        protected override int ToolbarOrder => 50;
+        public override int ToolbarOrder => 50;
 
         public override GH_LoadingInstruction PriorityLoad()
         {

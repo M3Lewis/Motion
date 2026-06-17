@@ -32,7 +32,7 @@ namespace Motion.Toolbar
         private static readonly string SettingsFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Grasshopper", "Motion", "NamedViewSwitch.xml"); 
-        protected override int ToolbarOrder => 100;
+        public override int ToolbarOrder => 100;
         private ToolStripButton button;
         private List<string> namedViews = new List<string>();
         private int currentViewIndex = 0;
@@ -178,7 +178,7 @@ namespace Motion.Toolbar
             }
         }
 
-        private void ShowTemporaryMessage(GH_Canvas canvas, string message)
+        private new void ShowTemporaryMessage(GH_Canvas canvas, string message)
         {
             GH_Canvas.CanvasPrePaintObjectsEventHandler canvasRepaint = null;
             canvasRepaint = (sender) =>

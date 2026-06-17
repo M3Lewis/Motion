@@ -16,7 +16,7 @@ namespace Motion.Toolbar
 {
     public class ToolbarPositionManagerButton : MotionToolbarButton
     {
-        protected override int ToolbarOrder => 0; // 放在最前面
+        public override int ToolbarOrder => 0; // 放在最前面
         private ToolStripButton button;
         private ContextMenuStrip buttonContextMenu;
         private ToolStrip grasshopperToolStrip;

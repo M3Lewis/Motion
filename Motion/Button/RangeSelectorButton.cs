@@ -18,7 +18,7 @@ namespace Motion.Toolbar
     public class RangeSelectorButton : MotionToolbarButton
     {
         private ToolStripButton button;
-        protected override int ToolbarOrder => 91; // 设置在 ScribbleControl 按钮后面
+        public override int ToolbarOrder => 91; // 设置在 ScribbleControl 按钮后面
 
         public RangeSelectorButton()
         {

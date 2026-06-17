@@ -14,7 +14,7 @@ namespace Motion.Toolbar
     public class CameraPointsButton : MotionToolbarButton
     {
         private ToolStripButton button;
-        protected override int ToolbarOrder => 150; // 设置为工具栏按钮的最后一个
+        public override int ToolbarOrder => 150; // 设置为工具栏按钮的最后一个
 
         public CameraPointsButton()
         {
