@@ -34,6 +34,7 @@ namespace Motion.Toolbar
         public MotionSenderSettingsWindow(List<string> loadedGraph)
         {
             InitializeComponent();
+            Motion.General.LanguageManager.LocalizeWindow(this);
             GraphSelectComboBox.ItemsSource = loadedGraph;
             if (loadedGraph.Any())
             {
@@ -56,7 +57,11 @@ namespace Motion.Toolbar
             }
             else
             {
-                MessageBox.Show("请输入有效的正整数！", "输入错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    Motion.General.LanguageManager.GetString("Msg.InvalidPositiveInt", "请输入有效的正整数！"),
+                    Motion.General.LanguageManager.GetString("Msg.InputError", "输入错误"), 
+                    MessageBoxButton.OK, MessageBoxImage.Warning
+                );
             }
         }
 

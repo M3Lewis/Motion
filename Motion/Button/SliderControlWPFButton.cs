@@ -1,4 +1,4 @@
-﻿using Grasshopper;
+using Grasshopper;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
@@ -51,8 +51,16 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.SliderControlWPF2;
-            button.ToolTipText = "创建一个控制Union Slider的置顶窗口";
+            button.ToolTipText = General.LanguageManager.GetString("Button.SliderControlWPF.Tooltip", "创建一个控制Union Slider的置顶窗口");
             button.Click += OpenControlWindow;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.SliderControlWPF.Tooltip", "创建一个控制Union Slider的置顶窗口");
+            }
         }
 
         public void OpenControlWindow(object sender, EventArgs e)
@@ -62,7 +70,7 @@ namespace Motion.Toolbar
                 var doc = Instances.ActiveCanvas?.Document;
                 if (doc == null)
                 {
-                    MessageBox.Show("无法访问当前文档！");
+                    MessageBox.Show(General.LanguageManager.GetString("Msg.NoDocument", "无法访问当前文档！"));
                     return;
                 }
 
@@ -72,7 +80,7 @@ namespace Motion.Toolbar
 
                 if (connectedSlider == null)
                 {
-                    MessageBox.Show("请先创建一个MotionSlider！");
+                    MessageBox.Show(General.LanguageManager.GetString("Msg.CreateSliderFirst", "请先创建一个MotionSlider！"));
                     return;
                 }
 
@@ -80,7 +88,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"发生错误：{ex.Message}");
+                MessageBox.Show(string.Format(General.LanguageManager.GetString("Msg.ErrorOccurred", "发生错误：{0}"), ex.Message));
             }
         }
     }

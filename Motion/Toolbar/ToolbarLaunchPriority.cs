@@ -23,6 +23,10 @@ namespace ExtraButtons
             AppDomain.CurrentDomain.AssemblyLoad += CurrentDomain_AssemblyLoad;
 
             Instances.CanvasCreated += Instances_CanvasCreated;
+
+            // Initialize LanguageManager for automatic component/parameter localization
+            Motion.General.LanguageManager.Initialize();
+
             return GH_LoadingInstruction.Proceed;
         }
 

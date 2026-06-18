@@ -13,6 +13,7 @@ namespace Motion.Views
         public RangeSelectorDialog(IEnumerable<string> values)
         {
             InitializeComponent();
+            Motion.General.LanguageManager.LocalizeWindow(this);
 
             // 排序并去重
             var sortedValues = values.Distinct().OrderBy(x => x).ToList();
@@ -44,8 +45,11 @@ namespace Motion.Views
         {
             if (TimeIntervalComboBox.SelectedItem == null)
             {
-                MessageBox.Show("Please select a valid time interval.",
-                    "Invalid Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    Motion.General.LanguageManager.GetString("Msg.SelectValidInterval", "请选择一个有效的区间数值。"),
+                    Motion.General.LanguageManager.GetString("Msg.SelectionError", "选择错误"), 
+                    MessageBoxButton.OK, MessageBoxImage.Warning
+                );
                 return;
             }
 

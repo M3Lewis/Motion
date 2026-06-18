@@ -28,7 +28,7 @@ namespace Motion.Animation
         public bool HideButtonDown;
         public bool LockButtonDown;
 
-        private readonly string EmptyModeText = "Empty Mode";
+        private string EmptyModeText => LanguageManager.GetString("Canvas.EmptyMode", "Empty Mode");
 
         public EventComponentAttributes(EventComponent owner) : base(owner)
         {
@@ -163,7 +163,7 @@ namespace Motion.Animation
                     {
                         capsule.Render(graphics, Selected, Owner.Locked, false);
                         graphics.DrawString(
-                            "Hide",
+                            LanguageManager.GetString("Canvas.Hide", "Hide"),
                             GH_FontServer.StandardBold,
                             Brushes.White,
                             hideButtonBounds,
@@ -180,7 +180,7 @@ namespace Motion.Animation
                     {
                         capsule.Render(graphics, Selected, Owner.Locked, false);
                         graphics.DrawString(
-                            "Lock",
+                            LanguageManager.GetString("Canvas.Lock", "Lock"),
                             GH_FontServer.StandardBold,
                             Brushes.White,
                             lockButtonBounds,

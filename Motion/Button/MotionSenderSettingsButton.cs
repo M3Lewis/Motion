@@ -115,13 +115,21 @@ namespace Motion.Toolbar
             button.Size = new System.Drawing.Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Resources.MotionSliderSettingsButton; // 需要添加对应的图标
-            button.ToolTipText = "鼠标左键：显示Slider帧数对应的时间\n鼠标右键：设置帧数及Graph组件类型";
+            button.ToolTipText = General.LanguageManager.GetString("Button.MotionSenderSettings.Tooltip", "鼠标左键：显示Slider帧数对应的时间\n鼠标右键：设置帧数及Graph组件类型");
             button.Click += LeftClickButton;
             button.MouseDown += RightClickButton;
 
             // 设置按钮初始状态
             isActive = _isActiveState; // 确保同步
             button.BackColor = isActive ? Color.Orange : Color.FromArgb(255, 255, 255);
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.MotionSenderSettings.Tooltip", "鼠标左键：显示Slider帧数对应的时间\n鼠标右键：设置帧数及Graph组件类型");
+            }
         }
 
 

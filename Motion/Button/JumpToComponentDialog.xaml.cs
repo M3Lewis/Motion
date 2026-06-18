@@ -17,6 +17,7 @@ namespace Motion.Animation
         public JumpToComponentDialog(IEnumerable<IGH_DocumentObject> components)
         {
             InitializeComponent();
+            Motion.General.LanguageManager.LocalizeWindow(this);
 
             foreach (var component in components)
             {

@@ -21,8 +21,10 @@ namespace Motion.Toolbar
         // private ToolStripButton button;
         private List<GH_NumberSlider> allTimelineSliders = new List<GH_NumberSlider>();
 
-        public UpdateSenderToolbarButton()
+        public override void UpdateLanguage()
         {
+            // If uncommented in future:
+            // if (button != null) button.ToolTipText = General.LanguageManager.GetString("Button.UpdateSenderToolbar.Tooltip", "在多个Motion Slider输出端旁创建Motion Sender");
         }
 
         private void AddUpdateSenderButton()
@@ -122,7 +124,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, $"Error: {ex.Message}");
+                ShowTemporaryMessage(Instances.ActiveCanvas, string.Format(General.LanguageManager.GetString("Msg.ErrorOccurred", "发生错误：{0}"), ex.Message));
             }
         }
 
@@ -152,7 +154,7 @@ namespace Motion.Toolbar
                 }
                 else
                 {
-                    ShowTemporaryMessage(Instances.ActiveCanvas, "请创建一个Motion Slider");
+                    ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.CreateSliderFirst", "请先创建一个MotionSlider！"));
                 }
             }
             catch (Exception ex)

@@ -63,12 +63,21 @@ namespace Motion.Toolbar
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             UpdateButtonImage(); // 替换原来的直接赋值
 
-            button.ToolTipText = "管理工具栏位置";
+            button.ToolTipText = General.LanguageManager.GetString("Button.ToolbarPositionManager.Tooltip", "管理工具栏位置");
             button.Click += Button_Click;
 
             // 创建右键菜单
             CreateContextMenu();
             button.MouseUp += Button_MouseUp;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.ToolbarPositionManager.Tooltip", "管理工具栏位置");
+            }
+            CreateContextMenu();
         }
 
         // 添加新方法用于更新按钮图标
@@ -122,7 +131,10 @@ namespace Motion.Toolbar
             SavePositionSettings(position);
 
             // 显示位置变更消息
-            ShowTemporaryMessage(Instances.ActiveCanvas, $"工具栏已移动到: {position}");
+            ShowTemporaryMessage(Instances.ActiveCanvas, string.Format(
+                General.LanguageManager.GetString("Msg.ToolbarMovedTo", "工具栏已移动到: {0}"),
+                position.ToString()
+            ));
         }
 
         private void CreateContextMenu()
@@ -130,11 +142,11 @@ namespace Motion.Toolbar
             buttonContextMenu = new ContextMenuStrip();
 
             // 添加位置选项
-            buttonContextMenu.Items.Add("Top", null, (s, e) => MoveToolbarItems(ToolbarPosition.Top));
-            buttonContextMenu.Items.Add("Left", null, (s, e) => MoveToolbarItems(ToolbarPosition.Left));
-            buttonContextMenu.Items.Add("Right", null, (s, e) => MoveToolbarItems(ToolbarPosition.Right));
-            buttonContextMenu.Items.Add("Bottom", null, (s, e) => MoveToolbarItems(ToolbarPosition.Bottom));
-            buttonContextMenu.Items.Add("On Toolbar", null, (s, e) => MoveToolbarItems(ToolbarPosition.OnToolbar));
+            buttonContextMenu.Items.Add(General.LanguageManager.GetString("Menu.Top", "上"), null, (s, e) => MoveToolbarItems(ToolbarPosition.Top));
+            buttonContextMenu.Items.Add(General.LanguageManager.GetString("Menu.Left", "左"), null, (s, e) => MoveToolbarItems(ToolbarPosition.Left));
+            buttonContextMenu.Items.Add(General.LanguageManager.GetString("Menu.Right", "右"), null, (s, e) => MoveToolbarItems(ToolbarPosition.Right));
+            buttonContextMenu.Items.Add(General.LanguageManager.GetString("Menu.Bottom", "下"), null, (s, e) => MoveToolbarItems(ToolbarPosition.Bottom));
+            buttonContextMenu.Items.Add(General.LanguageManager.GetString("Menu.OnToolbar", "在工具栏上"), null, (s, e) => MoveToolbarItems(ToolbarPosition.OnToolbar));
         }
 
         private void Button_Click(object sender, EventArgs e)
@@ -195,7 +207,10 @@ namespace Motion.Toolbar
             }
 
             // 在画布上显示一个临时消息
-            ShowTemporaryMessage(Instances.ActiveCanvas, $"当前工具栏位置: {positionName}");
+            ShowTemporaryMessage(Instances.ActiveCanvas, string.Format(
+                General.LanguageManager.GetString("Msg.CurrentToolbarPos", "当前工具栏位置: {0}"),
+                positionName
+            ));
         }
 
 
@@ -334,7 +349,7 @@ namespace Motion.Toolbar
                 if (!grasshopperToolStripItems.Contains(item))
                 {
                     // Insertion failed, handle error
-                    ShowTemporaryMessage(Instances.ActiveCanvas, "Error moving toolbar items to Grasshopper toolbar");
+                    ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.ToolbarMoveError", "Error moving toolbar items to Grasshopper toolbar"));
                     return;
                 }
             }

@@ -40,8 +40,13 @@ namespace Motion.Toolbar
         // 子类可以重写此方法来处理按钮点击
         protected virtual void OnButtonClicked(object sender, EventArgs e) { }
 
+        public virtual void UpdateLanguage() { }
+
+        protected ToolStripItem MyButton { get; set; }
+
         protected void AddButtonToToolbars(ToolStripItem originalButton)
         {
+            MyButton = originalButton;
             MotionToolbarManager.AddButtonToToolbars(originalButton, PreferredToolbarType, ToolbarOrder, this);
         }
 

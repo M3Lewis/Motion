@@ -48,9 +48,17 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.CreateUnionSlider;
-            button.ToolTipText = "LMB：创建/更新Motion Union Slider，以控制选定的Motion Slider \nRMB：移除对Motion Slider的控制";
+            button.ToolTipText = General.LanguageManager.GetString("Button.CreateUnionSlider.Tooltip", "LMB：创建/更新Motion Union Slider，以控制选定的Motion Slider \nRMB：移除对Motion Slider的控制");
             button.MouseDown += Button_MouseDown;
             button.CheckOnClick = false;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.CreateUnionSlider.Tooltip", "LMB：创建/更新Motion Union Slider，以控制选定的Motion Slider \nRMB：移除对Motion Slider的控制");
+            }
         }
 
         private void Button_MouseDown(object sender, MouseEventArgs e)
@@ -71,7 +79,7 @@ namespace Motion.Toolbar
 
             if (selectedSliders.Count == 0)
             {
-                ShowMessage("请先选择需要控制的Slider");
+                ShowMessage(General.LanguageManager.GetString("Msg.SelectSliderToControl", "请先选择需要控制的Slider"));
                 return;
             }
 
@@ -93,6 +101,7 @@ namespace Motion.Toolbar
                 {
                     // 更新现有主控滑块的范围
                     existingController.SetRange(globalMin, globalMax);
+                    existingController.MainControllerName = existingController.MainControllerName; // Trigger getter
                     existingController.IsMainController = true;
 
                     // 更新控制关系
@@ -108,7 +117,10 @@ namespace Motion.Toolbar
                     existingController.ExpireSolution(true);
                     canvas.Refresh();
 
-                    ShowMessage($"已更新Union Slider ({globalMin}-{globalMax})，控制 {selectedSliders.Count - 1} 个滑块");
+                    ShowMessage(string.Format(
+                        General.LanguageManager.GetString("Msg.UpdatedUnionSlider", "已更新Union Slider ({0}-{1})，控制 {2} 个滑块"),
+                        globalMin, globalMax, selectedSliders.Count - 1
+                    ));
                 }
                 else
                 {
@@ -148,7 +160,10 @@ namespace Motion.Toolbar
                     controller.ExpireSolution(true);
                     canvas.Refresh();
 
-                    ShowMessage($"已创建Union Slider ({globalMin}-{globalMax})，控制 {selectedSliders.Count} 个滑块");
+                    ShowMessage(string.Format(
+                        General.LanguageManager.GetString("Msg.CreatedUnionSlider", "已创建Union Slider ({0}-{1})，控制 {2} 个滑块"),
+                        globalMin, globalMax, selectedSliders.Count
+                    ));
                 }
 
                 canvas.Document.NewSolution(true);
@@ -174,7 +189,10 @@ namespace Motion.Toolbar
                         }
                     }
                 }
-                ShowMessage($"Removed {selectedSliders.Count} slider control relationship");
+                ShowMessage(string.Format(
+                    General.LanguageManager.GetString("Msg.RemovedSliderControl", "Removed {0} slider control relationship"),
+                    selectedSliders.Count
+                ));
             }
 
             canvas.Document.NewSolution(true);

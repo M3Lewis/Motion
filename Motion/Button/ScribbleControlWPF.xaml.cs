@@ -25,6 +25,7 @@ namespace Motion.Windows
         public ScribbleControlWPF(GH_Document document)
         {
             InitializeComponent();
+            Motion.General.LanguageManager.LocalizeWindow(this);
             _document = document;
             
             // 初始化字体列表
@@ -219,7 +220,7 @@ namespace Motion.Windows
             }
             catch (Exception)
             {
-                MessageBox.Show("Please create a new grasshopper file!");
+                MessageBox.Show(Motion.General.LanguageManager.GetString("Msg.CreateNewGHFile", "Please create a new Grasshopper file!"));
             }
         }
 

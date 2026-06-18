@@ -49,8 +49,16 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.ModifySliderButton; // 需要添加对应的图标
-            button.ToolTipText = "修改Motion Sender";
+            button.ToolTipText = General.LanguageManager.GetString("Button.ModifySender.Tooltip", "修改Motion Sender");
             button.Click += Button_Click;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.ModifySender.Tooltip", "修改Motion Sender");
+            }
         }
 
         private void Button_Click(object sender, EventArgs e)

@@ -1,4 +1,4 @@
-﻿using Grasshopper;
+using Grasshopper;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.GUI;
 using Grasshopper.Kernel;
@@ -85,12 +85,20 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.NamedViewSwitch2;
-            button.ToolTipText = "打开状态下，可按 Ctrl + [+]/[-] 键在Named View之间切换";
+            button.ToolTipText = General.LanguageManager.GetString("Button.NamedViewSwitch.Tooltip", "打开状态下，可按 Ctrl + [+]/[-] 键在Named View之间切换");
             button.Click += ClickedButton;
 
             // 设置按钮初始状态
             isActive = _isActiveState; // 确保与加载的设置同步
             button.BackColor = isActive ? Color.Orange : Color.FromArgb(255, 255, 255); // 同步UI状态
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.NamedViewSwitch.Tooltip", "打开状态下，可按 Ctrl + [+]/[-] 键在Named View之间切换");
+            }
         }
 
         private void LoadNamedViews()
@@ -139,7 +147,7 @@ namespace Motion.Toolbar
                 bool isPressed = e.Control && (e.KeyCode == Keys.Oemplus || e.KeyCode == Keys.Add);
                 if (canvas != null && isPressed)
                 {
-                    ShowTemporaryMessage(canvas, $"请创建一个Grasshopper Named View");
+                    ShowTemporaryMessage(canvas, General.LanguageManager.GetString("Msg.CreateNamedViewFirst", "请创建一个Grasshopper Named View"));
                 }
                 return;
             }

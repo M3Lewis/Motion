@@ -52,8 +52,16 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.RangeSelector;
-            button.ToolTipText = "根据当前画布上所有Motion Sender的区间值进行选择，并创建一个Time Interval组件";
+            button.ToolTipText = General.LanguageManager.GetString("Button.RangeSelector.Tooltip", "根据当前画布上所有Motion Sender的区间值进行选择，并创建一个Time Interval组件");
             button.Click += CreateRangeParameter;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.RangeSelector.Tooltip", "根据当前画布上所有Motion Sender的区间值进行选择，并创建一个Time Interval组件");
+            }
         }
 
         private void CreateRangeParameter(object sender, EventArgs e)
@@ -76,8 +84,11 @@ namespace Motion.Toolbar
 
                 if (!values.Any())
                 {
-                    MessageBox.Show("No matching Motion Sender found in the document.",
-                        "No Sender Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(
+                        General.LanguageManager.GetString("Msg.NoSenderFound", "No matching Motion Sender found in the document."),
+                        General.LanguageManager.GetString("Msg.SelectionError", "Selection Error"), 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information
+                    );
                     return;
                 }
 
@@ -116,7 +127,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}");
+                MessageBox.Show(string.Format(General.LanguageManager.GetString("Msg.ErrorProcessing", "Error during processing: {0}"), ex.Message));
             }
         }
     }

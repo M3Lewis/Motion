@@ -12,12 +12,13 @@ namespace Motion.Toolbar
     public class ScribbleControlButton : MotionToolbarButton
     {
         private ToolStripButton button;
-        public override int ToolbarOrder => 90;
+        public override int ToolbarOrder => 11;
+
         public ScribbleControlButton()
         {
         }
 
-        private void AddScribbleControlButton()
+        private void AddScribbleButton()
         {
             InitializeToolbarGroup();
             button = new ToolStripButton();
@@ -36,7 +37,7 @@ namespace Motion.Toolbar
             Instances.CanvasCreated -= Instances_CanvasCreated;
             GH_DocumentEditor editor = Instances.DocumentEditor;
             if (editor == null) return;
-            AddScribbleControlButton();
+            AddScribbleButton();
         }
 
         private void Instantiate()
@@ -45,8 +46,16 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.AddScribble;
-            button.ToolTipText = "添加Scribble（超越字体大小限制，多行输入）";
+            button.ToolTipText = General.LanguageManager.GetString("Button.ScribbleControl.Tooltip", "Scribble缂╂斁澶у皬鏁寸悊");
             button.Click += OpenScribbleDialog;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.ScribbleControl.Tooltip", "Scribble缂╂斁澶у皬鏁寸悊");
+            }
         }
 
         private void OpenScribbleDialog(object sender, EventArgs e)
@@ -62,4 +71,4 @@ namespace Motion.Toolbar
             }
         }
     }
-} 
+}

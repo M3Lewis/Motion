@@ -48,8 +48,16 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.CameraPointsButton; // 需要添加相机图标资源
-            button.ToolTipText = "在画布上放置两个点参数，分别表示当前Rhino窗口的摄像机起始点和目标点";
+            button.ToolTipText = General.LanguageManager.GetString("Button.CameraPoints.Tooltip", "在画布上放置两个点参数，分别表示当前Rhino窗口的摄像机起始点和目标点");
             button.Click += CreateCameraPoints;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.CameraPoints.Tooltip", "在画布上放置两个点参数，分别表示当前Rhino窗口的摄像机起始点和目标点");
+            }
         }
 
         private void CreateCameraPoints(object sender, EventArgs e)
@@ -63,8 +71,11 @@ namespace Motion.Toolbar
                 var view = RhinoDoc.ActiveDoc.Views.ActiveView;
                 if (view == null)
                 {
-                    MessageBox.Show("无法获取当前Rhino视图。",
-                        "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        General.LanguageManager.GetString("Msg.NoRhinoView", "无法获取当前Rhino视图。"),
+                        General.LanguageManager.GetString("Msg.ErrorTitle", "错误"), 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error
+                    );
                     return;
                 }
 
@@ -77,8 +88,8 @@ namespace Motion.Toolbar
                 var cameraTargetParam = new Param_Point();
 
                 // 设置参数名称
-                cameraLocationParam.NickName = "摄像机位置";
-                cameraTargetParam.NickName = "摄像机目标";
+                cameraLocationParam.NickName = General.LanguageManager.GetString("Param.CameraLocation", "摄像机位置");
+                cameraTargetParam.NickName = General.LanguageManager.GetString("Param.CameraTarget", "摄像机目标");
                 cameraLocationParam.CreateAttributes();
                 cameraTargetParam.CreateAttributes();
 
@@ -107,15 +118,18 @@ namespace Motion.Toolbar
                 doc.AddObject(cameraTargetParam, false);
 
                 // 显示成功消息
-                ShowTemporaryMessage(canvas, "已添加摄像机位置和目标点参数");
+                ShowTemporaryMessage(canvas, General.LanguageManager.GetString("Msg.AddedCameraPoints", "已添加摄像机位置和目标点参数"));
 
                 // 刷新文档
                 doc.NewSolution(false);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"创建摄像机点参数时出错: {ex.Message}",
-                    "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    string.Format(General.LanguageManager.GetString("Msg.ErrorAddingCameraPoints", "创建摄像机点参数时出错: {0}"), ex.Message),
+                    General.LanguageManager.GetString("Msg.ErrorTitle", "错误"), 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error
+                );
             }
         }
     }

@@ -44,11 +44,19 @@ namespace Motion.Toolbar
                 Size = new Size(24, 24),
                 DisplayStyle = ToolStripItemDisplayStyle.Image,
                 Image = Properties.Resources.ConnectToEventOperation,
-                ToolTipText = "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组的Event Operation"
+                ToolTipText = General.LanguageManager.GetString("Button.ConnectToEventOperation.Tooltip", "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组 of Event Operation")
             };
 
             _button.Click += OnConnectToEventOperation;
             AddButtonToToolbars(_button);
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (_button != null)
+            {
+                _button.ToolTipText = General.LanguageManager.GetString("Button.ConnectToEventOperation.Tooltip", "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组 of Event Operation");
+            }
         }
 
         private void OnConnectToEventOperation(object sender, EventArgs e)
@@ -65,7 +73,7 @@ namespace Motion.Toolbar
 
                 if (selectedConnectables.Count == 0)
                 {
-                    ShowTemporaryMessage(canvas, "请选择至少一个Graph Mapper或组件");
+                    ShowTemporaryMessage(canvas, General.LanguageManager.GetString("Msg.SelectGraphMapperOrComponent", "请选择至少一个Graph Mapper或组件"));
                     return;
                 }
 
@@ -118,7 +126,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, $"Error: {ex.Message}");
+                ShowTemporaryMessage(Instances.ActiveCanvas, string.Format(General.LanguageManager.GetString("Msg.ErrorOccurred", "发生错误：{0}"), ex.Message));
             }
         }
 
@@ -165,11 +173,11 @@ namespace Motion.Toolbar
 
             if (anyConnected)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, "已将Graph Mapper连接到组内的Event Operation");
+                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.ConnectedGraphMapperToGroup", "已将Graph Mapper连接到组内的Event Operation"));
             }
             else
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, "无法连接Graph Mapper到Event Operation");
+                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.CannotConnectGraphMapper", "无法连接Graph Mapper到Event Operation"));
             }
         }
 
@@ -248,7 +256,7 @@ namespace Motion.Toolbar
             var connectedEventOp = connectionManager.GetCommonConnectedEventOperation(ungroupedConnectables);
             if (connectedEventOp != null)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, "选中的对象已连接至Event Operation");
+                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.AlreadyConnectedToEventOperation", "选中的对象已连接至Event Operation"));
                 return;
             }
 
@@ -375,11 +383,11 @@ namespace Motion.Toolbar
 
             if (anyConnected)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, "已将Graph Mapper连接到各自组内的Event Operation");
+                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.ConnectedGraphMapperToRespectiveGroup", "已将Graph Mapper连接到各自组内的Event Operation"));
             }
             else
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, "无法连接Graph Mapper到Event Operation");
+                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.CannotConnectGraphMapper", "无法连接Graph Mapper到Event Operation"));
             }
         }
 

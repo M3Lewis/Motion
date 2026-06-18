@@ -45,8 +45,16 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.CreateMultipleEvents; // 需要添加对应的图标资源
-            button.ToolTipText = "为选定的多个Motion Sender创建Event";
+            button.ToolTipText = General.LanguageManager.GetString("Button.CreateMultipleEvents.Tooltip", "为选定的多个Motion Sender创建Event");
             button.Click += CreateEventsForSelectedSenders;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.CreateMultipleEvents.Tooltip", "为选定的多个Motion Sender创建Event");
+            }
         }
 
         private void CreateEventsForSelectedSenders(object sender, EventArgs e)

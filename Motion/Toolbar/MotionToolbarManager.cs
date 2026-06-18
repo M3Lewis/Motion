@@ -205,5 +205,30 @@ namespace Motion.Toolbar
             };
             timer.Start();
         }
+
+        public static void UpdateLanguageAll()
+        {
+            if (CustomMotionToolbar.customMotionToolbar != null)
+            {
+                foreach (ToolStripItem item in CustomMotionToolbar.customMotionToolbar.Items)
+                {
+                    if (item.Tag is MotionToolbarButton btn)
+                    {
+                        btn.UpdateLanguage();
+                    }
+                }
+            }
+
+            if (grasshopperToolStripItems != null)
+            {
+                foreach (ToolStripItem item in grasshopperToolStripItems)
+                {
+                    if (item.Tag is MotionToolbarButton btn)
+                    {
+                        btn.UpdateLanguage();
+                    }
+                }
+            }
+        }
     }
 }

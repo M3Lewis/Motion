@@ -108,6 +108,7 @@ namespace Motion.Toolbar
         internal SliderControlWPF(GH_NumberSlider ghSlider)
         {
             InitializeComponent();
+            General.LanguageManager.LocalizeWindow(this);
             
             _ghSlider = ghSlider;
             

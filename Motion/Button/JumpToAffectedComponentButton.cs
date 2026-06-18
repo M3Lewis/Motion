@@ -48,7 +48,7 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.JumpToAffectedComponent;
-            button.ToolTipText = "选中Event跳转到被HIDE/LOCK的组件，或是选中被HIDE/LOCK的组件跳转回Event";
+            button.ToolTipText = General.LanguageManager.GetString("Button.JumpToAffectedComponent.Tooltip", "选中Event跳转到被HIDE/LOCK的组件，或是选中被HIDE/LOCK的组件跳转回Event");
             button.Click += Button_Click;
             button.Enabled = true;
 
@@ -68,6 +68,14 @@ namespace Motion.Toolbar
             }
 
             UpdateButtonState();
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.JumpToAffectedComponent.Tooltip", "选中Event跳转到被HIDE/LOCK的组件，或是选中被HIDE/LOCK的组件跳转回Event");
+            }
         }
 
         private void Canvas_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -102,7 +110,7 @@ namespace Motion.Toolbar
         {
             if (eventComponent.affectedObjects == null || !eventComponent.affectedObjects.Any())
             {
-                ShowTemporaryMessage(canvas, "没有找到受影响的组件");
+                ShowTemporaryMessage(canvas, General.LanguageManager.GetString("Msg.NoAffectedComponents", "没有找到受影响的组件"));
                 return;
             }
 
@@ -125,7 +133,7 @@ namespace Motion.Toolbar
             }
             else
             {
-                ShowTemporaryMessage(canvas, "未找到控制此组件的 Event");
+                ShowTemporaryMessage(canvas, General.LanguageManager.GetString("Msg.NoEventControlFound", "未找到控制此组件的 Event"));
             }
         }
 

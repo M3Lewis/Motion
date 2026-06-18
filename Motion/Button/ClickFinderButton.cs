@@ -65,9 +65,17 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.ClickFinder;
-            button.ToolTipText = "单击Rhino视口中显示的GH物件以查找组件";
+            button.ToolTipText = General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
             button.Click += ToggleClickFinderMode;
             button.CheckOnClick = true;
+        }
+
+        public override void UpdateLanguage()
+        {
+            if (button != null)
+            {
+                button.ToolTipText = General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
+            }
         }
 
         public void ToggleClickFinderMode(object sender, EventArgs e)

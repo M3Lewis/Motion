@@ -23,7 +23,28 @@ namespace Motion.UI
         public ModifySliderWindow()
         {
             InitializeComponent();
+            Motion.General.LanguageManager.LocalizeWindow(this);
             DataContext = this;
+        }
+
+        private void ShowError(string key, string fallback)
+        {
+            MessageBox.Show(
+                Motion.General.LanguageManager.GetString(key, fallback),
+                Motion.General.LanguageManager.GetString("Msg.ErrorTitle", "错误"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+        }
+
+        private void ShowErrorFormat(string key, string fallback, params object[] args)
+        {
+            MessageBox.Show(
+                string.Format(Motion.General.LanguageManager.GetString(key, fallback), args),
+                Motion.General.LanguageManager.GetString("Msg.ErrorTitle", "错误"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
         }
 
         public void Initialize(List<MotionSender> selectedSenders)
@@ -79,13 +100,13 @@ namespace Motion.UI
             UnlockSolver(false);
             if (!int.TryParse(OffsetFrames.Text, out int offsetFrames))
             {
-                MessageBox.Show("请输入有效的偏移帧数值", "输入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError("Msg.InvalidOffset", "请输入有效的偏移帧数值");
                 return;
             }
 
             if (_selectedSenders.Count != 1)
             {
-                MessageBox.Show("请选择一个Motion Slider", "选择错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError("Msg.SelectMotionSlider", "请选择一个Motion Slider");
                 return;
             }
 
@@ -138,7 +159,7 @@ namespace Motion.UI
 
             if (values.Count != oldRanges.Count)
             {
-                MessageBox.Show("新值的数量必须与原始值的数量相同！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError("Msg.CountMustBeSame", "新值的数量必须与原始值的数量相同！");
                 return;
             }
 
@@ -149,7 +170,7 @@ namespace Motion.UI
             // 检查是否有负值
             if (mapping.Values.Any(v => v < 0))
             {
-                MessageBox.Show("不允许设置负数值，最小值必须大于或等于0！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError("Msg.NoNegativeMin", "不允许设置负数值，最小值必须大于或等于0！");
                 return;
             }
 
@@ -185,7 +206,7 @@ namespace Motion.UI
                         int length = int.Parse(parts[i].Trim('[', ']'));
                         if (length < 0)
                         {
-                            MessageBox.Show("插入长度不能为负数！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            ShowError("Msg.NoNegativeInsert", "插入长度不能为负数！");
                             return;
                         }
                         // 记录插入位置和长度
@@ -195,8 +216,7 @@ namespace Motion.UI
 
                 if (!insertPoints.Any())
                 {
-                    MessageBox.Show("请使用方括号指定插入长度，例如：100,[100],101,200,[100],201",
-                        "格式错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ShowError("Msg.UseBracketsForInsert", "请使用方括号指定插入长度，例如：100,[100],101,200,[100],201");
                     return;
                 }
 
@@ -303,8 +323,7 @@ namespace Motion.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"处理过程中出错：{ex.Message}", "错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorFormat("Msg.ErrorProcessing", "处理过程中出错：{0}", ex.Message);
             }
         }
         private void DeleteAndAdjust_Click(object sender, RoutedEventArgs e)
@@ -365,8 +384,7 @@ namespace Motion.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"处理过程中出错：{ex.Message}", "错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorFormat("Msg.ErrorProcessing", "处理过程中出错：{0}", ex.Message);
             }
         }
         private void AdjustRangesExisting_Click(object sender, RoutedEventArgs e)
@@ -392,15 +410,13 @@ namespace Motion.UI
 
                 if (loopCount < 1)
                 {
-                    MessageBox.Show("循环次数必须至少为1！", "错误",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    ShowError("Msg.CycleMustBePositive", "循环次数必须至少为1！");
                     return;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"输入格式错误：{ex.Message}", "错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorFormat("Msg.InputFormatError", "输入格式错误：{0}", ex.Message);
                 return;
             }
 
@@ -504,22 +520,19 @@ namespace Motion.UI
                 }
             }
 
-            // 验证所有调整后的值是否有效
             foreach (var kvp in adjustmentDictionary)
             {
                 var (min, max) = kvp.Value;
 
                 if (min < 0)
                 {
-                    MessageBox.Show($"调整后的最小值不能小于0！(Sender: {kvp.Key.NickName})", "错误",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    ShowErrorFormat("Msg.MinLessThanZero", "调整后的最小值不能小于0！(Sender: {0})", kvp.Key.NickName);
                     return;
                 }
 
                 if (min >= max)
                 {
-                    MessageBox.Show($"调整后的最小值不能大于或等于最大值！(Sender: {kvp.Key.NickName} → {min}-{max})",
-                        "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ShowErrorFormat("Msg.MinGteMax", "调整后的最小值不能大于或等于最大值！(Sender: {0} → {1}-{2})", kvp.Key.NickName, min, max);
                     return;
                 }
             }
@@ -570,15 +583,13 @@ namespace Motion.UI
 
                 if (loopCount < 1)
                 {
-                    MessageBox.Show("循环次数必须至少为1！", "错误",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    ShowError("Msg.CycleMustBePositive", "循环次数必须至少为1！");
                     return;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"输入格式错误：{ex.Message}", "错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorFormat("Msg.InputFormatError", "输入格式错误：{0}", ex.Message);
                 return;
             }
 
@@ -598,16 +609,14 @@ namespace Motion.UI
                     // 检查是否有负值
                     if (currentMin < 0 || currentMax < 0)
                     {
-                        MessageBox.Show("不允许设置负数值，最小值和最大值必须大于或等于0！", "错误",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        ShowError("Msg.NoNegativeIntervals", "不允许设置负数值，最小值和最大值必须大于或等于0！");
                         return;
                     }
 
                     // 确保最小值小于最大值
                     if (currentMin >= currentMax)
                     {
-                        MessageBox.Show("调整后的最小值不能大于或等于最大值！", "错误",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        ShowError("Msg.MinGteMaxSimple", "调整后的最小值不能大于或等于最大值！");
                         return;
                     }
 
@@ -647,8 +656,7 @@ namespace Motion.UI
             if (values.First() != decimal.Parse(slider.NickName.Split('-')[0])
                 || values.Last() != decimal.Parse(slider.NickName.Split('-')[1]))
             {
-                MessageBox.Show("拆分值必须以当前slider的最小值开始，以最大值结束！", "错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError("Msg.SplitRangeInvalid", "拆分值必须以当前slider的最小值开始，以最大值结束！");
                 return;
             }
 
@@ -681,8 +689,7 @@ namespace Motion.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"输入格式错误：{ex.Message}", "错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorFormat("Msg.InputFormatError", "输入格式错误：{0}", ex.Message);
                 return null;
             }
         }
@@ -736,7 +743,7 @@ namespace Motion.UI
 
             if (validRanges.Count == 0)
             {
-                MessageBox.Show("没有有效的非负区间可以创建！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError("Msg.NoValidIntervals", "没有有效的非负区间可以创建！");
                 return;
             }
 
