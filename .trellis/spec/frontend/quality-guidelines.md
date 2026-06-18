@@ -10,6 +10,7 @@ When building toolbar buttons, dialog boxes, or settings windows:
 - Use clean, modern layouts (e.g. multi-column WPF grids, structured panels).
 - Align typography using standard fonts like *Segoe UI*, *Inter*, or *Outfit* (rather than default plain system fonts).
 - Ensure dialog inputs support quick keyboard shortcuts (like `Enter` to submit, `Esc` to close).
+- **Pitfall**: When traversing the WPF logical tree to apply styling or localization, ensure you clone children collections to temporary lists before iterating. Direct iteration while mutating properties causes `"Collection was modified"` crashes (see [WPF Logical Tree Traversal Safety](./atoms/wpf-logical-tree-modification.md)).
 
 ---
 
