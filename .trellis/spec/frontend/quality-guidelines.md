@@ -12,6 +12,7 @@ When building toolbar buttons, dialog boxes, or settings windows:
 - Ensure dialog inputs support quick keyboard shortcuts (like `Enter` to submit, `Esc` to close).
 - **Pitfall**: When traversing the WPF logical tree to apply styling or localization, ensure you clone children collections to temporary lists before iterating. Direct iteration while mutating properties causes `"Collection was modified"` crashes (see [WPF Logical Tree Traversal Safety](./atoms/wpf-logical-tree-modification.md)).
 - **Pitfall**: When repositioning or sorting custom WinForms toolbar/ToolStrip items, ensure sorting keys are accessed directly (or with correct reflection BindingFlags), and keep layout dimensions consistent across all dock positions to prevent icon distortion (see [Toolbar Layout and Order Safety](./atoms/toolbar-layout-and-order.md)).
+- **Pitfall**: When designing floating WPF windows, restrict resizing axes and set minimum size constraints (`MinHeight`, `MinWidth`) to prevent controls from compressing and disappearing under extreme resize actions (see [WPF Window Resizable Bounds](./atoms/wpf-window-resizable-bounds.md)).
 
 ---
 
