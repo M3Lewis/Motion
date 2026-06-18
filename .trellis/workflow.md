@@ -4,7 +4,7 @@
 
 ## Core Principles
 
-1. **Plan before code** — figure out what to do before you start. **CRITICAL: You are strictly forbidden from modifying any codebase files before proposing a plan, obtaining the user's explicit confirmation, and running the `trellis-before-dev` skill.**
+1. **Plan before code** — figure out what to do before you start. For Trellis task implementation, codebase files must not be modified before proposing a plan, obtaining the user's explicit confirmation, and running the `trellis-before-dev` skill. Direct small edits without a Trellis task follow the Direct Edit Safeguards below instead.
 2. **Specs injected, not remembered** — guidelines are injected via hook/skill, not recalled from memory
 3. **Persist everything** — research, decisions, and lessons all go to files; conversations get compacted, files don't
 4. **Incremental development** — one task at a time
@@ -150,14 +150,15 @@ python ./.trellis/scripts/get_context.py --mode phase --step <X.Y>  # detailed g
 ```
 Phase 1: Plan    → classify, get task-creation consent, then write planning artifacts
 Phase 2: Execute → implement only after task status is in_progress
-Phase 3: Finish  → verify, codebase health scan, update spec, commit, and wrap up
+Phase 3: Finish  → verify, codebase health scan, update spec, prepare an authorized commit, and wrap up
 ```
 
 ### Request Triage
 
-- Simple conversation or small task: ask only whether this turn should create a Trellis task. If the user says no, skip Trellis for this session.
+- Simple conversation or small task: ask only whether this turn should create a Trellis task. If the user says no, skip Trellis task creation; answer directly or, for an explicitly authorized small direct edit, use Direct Edit Safeguards.
 - Complex task: ask whether you may create a Trellis task and enter planning. If the user says no, do not do broad inline implementation; explain, clarify scope, or suggest a smaller split.
 - User approval to create a task is not approval to start implementation. Planning still happens first.
+- User approval to skip a task is not approval to skip target locking, negative scope, diff-to-request verification, or any broader safety rule.
 
 ### Direct Edit Safeguards
 
@@ -196,7 +197,7 @@ Create new children with `task.py create "<title>" --slug <name> --parent <paren
 
 [workflow-state:no_task]
 No active task. First classify the current turn and ask for task-creation consent before creating any Trellis task.
-Simple conversation / small task: ask only whether this turn should create a Trellis task. If the user says no, skip Trellis for this session.
+Simple conversation / small task: ask only whether this turn should create a Trellis task. If the user says no, skip Trellis task creation; answer directly or use Direct Edit Safeguards for an explicitly authorized small direct edit.
 Complex task: ask the user if you can create a Trellis task and enter the planning phase. If the user says no, explain, clarify scope, or suggest a smaller split.
 Direct small edit without task: lock the exact target first; if similar targets exist, state the negative scope before editing; verify the diff matches the user's words/screenshot.
 [/workflow-state:no_task]
@@ -245,7 +246,7 @@ Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `trellis-bef
 Sub-agent dispatch protocol applies to all platforms and all sub-agents, including class-2 Codex/Copilot/Gemini/Qoder and `trellis-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions.
 
 [workflow-state:in_progress]
-Flow: `trellis-implement` -> `trellis-check` (Phase 2.2) -> `quality-verification` (Phase 3.1) -> `codebase-health-scan` (Phase 3.2) -> optional `trellis-explore` on failure/ambiguity/repeated debugging -> `trellis-update-spec` with curator gate (Phase 3.4) -> `commit` (Phase 3.5) -> `/trellis:finish-work`.
+Flow: `trellis-implement` -> `trellis-check` (Phase 2.2) -> `quality-verification` (Phase 3.1) -> `codebase-health-scan` (Phase 3.2) -> optional `trellis-explore` on failure/ambiguity/repeated debugging -> `trellis-update-spec` with curator gate (Phase 3.4) -> `commit-plan / user-authorized commit` (Phase 3.5) -> `/trellis:finish-work`.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
 If check fails, the user corrects the target, or the same issue repeats twice, run `trellis-explore` before another implementation attempt and persist inferred hidden rules to the active task.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present` -> `.trellis/project-profile.md if present`.
@@ -259,7 +260,7 @@ For C# projects, actively utilize the `roslyn-codelens` MCP tools (e.g., `get_pr
      instead of dispatching sub-agents. -->
 
 [workflow-state:in_progress-inline]
-Flow: `trellis-before-dev` -> Propose Plan -> Get User Confirmation -> edit -> `trellis-check` (Phase 2.2) -> `quality-verification` (Phase 3.1) -> `codebase-health-scan` (Phase 3.2) -> optional `trellis-explore` on failure/ambiguity/repeated debugging -> `trellis-update-spec` with curator gate (Phase 3.4) -> `commit` (Phase 3.5) -> `/trellis:finish-work`.
+Flow: `trellis-before-dev` -> Propose Plan -> Get User Confirmation -> edit -> `trellis-check` (Phase 2.2) -> `quality-verification` (Phase 3.1) -> `codebase-health-scan` (Phase 3.2) -> optional `trellis-explore` on failure/ambiguity/repeated debugging -> `trellis-update-spec` with curator gate (Phase 3.4) -> `commit-plan / user-authorized commit` (Phase 3.5) -> `/trellis:finish-work`.
 CRITICAL: Do not modify any codebase files before proposing the plan, getting user confirmation, and running `trellis-before-dev`.
 Do not dispatch implement/check sub-agents in inline mode.
 If check fails, the user corrects the target, or the same issue repeats twice, run `trellis-explore` before another implementation attempt and persist inferred hidden rules to the active task.
@@ -273,7 +274,7 @@ Build/lint/type-check passing is necessary but never sufficient; `trellis-check`
 - 3.2 Codebase Health Scan `[required · once]`
 - 3.3 Debug retrospective `[on demand]`
 - 3.4 Spec update `[required · once]`
-- 3.5 Commit changes `[required · once]`
+- 3.5 Prepare commit plan / commit with explicit user authorization `[required · once]`
 - 3.6 Wrap-up reminder
 
 <!-- Per-turn breadcrumb: shown while status='completed'.
