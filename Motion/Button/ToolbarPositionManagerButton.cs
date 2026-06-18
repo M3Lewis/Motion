@@ -392,10 +392,10 @@ namespace Motion.Toolbar
                     SetToolbarOrientation(DockStyle.Right, size + 10, Instances.ActiveCanvas.Height, ToolStripLayoutStyle.VerticalStackWithOverflow);
                     break;
                 case ToolbarPosition.Top:
-                    SetToolbarOrientation(DockStyle.Top, oldToolbar.Width, size, ToolStripLayoutStyle.HorizontalStackWithOverflow);
+                    SetToolbarOrientation(DockStyle.Top, oldToolbar.Width, size + 10, ToolStripLayoutStyle.HorizontalStackWithOverflow);
                     break;
                 case ToolbarPosition.Bottom:
-                    SetToolbarOrientation(DockStyle.Bottom, oldToolbar.Width, size, ToolStripLayoutStyle.HorizontalStackWithOverflow);
+                    SetToolbarOrientation(DockStyle.Bottom, oldToolbar.Width, size + 10, ToolStripLayoutStyle.HorizontalStackWithOverflow);
                     break;
             }
         }
@@ -427,25 +427,10 @@ namespace Motion.Toolbar
         // 获取按钮的ToolbarOrder
         private int GetToolbarOrder(MotionToolbarButton button)
         {
-            // 如果按钮为null，返回默认值0
             if (button == null)
                 return 0;
 
-            // 使用反射获取ToolbarOrder属性值
-            // 这样可以避免直接访问受保护成员的问题
-            var type = button.GetType();
-            var property = type.GetProperty("ToolbarOrder",
-                System.Reflection.BindingFlags.NonPublic |
-                System.Reflection.BindingFlags.Instance |
-                System.Reflection.BindingFlags.GetProperty);
-
-            if (property != null)
-            {
-                return (int)property.GetValue(button);
-            }
-
-            // 如果无法获取属性值，返回默认值0
-            return 0;
+            return button.ToolbarOrder;
         }
 
         private void EnsureSeparatorsExist()
