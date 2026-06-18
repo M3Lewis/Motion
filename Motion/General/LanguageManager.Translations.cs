@@ -1,0 +1,320 @@
+using System;
+using System.Collections.Generic;
+
+namespace Motion.General
+{
+    public static partial class LanguageManager
+    {
+        // Translation Lookup Catalog
+        private static readonly Dictionary<string, (string EN, string ZH)> Translations = new Dictionary<string, (string EN, string ZH)>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Canvas Elements
+            { "Canvas.Hide", ("Hide", "隐藏") },
+            { "Canvas.Lock", ("Lock", "锁定") },
+            { "Canvas.EmptyMode", ("Empty Mode", "空值模式") },
+            { "Canvas.Export", ("Export", "导出") },
+            { "Canvas.Open", ("Open", "打开") },
+
+            // Common Parameters Generic Fallback
+            { "Param.Time", ("Time", "时间") },
+            { "Param.Value", ("Value", "数值") },
+            { "Param.Interval", ("Interval", "区间") },
+            { "Param.Index", ("Index", "索引") },
+            { "Param.Mesh", ("Mesh", "网格") },
+            { "Param.Geometry", ("Geometry", "几何体") },
+            { "Param.Color", ("Color", "颜色") },
+            { "Param.Point", ("Point", "点") },
+            { "Param.Vector", ("Vector", "向量") },
+            { "Param.Path", ("Path", "路径") },
+            { "Param.Folder", ("Folder", "文件夹") },
+            { "Param.Width", ("Width", "宽度") },
+            { "Param.Height", ("Height", "高度") },
+            { "Param.Min", ("Min", "最小值") },
+            { "Param.Max", ("Max", "最大值") },
+
+            // Custom Components (Name & Desc)
+            { "Component.93c51e48-2e19-49cc-a4bb-87d7e44e502d.Name", ("Z-Depth", "Z-Depth") },
+            { "Component.93c51e48-2e19-49cc-a4bb-87d7e44e502d.Desc", ("Retrieve Z-Depth information from Rhino viewport", "从Rhino视口获取Z深度信息") },
+            
+            { "Component.9f7a7b0d-6a2e-4c52-84f0-5ecdf8b9152e.Name", ("Win8 Tile Flip", "Win8 磁贴翻转") },
+            { "Component.9f7a7b0d-6a2e-4c52-84f0-5ecdf8b9152e.Desc", ("Windows 8 style tile flipping animation", "Windows 8 风格的磁贴翻转动画效果") },
+            
+            { "Component.a4b7c858-6c25-4550-a010-76cfa112e6bd.Name", ("Point On View", "视口点") },
+            { "Component.a4b7c858-6c25-4550-a010-76cfa112e6bd.Desc", ("Project 3D point coordinates to 2D view screen space", "将三维点坐标投影到二维视口屏幕空间") },
+            
+            { "Component.94c7f247-9585-4b28-9e10-e3ce9e8308ff.Name", ("Motion Text", "Motion 文本") },
+            { "Component.94c7f247-9585-4b28-9e10-e3ce9e8308ff.Desc", ("Dynamic text drawing helper on viewport", "视口上动态绘制文本的辅助组件") },
+            
+            { "Component.096efa10-33ce-462a-b0d1-c4bbf52dcae7.Name", ("Motion Material", "Motion 材质") },
+            { "Component.096efa10-33ce-462a-b0d1-c4bbf52dcae7.Desc", ("Custom dynamic material setting component", "自定义动态材质设置组件") },
+            
+            { "Component.b6c3d245-8e6f-4a47-9f9a-123456789abc.Name", ("Motion Image Selector", "Motion 图像选择") },
+            { "Component.b6c3d245-8e6f-4a47-9f9a-123456789abc.Desc", ("Select image file paths from a directory sequentially", "从目录中顺序选择图像文件路径") },
+            
+            { "Component.63210fc2-d925-4bcb-b0e6-3e8d0c0a21e7.Name", ("Motion Image Preview", "Motion 图像预览") },
+            { "Component.63210fc2-d925-4bcb-b0e6-3e8d0c0a21e7.Desc", ("Preview and display image in viewport", "在视口中预览并显示图像") },
+            
+            { "Component.7b9c3de2-f1a4-4d85-ac7e-d58f15e8b901.Name", ("Motion Camera", "Motion 摄像机") },
+            { "Component.7b9c3de2-f1a4-4d85-ac7e-d58f15e8b901.Desc", ("Interactive camera viewpoint controller component", "互动式摄像机视角控制组件") },
+            
+            { "Component.e3cb90d8-0b14-4b2f-9ab4-cc66c9af2674.Name", ("Metro Tile", "Metro 磁贴") },
+            { "Component.e3cb90d8-0b14-4b2f-9ab4-cc66c9af2674.Desc", ("Construct Metro-style tile layouts dynamically", "动态构建Metro风格磁贴排布") },
+            
+            { "Component.30b96d80-4b9d-4b95-b529-9a60053ae5ec.Name", ("Image Transform Settings", "图像变换设置") },
+            { "Component.30b96d80-4b9d-4b95-b529-9a60053ae5ec.Desc", ("Set transformation parameters for viewport images", "设置视口图像变换的各项参数") },
+            
+            { "Component.1e8a4f5b-b7c9-4d3e-8a01-f9c7b2e1d0f0.Name", ("Get Viewport FOV", "获取视口 FOV") },
+            { "Component.1e8a4f5b-b7c9-4d3e-8a01-f9c7b2e1d0f0.Desc", ("Get current Rhino viewport Field of View (FOV) angle", "获取当前Rhino视口的视场角(FOV)角度") },
+            
+            { "Component.4736a5be-2ecc-42b0-beaa-1cef9424375a.Name", ("Fillet Edge Index", "圆角边缘索引") },
+            { "Component.4736a5be-2ecc-42b0-beaa-1cef9424375a.Desc", ("Identify and filter edge indices for filleting", "识别并过滤用于倒角处理的边缘索引") },
+            
+            { "Component.058f4109-93f9-4fbb-94d9-b4ff6c5b33ca.Name", ("Dynamic Output", "动态输出") },
+            { "Component.058f4109-93f9-4fbb-94d9-b4ff6c5b33ca.Desc", ("Evaluate parameters and generate output dynamically", "动态求值并生成参数输出") },
+            
+            { "Component.7574476e-994f-4553-be02-ac262e3d5386.Name", ("Component Arrange", "组件整理") },
+            { "Component.7574476e-994f-4553-be02-ac262e3d5386.Desc", ("Organize and align components cleanly on canvas", "在画布上自动对齐和整理组件") },
+            
+            { "Component.47a71f9a-30c5-42ad-bd2e-1de680ca6b2f.Name", ("Color Alpha", "颜色透明度") },
+            { "Component.47a71f9a-30c5-42ad-bd2e-1de680ca6b2f.Desc", ("Adjust alpha opacity channel of input colors", "调整输入颜色的透明度Alpha通道") },
+            
+            { "Component.91f897b4-ad1b-4c35-bffa-8e944bc58955.Name", ("Adjust Search Count", "调整搜索数量") },
+            { "Component.91f897b4-ad1b-4c35-bffa-8e944bc58955.Desc", ("Configure maximum search limit and search counts", "配置最大搜索次数和搜索限制数量") },
+            
+            { "Component.7b8d5ff6-c766-4ae3-a832-95861edb9fde.Name", ("Export Animation", "导出动画") },
+            { "Component.7b8d5ff6-c766-4ae3-a832-95861edb9fde.Desc", ("Batch export animation frames from viewport", "从视口批量导出动画帧图像") },
+            
+            { "Component.d2c75940-df88-4bfd-b398-4a77a488af27.Name", ("Time Interval", "时间区间") },
+            { "Component.d2c75940-df88-4bfd-b398-4a77a488af27.Desc", ("Manage and filter keyframe timeline sections", "管理和过滤关键帧时间轴的区间") },
+            
+            { "Component.a9f004f8-5bcb-4b12-9f42-4e96771b9290.Name", ("Multi-Transform", "多重变换") },
+            { "Component.a9f004f8-5bcb-4b12-9f42-4e96771b9290.Desc", ("Transform geometry using multiple mapping sources", "使用多个映射来源转换几何体") },
+            
+            { "Component.a8d4b1e0-3f5c-4a9e-8b1d-7e2c9f0a1b3e.Name", ("Interval Switcher", "区间切换") },
+            { "Component.a8d4b1e0-3f5c-4a9e-8b1d-7e2c9f0a1b3e.Desc", ("Switch parameters based on current interval index", "根据当前的区间索引切换参数值") },
+            
+            { "Component.f888b3bb-2882-4eef-861a-e581785a1786.Name", ("Interval Lock", "区间锁定") },
+            { "Component.f888b3bb-2882-4eef-861a-e581785a1786.Desc", ("Lock values within specific timeline intervals", "将数值锁定在特定时间轴区间内") },
+            
+            { "Component.4293226c-974c-4d88-a5bb-0231347bdd5d.Name", ("Event Operation", "Event Operation") },
+            { "Component.4293226c-974c-4d88-a5bb-0231347bdd5d.Desc", ("Process Event inputs and operations", "处理Event的输入并执行相应事件操作") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.In.0.Name", ("Events", "Events") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.In.0.Desc", ("List of event values", "事件值列表") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.In.1.Name", ("Time", "Time") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.In.1.Desc", ("Current time", "当前时间") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.0.Name", ("Remapped Value", "Remapped Value") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.0.Desc", ("Current remapped event value", "当前事件值(映射)") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.1.Name", ("Value", "Value") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.1.Desc", ("Current event value (0-1)", "当前事件值(0-1)") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.2.Name", ("Index", "Index") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.2.Desc", ("Current event index in sequence", "当前事件在序列中的序号") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.3.Name", ("Value Domain", "Value Domain") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.3.Desc", ("Value domain of current event", "当前事件的值域区间") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.4.Name", ("Time Domain", "Time Domain") },
+            { "Param.4293226c-974c-4d88-a5bb-0231347bdd5d.Out.4.Desc", ("Time domain of current event", "当前事件的时间区间") },
+            
+            { "Component.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.Name", ("Event", "Event") },
+            { "Component.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.Desc", ("Event controller for component status and animation changes", "用于控制组件显示/锁定和动画状态变更的事件控制器") },
+            { "Param.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.In.0.Name", ("Time", "Time") },
+            { "Param.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.In.0.Desc", ("Time parameter", "时间参数") },
+            { "Param.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.In.1.Name", ("Domain", "Domain") },
+            { "Param.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.In.1.Desc", ("Interval parameter", "区间参数") },
+            { "Param.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.Out.0.Name", ("Value", "Value") },
+            { "Param.a7b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b6c7.Out.0.Desc", ("Proportional value of current time within the interval", "当前时间在区间内的比例值") },
+
+            { "Component.a6704806-4ee3-42af-b742-3c348c5f7f38.Name", ("Motion Slider", "Motion 滑块") },
+            { "Component.a6704806-4ee3-42af-b742-3c348c5f7f38.Desc", ("Dedicated animation timeline keyframe control slider", "专属动画时间轴关键帧控制滑块") },
+
+            { "Component.28fb5992-ed75-4c89-ae8a-3cb4bb3c5227.Name", ("Motion Sender", "Motion 发送") },
+            { "Component.28fb5992-ed75-4c89-ae8a-3cb4bb3c5227.Desc", ("Sends Motion slider value signals to receiver components", "将Motion滑块的数值信号发送至目标接收组件") },
+
+            { "Component.1a76afcb-c799-42d1-9a52-5f09ba073362.Name", ("Motion Union Slider", "Motion 联合滑块") },
+            { "Component.1a76afcb-c799-42d1-9a52-5f09ba073362.Desc", ("Union controller to coordinate multiple Motion sliders", "协调和统一控制多个Motion滑块的联合控制器") },
+
+            // Toolbar Button Tooltips
+            { "Button.LanguageSwitch.Tooltip", ("Toggle Language (English / 中文)", "切换语言 (English / 中文)") },
+            { "Button.ClickFinder.Tooltip", ("LMB: Click GH objects shown in Rhino viewport to find them", "单击Rhino视口中显示的GH物件以查找组件") },
+            { "Button.CreateMultipleEvents.Tooltip", ("Create Events for multiple selected Motion Senders", "为选定的多个Motion Sender创建Event") },
+            { "Button.CreateUnionSlider.Tooltip", ("LMB: Create/Update Motion Union Slider\nRMB: Remove controls from Motion Slider", "LMB：创建/更新Motion Union Slider，以控制选定的Motion Slider \nRMB：移除对Motion Slider的控制") },
+            { "Button.ModifySender.Tooltip", ("Modify Motion Sender settings", "修改Motion Sender") },
+            { "Button.MotionSenderSettings.Tooltip", ("LMB: Display slider frame time\nRMB: Set frames and Graph component type", "鼠标左键：显示Slider帧数对应的时间\n鼠标右键：设置帧数及Graph组件类型") },
+            { "Button.JumpToAffectedComponent.Tooltip", ("Select Event to jump to HIDE/LOCK component, or select component to jump back to Event", "选中Event跳转到被HIDE/LOCK的组件，或是选中被HIDE/LOCK的组件跳转回Event") },
+            { "Button.NamedViewSwitch.Tooltip", ("When ON, switch between Named Views using Ctrl + [+] / [-] keys", "打开状态下，可按 Ctrl + [+]/[-] 键在Named View之间切换") },
+            { "Button.RangeSelector.Tooltip", ("Select based on interval values of all Motion Senders and create a Time Interval component", "根据当前画布上所有Motion Sender的区间值进行选择，并创建一个Time Interval组件") },
+            { "Button.ScribbleControl.Tooltip", ("Scribble scaling controls", "Scribble缩放大小整理") },
+            { "Button.ConnectToEventOperation.Tooltip", ("Connect selected Graph Mappers to a new Event Operation", "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation and Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组的 Event Operation") },
+            { "Button.SliderControlWPF.Tooltip", ("Create a top-most floating window for Union Slider control", "创建一个控制Union Slider的置顶窗口") },
+            { "Button.ToolbarPositionManager.Tooltip", ("Manage toolbar positions", "管理工具栏位置") },
+            { "Button.UpdateSenderToolbar.Tooltip", ("Create Motion Sender near selected Motion Slider outputs", "在多个Motion Slider输出端旁创建Motion Sender") },
+            { "Button.CameraPoints.Tooltip", ("Place two point parameters representing Rhino camera start and target points", "在画布上放置两个点参数，分别表示当前Rhino窗口的摄像机起始点和目标点") },
+
+            // WPF UI - Windows Titles and Labels
+            { "UI.ModifySenderButtonWindow.Title", ("Modify Sender", "修改 Sender") },
+            { "UI.ModifySliderWindow.Title", ("Modify Sender", "修改 Sender") },
+            { "UI.MotionSenderSettingsWindow.Title", ("Motion Sender Settings", "Motion 发送端设置") },
+            { "UI.RangeSelectorDialog.Title", ("Select Range", "选择区间") },
+            { "UI.ScribbleControlWPF.Title", ("Scribble Manager", "Scribble 管理") },
+            { "UI.SliderControlWPF.Title", ("Slider Controller", "滑块控制器") },
+            { "UI.JumpToComponentDialog.Title", ("Jump to Component", "跳转到组件") },
+
+            // WPF UI - Common buttons & labels
+            { "UI.确定", ("OK", "确定") },
+            { "UI.取消", ("Cancel", "取消") },
+            { "UI.新建", ("Create", "新建") },
+            { "UI.替换", ("Replace", "替换") },
+            { "UI.插入", ("Insert", "插入") },
+            { "UI.拆分", ("Split", "拆分") },
+            
+            // WPF UI - ModifySliderWindow (ModifySenderButtonWindow.xaml)
+            { "UI.新建 Sender", ("Create Sender", "新建 Sender") },
+            { "UI.输入数值 (用逗号分隔):", ("Input Values (comma separated):", "输入数值 (用逗号分隔):") },
+            { "UI.ToolTip.例如: 0,100,200,350", ("Example: 0,100,200,350", "例如: 0,100,200,350") },
+            { "UI.生成所有可能的区间组合", ("Generate all possible combinations", "生成所有可能的区间组合") },
+            { "UI.生成不重叠的区间", ("Generate non-overlapping intervals", "生成不重叠区间") },
+            { "UI.替换/插入 Sender 区间", ("Replace/Insert Sender Intervals", "替换/插入 Sender 区间") },
+            { "UI.格式: 区间1,区间2 或 区间1,[插入长度],区间2", ("Format: Int1,Int2 or Int1,[InsertLength],Int2", "格式: 区间1,区间2 或 区间1,[插入长度],区间2") },
+            { "UI.合并", ("Merge", "合并") },
+            { "UI.合并所选 Sender", ("Merge Selected Senders", "合并所选 Sender") },
+            { "UI.删除", ("Delete", "删除") },
+            { "UI.删除并调整后续区间", ("Delete and Adjust Subsequent", "删除并调整后续区间") },
+            { "UI.创建偏移 Sender", ("Create Offset Sender", "创建偏移 Sender") },
+            { "UI.偏移帧数:", ("Offset Frames:", "偏移帧数:") },
+            { "UI.新建偏移", ("Create Offset", "新建偏移") },
+            { "UI.增减区间", ("Adjust Intervals", "增减区间") },
+            { "UI.最小值增减:", ("Min Adjustment:", "最小值增减:") },
+            { "UI.最大值增减:", ("Max Adjustment:", "最大值增减:") },
+            { "UI.循环次数:", ("Loop Count:", "循环次数:") },
+            { "UI.ToolTip.输入调整区间的循环次数（默认为1）", ("Enter adjustment cycles (default is 1)", "输入调整区间的循环次数（默认为1）") },
+            { "UI.修改当前", ("Modify Current", "修改当前") },
+            { "UI.同步偏移后续Sender", ("Sync Offset Subsequent Senders", "同步偏移后续Sender") },
+            { "UI.ToolTip.当调整某个Sender的区间最大值时，自动偏移其后所有Sender的区间", ("Automatically shift subsequent senders when modifying max value", "当调整某个Sender的区间最大值时，自动偏移其后所有Sender的区间") },
+            { "UI.同步调整相邻Sender区间值", ("Sync Adjust Adjacent Senders", "同步调整相邻Sender区间值") },
+            { "UI.ToolTip.当调整Sender的区间值时，自动调整相邻Sender的区间值", ("Automatically adjust adjacent senders when modifying interval values", "当调整Sender的区间值时，自动调整相邻Sender的区间值") },
+            { "UI.拆分数值:", ("Split Values:", "拆分数值:") },
+
+            // WPF UI - MotionSenderSettingsWindow (MotionSenderSettingsButtonWindow.xaml)
+            { "UI.Frames Per Second:", ("Frames Per Second:", "每秒帧数:") },
+            { "UI.Graph Select:", ("Graph Select:", "选择图表:") },
+
+            // WPF UI - RangeSelectorDialog (RangeSelectorDialog.xaml)
+            { "UI.Time Interval:", ("Time Interval:", "时间区间:") },
+            { "UI.OK", ("OK", "确定") },
+
+            // WPF UI - ScribbleControlWPF (ScribbleControlWPF.xaml)
+            { "UI.Scribble Type:", ("Scribble Type:", "Scribble 类型:") },
+            { "UI.Custom Text", ("Custom Text", "自定义文本") },
+            { "UI.Current Time", ("Current Time", "当前时间") },
+            { "UI.Text Settings", ("Text Settings", "文本设置") },
+            { "UI.Text Size:", ("Text Size:", "文本大小:") },
+            { "UI.Font:", ("Font:", "字体:") },
+            { "UI.Font Style:", ("Font Style:", "字体样式:") },
+            { "UI.Regular", ("Regular", "常规") },
+            { "UI.Bold", ("Bold", "粗体") },
+            { "UI.Italic", ("Italic", "斜体") },
+            { "UI.Underline", ("Underline", "下划线") },
+            { "UI.Strikeout", ("Strikeout", "删除线") },
+            { "UI.Max Chars Per Line:", ("Max Chars Per Line:", "每行最大字符数:") },
+            { "UI.ToolTip.需要字符之间有空格才可以正常换行", ("Spaces are required between words to wrap lines", "需要字符之间有空格才可以正常换行") },
+            { "UI.Text Preview", ("Text Preview", "文本预览") },
+            { "UI.Clear", ("Clear", "清空") },
+            { "UI.Create", ("Create", "创建") },
+
+            // WPF UI - SliderControlWPF (SliderControl.xaml)
+            { "UI.左键点击:", ("Left Click:", "左键点击:") },
+            { "UI. 减少1帧", (" Decrease 1 frame", " 减少1帧") },
+            { "UI.右键点击:", ("Right Click:", "右键点击:") },
+            { "UI. 开始/停止自动递减", (" Start/Stop auto-decrementing", " 开始/停止自动递减") },
+            { "UI. 增加1帧", (" Increase 1 frame", " 增加1帧") },
+            { "UI. 开始/停止自动递增", (" Start/Stop auto-incrementing", " 开始/停止自动递增") },
+            { "UI.MIN", ("MIN", "MIN") },
+            { "UI.MAX", ("MAX", "MAX") },
+
+            // WPF UI - JumpToComponentDialog (JumpToComponentDialog.xaml)
+            { "UI.选择组件:", ("Select Component:", "选择组件:") }, { "UI.GroupBox.根据选定物体的几何x坐标划分区间", ("Partition by Selected Geometry X Coordinate", "根据选定物体的几何x坐标划分区间") },
+            { "UI.Button.横坐标排序划分", ("Sort X Coordinate & Partition", "横坐标排序划分") },
+            
+            { "UI.TextBlock.修改模式：", ("Modify Mode:", "修改模式：") },
+            { "UI.TextBlock.应用对象：", ("Target Object:", "应用对象：") },
+            { "UI.TextBlock.选中Sender：", ("Selected Sender:", "选中Sender：") },
+            { "UI.TextBlock.整体步长：", ("Step size:", "整体步长：") },
+            { "UI.TextBlock.数值：", ("Value:", "数值：") },
+            { "UI.TextBlock.系数：", ("Factor:", "系数：") },
+            { "UI.TextBlock.起始帧：", ("Start Frame:", "起始帧：") },
+            { "UI.TextBlock.间隔帧数：", ("Interval Frames:", "间隔帧数：") },
+            { "UI.TextBlock.动画总长：", ("Total Animation:", "动画总长：") },
+            { "UI.TextBlock.排序模式：", ("Sorting Mode:", "排序模式：") },
+            { "UI.TextBlock.从左到右", ("Left to Right", "从左到右") },
+            { "UI.TextBlock.从右到左", ("Right to Left", "从右到左") },
+
+            { "UI.TextBlock.修改参数", ("Modify Parameters", "修改参数") },
+            { "UI.TextBlock.帧数/秒数：", ("Frames / Seconds:", "帧数/秒数：") },
+            { "UI.TextBlock.时间：", ("Time:", "时间：") },
+            { "UI.TextBlock.修改Graph组件类型：", ("Modify Graph Component Type:", "修改Graph组件类型：") },
+            { "UI.Button.应用修改", ("Apply Changes", "应用修改") },
+
+            { "UI.TextBlock.设置区间：", ("Set Interval:", "设置区间：") },
+            { "UI.Button.确认选择", ("Confirm Selection", "确认选择") },
+
+            { "UI.TextBlock.Scribble 管理", ("Scribble Manager", "Scribble 管理") },
+            { "UI.TextBlock.字体粗细：", ("Font Weight:", "字体粗细：") },
+            { "UI.TextBlock.字体大小：", ("Font Size:", "字体大小：") },
+            { "UI.TextBlock.自动排列对齐", ("Auto Align & Arrange", "自动排列对齐") },
+            { "UI.Button.应用设置", ("Apply Settings", "应用设置") },
+            
+            { "UI.Button.MIN", ("MIN", "MIN") },
+            { "UI.Button.MAX", ("MAX", "MAX") },
+
+            // Context Menu Items
+            { "Menu.Top", ("Top", "上") },
+            { "Menu.Left", ("Left", "左") },
+            { "Menu.Right", ("Right", "右") },
+            { "Menu.Bottom", ("Bottom", "下") },
+            { "Menu.OnToolbar", ("On Toolbar", "在工具栏上") },
+
+            // Popups (MessageBoxes) and Toasts (ShowTemporaryMessage)
+            { "Msg.NoDocument", ("Unable to access active document!", "无法访问当前文档！") },
+            { "Msg.CreateSliderFirst", ("Please create a MotionSlider first!", "请先创建一个MotionSlider！") },
+            { "Msg.ErrorOccurred", ("An error occurred: {0}", "发生错误：{0}") },
+            { "Msg.CreateNewGHFile", ("Please create a new Grasshopper file!", "请新建一个 Grasshopper 文件！") },
+            { "Msg.SelectValidInterval", ("Please select a valid time interval.", "请选择一个有效的区间数值。") },
+            { "Msg.NoSenderFound", ("No matching Motion Sender found in the document.", "No matching Motion Sender found in the document.") },
+            { "Msg.InvalidPositiveInt", ("Please enter a valid positive integer!", "请输入有效的正整数！") },
+            { "Msg.InputError", ("Input Error", "输入错误") },
+            { "Msg.ErrorTitle", ("Error", "错误") },
+            { "Msg.WarningTitle", ("Warning", "警告") },
+            { "Msg.MinGteMaxSimple", ("Adjusted minimum cannot be greater than or equal to maximum!", "调整后的最小值不能大于或等于最大值！") },
+            { "Msg.InvalidOffset", ("Please enter a valid offset frame value", "请输入有效的偏移帧数值") },
+            { "Msg.SelectMotionSlider", ("Please select a Motion Slider", "请选择一个Motion Slider") },
+            { "Msg.SelectionError", ("Selection Error", "选择错误") },
+            { "Msg.CountMustBeSame", ("The quantity of new values must match the original count!", "新值的数量必须与原始值的数量相同！") },
+            { "Msg.NoNegativeMin", ("Negative values not allowed; minimum must be >= 0!", "不允许设置负数值，最小值必须大于或等于0！") },
+            { "Msg.NoNegativeInsert", ("Insert length cannot be negative!", "插入长度不能为负数！") },
+            { "Msg.UseBracketsForInsert", ("Use square brackets to specify insert length, e.g.: 100,[100],101,200,[100],201", "请使用方括号指定插入长度，例如：100,[100],101,200,[100],201") },
+            { "Msg.ErrorProcessing", ("Error during processing: {0}", "处理过程中出错：{0}") },
+            { "Msg.CycleMustBePositive", ("Cycles must be at least 1!", "循环次数必须至少为1！") },
+            { "Msg.InputFormatError", ("Input format error: {0}", "输入格式错误：{0}") },
+            { "Msg.MinLessThanZero", ("Adjusted minimum cannot be less than 0! (Sender: {0})", "调整后的最小值不能小于0！(Sender: {0})") },
+            { "Msg.MinGteMax", ("Adjusted minimum cannot be greater than or equal to maximum! (Sender: {0} → {1}-{2})", "调整后的最小值不能大于或等于最大值！(Sender: {0} → {1}-{2})") },
+            { "Msg.NoNegativeIntervals", ("Negative values not allowed; minimum and maximum must be >= 0!", "不允许设置负数值，最小值和最大值必须大于或等于0！") },
+            { "Msg.SplitRangeInvalid", ("Split values must start with active slider minimum and end with maximum!", "拆分值必须以当前slider的最小值开始，以最大值结束！") },
+            { "Msg.NoValidIntervals", ("No valid non-negative intervals could be created!", "没有有效的非负区间可以创建！") },
+            { "Msg.NoRhinoView", ("Unable to get current Rhino viewport.", "无法获取当前Rhino视口。") },
+            { "Msg.CameraPointsError", ("Error creating camera point parameters: {0}", "创建摄像机点参数时出错: {0}") },
+            { "Msg.DuplicateSender", ("Sender with identifier ({0}) already exists!", "已存在相同标识({0})的 Sender!") },
+            { "Msg.SingleSliderOnly", ("Only one Motion Slider allowed per file!", "每个文件只能放置一个 Motion Slider!") },
+            { "Msg.CreateNamedViewFirst", ("Please create a Grasshopper Named View", "请创建一个Grasshopper Named View") },
+            { "Msg.ToolbarMovedTo", ("Toolbar moved to: {0}", "工具栏已移动到: {0}") },
+            { "Msg.CurrentToolbarPos", ("Current toolbar position: {0}", "当前工具栏位置: {0}") },
+            { "Msg.ToolbarMoveError", ("Error moving toolbar items to Grasshopper toolbar", "Error moving toolbar items to Grasshopper toolbar") },
+            { "Msg.NoAffectedComponents", ("No affected components found", "没有找到受影响的组件") },
+            { "Msg.NoEventControlFound", ("No Event controlling this component was found", "未找到控制此组件 of the Event") },
+            { "Msg.SelectSenderFirst", ("Please select at least one Motion Sender", "请至少选择一个Motion Sender") },
+            { "Msg.SelectMapperFirst", ("Please select at least one Graph Mapper or component", "请选择至少一个Graph Mapper或组件") },
+            { "Msg.ConnectedToGroupEvent", ("Connected Graph Mapper to Event Operation inside group", "已将Graph Mapper连接到组内的Event Operation") },
+            { "Msg.CannotConnectEvent", ("Unable to connect Graph Mapper to Event Operation", "无法连接Graph Mapper到Event Operation") },
+            { "Msg.ConnectedSelectedToEvent", ("Selected objects connected to Event Operation", "选中的对象已连接至Event Operation") },
+            { "Msg.ConnectedAllToGroupEvents", ("Connected Graph Mappers to their respective Event Operations inside groups", "已将Graph Mapper连接到各自组内的Event Operation") },
+            { "Msg.CameraPointsAdded", ("Camera position and target point parameters added", "已添加摄像机位置和目标点参数") },
+        };
+    }
+}
