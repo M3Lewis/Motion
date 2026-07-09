@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/M3Lewis/Motion)
+
 [English](./README.md) | [中文](./README_zh.md)
 
 # Motion 🚀
