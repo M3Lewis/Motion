@@ -209,7 +209,8 @@ namespace Motion.Animation
         {
             base.OnVolatileDataCollected();
             var doc = OnPingDocument();
-
+            if (doc == null|| Sources.Count == 0) return;
+            
             var motionSlider = doc.Objects
                 .OfType<GH_NumberSlider>()
                 .FirstOrDefault();
@@ -246,7 +247,7 @@ namespace Motion.Animation
                 _previousValue = outputValue;
             }
 
-            if (doc == null|| Sources.Count == 0) return;
+            
 
             var savedSlider = doc.FindObject(_connectedSliderGuid, true) as GH_NumberSlider;
 
