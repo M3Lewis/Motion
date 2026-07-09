@@ -808,7 +808,7 @@ namespace Motion.UI
             // 更新所有MotionSlider的区间
             foreach (var slider in sliders)
             {
-                slider.UpdateRangeBasedOnSenders();
+                slider.UpdateRangeFromConnectedSenders();
             }
         }
     }

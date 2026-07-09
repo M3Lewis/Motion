@@ -216,12 +216,12 @@ namespace Motion.Animation
             };
             timer.Start();
         }
-        public void UpdateRangeBasedOnSenders()
+
+        internal void UpdateRangeFromConnectedSenders()
         {
             var doc = OnPingDocument();
             if (doc == null) return;
 
-            // 获取所有连接到这个 Slider 的 MotionSender
             var connectedSenders = doc.Objects
                 .OfType<MotionSender>()
                 .Where(sender => sender.Sources.Any(source => source.InstanceGuid == this.InstanceGuid))
@@ -229,9 +229,9 @@ namespace Motion.Animation
 
             if (!connectedSenders.Any()) return;
 
-            // 计算所有连接的 Sender 的最小和最大区间
             decimal minValue = decimal.MaxValue;
             decimal maxValue = decimal.MinValue;
+            bool hasValidInterval = false;
 
             foreach (var sender in connectedSenders)
             {
@@ -239,15 +239,15 @@ namespace Motion.Animation
                 {
                     minValue = Math.Min(minValue, (decimal)min);
                     maxValue = Math.Max(maxValue, (decimal)max);
+                    hasValidInterval = true;
                 }
             }
 
-            // 更新 Slider 的区间
-            if (minValue != decimal.MaxValue && maxValue != decimal.MinValue)
+            if (hasValidInterval && minValue < maxValue)
             {
                 Slider.Minimum = minValue;
                 Slider.Maximum = maxValue;
-                UpdateNickNameBasedOnRange(); // Update NickName when range changes
+                UpdateNickNameBasedOnRange();
                 ExpireSolution(true);
             }
         }
@@ -269,40 +269,7 @@ namespace Motion.Animation
             m_attributes = new MotionSliderAttributes(this);
         }
         // 新增方法：同步 MotionSender 的区间
-        public void SynchronizeSenderIntervals()
-        {
-            var doc = Instances.ActiveCanvas.Document;
-            if (doc == null) return;
-
-            var connectedSenders = doc.Objects
-                .OfType<MotionSender>()
-                .Where(sender => sender.Sources.Any(source => source.InstanceGuid == this.InstanceGuid))
-                .ToList();
-
-            if (!connectedSenders.Any()) return;
-
-            decimal minInterval = decimal.MaxValue;
-            decimal maxInterval = decimal.MinValue;
-            bool hasValidInterval = false;
-
-            foreach (var sender in connectedSenders)
-            {
-                if (MotilityUtils.TryParseNickNameInterval(sender.NickName, out double min, out double max))
-                {
-                    minInterval = Math.Min(minInterval, (decimal)min);
-                    maxInterval = Math.Max(maxInterval, (decimal)max);
-                    hasValidInterval = true;
-                }
-            }
-
-            if (hasValidInterval && minInterval < maxInterval)
-            {
-                Slider.Minimum = minInterval;
-                Slider.Maximum = maxInterval;
-                UpdateNickNameBasedOnRange();
-                ExpireSolution(true);
-            }
-        }
+        
         
         public override bool Write(GH_IWriter writer)
         {
@@ -321,7 +288,7 @@ namespace Motion.Animation
         protected override void ValuesChanged()
         {
             base.ValuesChanged();
-            SynchronizeSenderIntervals();
+            UpdateRangeFromConnectedSenders();
         }
 
         internal void UpdateNickNameBasedOnRange()
@@ -646,7 +613,7 @@ namespace Motion.Animation
                 {
                     Owner.RecordUndoEvent("Slider Value Change");
                     Owner.TrySetSliderValue(Convert.ToDecimal(destination));
-                    Owner.SynchronizeSenderIntervals(); // 确保这里调用了 SynchronizeSenderIntervals
+                    Owner.UpdateRangeFromConnectedSenders(); // 确保这里调用了 SynchronizeSenderIntervals
                 }
             }
             catch (Exception)

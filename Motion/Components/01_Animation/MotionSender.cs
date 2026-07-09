@@ -279,7 +279,7 @@ namespace Motion.Animation
                 {
                     foreach (var slider in sliders)
                     {
-                        slider.UpdateRangeBasedOnSenders();
+                        slider.UpdateRangeFromConnectedSenders();
                     }
                 }
 
@@ -455,7 +455,7 @@ namespace Motion.Animation
             {
                 if (source is MotionSlider slider)
                 {
-                    slider.UpdateRangeBasedOnSenders();
+                    slider.UpdateRangeFromConnectedSenders();
                 }
             }
         }
