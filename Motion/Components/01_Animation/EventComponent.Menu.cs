@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using Motion.General;
+using Rhino;
 
 namespace Motion.Animation
 {
@@ -59,6 +60,7 @@ namespace Motion.Animation
                     {
                         return new { Key = k, Start = start, End = end };
                     }
+
                     return new { Key = k, Start = double.MaxValue, End = double.MaxValue };
                 })
                 .OrderBy(x => x.Start)
@@ -165,6 +167,45 @@ namespace Motion.Animation
         private bool isUpdating = false;
         private bool? lastEmptyState = null;
 
+        private void ApplyHideAndLockState(bool state, GH_Document d)
+        {
+            var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
+            foreach (var obj in objectsToUpdate)
+            {
+                if (obj == null) continue;
+
+                try
+                {
+                    if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
+                    {
+                        d.ScheduleSolution(1, doc =>
+                        {
+                            previewObj.Hidden = state;
+                            doc.ExpireSolution();
+                        });
+                    }
+
+                    if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
+                    {
+                        d.ScheduleSolution(1, doc =>
+                        {
+                            activeObj.Locked = state;
+                            if (state)
+                            {
+                                activeObj.Phase = GH_SolutionPhase.Blank;
+                            }
+
+                            doc.ExpireSolution();
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    RhinoApp.WriteLine($"[Motion] ApplyHideAndLockState 出错: {ex.Message}");
+                }
+            }
+        }
+
         public void UpdateGroupVisibilityAndLock()
         {
             // 添加超时机制
@@ -172,29 +213,16 @@ namespace Motion.Animation
             {
                 // 如果上次更新时间超过1秒，强制重置状态
                 var doc = OnPingDocument();
-                if (doc != null)
-                {
-                    doc.ScheduleSolution(1000, d => isUpdating = false);
-                }
+                if (doc == null) return;
+                doc.ScheduleSolution(1000, d => isUpdating = false);
                 return;
             }
-
             try
             {
                 isUpdating = true;
 
-                if (affectedObjects == null || !affectedObjects.Any())
-                {
-                    isUpdating = false;
-                    return;
-                }
-
                 var doc = OnPingDocument();
-                if (doc == null)
-                {
-                    isUpdating = false;
-                    return;
-                }
+                if (affectedObjects == null || !affectedObjects.Any() || doc == null) return;
 
                 // 使用 ScheduleSolution 来延迟更新状态
                 doc.ScheduleSolution(5, d =>
@@ -205,46 +233,10 @@ namespace Motion.Animation
                         if (UseEmptyValueMode)
                         {
                             bool isEmpty = this.Params.Input[0].VolatileData.IsEmpty;
-                            if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty)
-                            {
-                                isUpdating = false;
-                                return;
-                            }
+                            if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty) return;
 
                             lastEmptyState = isEmpty;
-
-                            // 创建受影响对象的副本以避免集合修改问题
-                            var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
-
-                            foreach (var obj in objectsToUpdate)
-                            {
-                                if (obj == null) continue;
-
-                                try
-                                {
-                                    if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
-                                    {
-                                        d.ScheduleSolution(1, doc =>
-                                        {
-                                            previewObj.Hidden = isEmpty;
-                                            doc.ExpireSolution();
-                                        });
-                                    }
-                                    if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
-                                    {
-                                        d.ScheduleSolution(1, doc =>
-                                        {
-                                            activeObj.Locked = isEmpty;
-                                            if (isEmpty)
-                                            {
-                                                activeObj.Phase = GH_SolutionPhase.Blank;
-                                            }
-                                            doc.ExpireSolution();
-                                        });
-                                    }
-                                }
-                                catch { }
-                            }
+                            ApplyHideAndLockState(isEmpty, d);
                         }
                         else if (_timelineSlider != null)
                         {
@@ -254,44 +246,13 @@ namespace Motion.Animation
                                 double.TryParse(parts[0], out double min) &&
                                 double.TryParse(parts[1], out double max))
                             {
-                                bool shouldHideOrLock = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+                                bool shouldHideOrLock =
+                                    currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
 
-                                if (_lastHideOrLockState != shouldHideOrLock)
-                                {
-                                    var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
+                                if (_lastHideOrLockState == shouldHideOrLock) return;
 
-                                    foreach (var obj in objectsToUpdate)
-                                    {
-                                        if (obj == null) continue;
-
-                                        try
-                                        {
-                                            if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
-                                            {
-                                                d.ScheduleSolution(1, doc =>
-                                                {
-                                                    previewObj.Hidden = shouldHideOrLock;
-                                                    doc.ExpireSolution();
-                                                });
-                                            }
-                                            if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
-                                            {
-                                                d.ScheduleSolution(1, doc =>
-                                                {
-                                                    activeObj.Locked = shouldHideOrLock;
-                                                    if (shouldHideOrLock)
-                                                    {
-                                                        activeObj.Phase = GH_SolutionPhase.Blank;
-                                                    }
-                                                    doc.ExpireSolution();
-                                                });
-                                            }
-                                        }
-                                        catch { }
-                                    }
-
-                                    _lastHideOrLockState = shouldHideOrLock;
-                                }
+                                ApplyHideAndLockState(shouldHideOrLock, d);
+                                _lastHideOrLockState = shouldHideOrLock;
                             }
                         }
                     }
@@ -302,7 +263,7 @@ namespace Motion.Animation
                     }
                 });
             }
-            catch
+            finally
             {
                 isUpdating = false;
             }
