@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Motion.Animation;
 
 namespace Motion.Toolbar
 {
@@ -213,19 +214,12 @@ namespace Motion.Toolbar
                     return connectedEventOps;
                 }
             }
-
-            // 如果没有找到EventOperation，创建一个新的
-            var eventOp = new EventOperation();
-            eventOp.CreateAttributes();
-
             // 计算新组件的位置 - 使用组内对象的平均位置
             PointF avgPos = connectionManager.CalculateAveragePosition(
                 allGroupConnectables.Select(c => c.Object).ToList());
 
-            eventOp.Attributes.Pivot = new PointF(avgPos.X + 200, avgPos.Y);
-
-            // 添加组件到文档（不加入组）
-            doc.AddObject(eventOp, false);
+            PointF finalPos = new PointF(avgPos.X + 200, avgPos.Y);
+            EventOperation eventOp = EventOperation.CreateAndAddEventOperation(doc, finalPos);
 
             return eventOp;
         }
@@ -260,18 +254,12 @@ namespace Motion.Toolbar
                 return;
             }
 
-            // 创建新的EventOperation
-            var eventOp = new EventOperation();
-            eventOp.CreateAttributes();
-
             // 计算新组件的位置
             PointF avgPos = connectionManager.CalculateAveragePosition(
                 ungroupedConnectables.Select(c => c.Object).ToList());
-
-            eventOp.Attributes.Pivot = new PointF(avgPos.X + 200, avgPos.Y);
-
-            // 添加组件到文档
-            doc.AddObject(eventOp, false);
+            PointF finalPos = new PointF(avgPos.X + 200, avgPos.Y);
+            
+            EventOperation eventOp = EventOperation.CreateAndAddEventOperation(doc, finalPos);
 
             // 连接对象到新的EventOperation
             connectionManager.ConnectObjectsToEventOperation(ungroupedConnectables, eventOp);
@@ -397,19 +385,11 @@ namespace Motion.Toolbar
             EventOperationConnectionManager connectionManager)
         {
             var doc = Instances.ActiveCanvas.Document;
-
-            // 创建新的EventOperation
-            var eventOp = new EventOperation();
-            eventOp.CreateAttributes();
-
             // 计算新组件的位置 - 使用组内对象的平均位置
             PointF avgPos = connectionManager.CalculateAveragePosition(
                 connectables.Select(c => c.Object).ToList());
-
-            eventOp.Attributes.Pivot = new PointF(avgPos.X + 200, avgPos.Y);
-
-            // 添加组件到文档
-            doc.AddObject(eventOp, false);
+            PointF finalPos = new PointF(avgPos.X + 200, avgPos.Y);
+            EventOperation eventOp = EventOperation.CreateAndAddEventOperation(doc, finalPos);
 
             // 连接对象到新的EventOperation
             connectionManager.ConnectObjectsToEventOperation(connectables, eventOp);
@@ -474,19 +454,14 @@ namespace Motion.Toolbar
             EventOperationConnectionManager connectionManager)
         {
             var doc = Instances.ActiveCanvas.Document;
-            var eventOp = new EventOperation();
-            eventOp.CreateAttributes();
-
+            
             // 计算新组件的位置
             var firstObject = selectedConnectables[0].Object;
             float rightmostX = firstObject.Attributes.Bounds.Right;
             float avgY = firstObject.Attributes.Bounds.Y + firstObject.Attributes.Bounds.Height / 2;
 
-            PointF newPos = new PointF(rightmostX + 200, avgY + 10);
-            eventOp.Attributes.Pivot = newPos;
-
-            // 添加组件到文档
-            doc.AddObject(eventOp, false);
+            PointF finalPos = new PointF(rightmostX + 200, avgY + 10);
+            EventOperation eventOp = EventOperation.CreateAndAddEventOperation(doc, finalPos);
 
             connectionManager.ConnectObjectsToEventOperation(selectedConnectables, eventOp);
             connectionManager.CreateOrUpdateGroup(eventOp, selectedConnectables);

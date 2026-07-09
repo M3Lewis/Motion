@@ -522,5 +522,16 @@ namespace Motion.Animation
                 }
             }
         }
+
+        public static EventOperation CreateAndAddEventOperation(GH_Document doc, PointF pivot)
+        {
+            var eventOp = new EventOperation();
+            eventOp.CreateAttributes();
+
+            eventOp.Attributes.Pivot = pivot;
+            doc.AddObject(eventOp, false);
+
+            return eventOp;
+        }
     }
 }
