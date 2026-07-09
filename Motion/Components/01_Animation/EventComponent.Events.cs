@@ -27,25 +27,37 @@ namespace Motion.Animation
             UpdateGroupVisibilityAndLock();
         }
 
+        private void SafeExecute(string methodName, Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"[Motion] {methodName} 出错: {ex.Message}");
+            }
+        }
+
         private void Doc_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
         {
-            // 检查是否添加了 Union Slider
-            var addedUnionSlider = e.Objects
-                .FirstOrDefault(obj => obj is MotionSlider);
+            SafeExecute(nameof(Doc_ObjectsAdded), () => HandleDocObjectsAdded(e));
+        }
 
-            if (addedUnionSlider != null)
+        private void HandleDocObjectsAdded(GH_DocObjectEventArgs e)
+        {
+            var doc = OnPingDocument();
+            var addedUnionSlider = e.Objects.FirstOrDefault(obj => obj is MotionSlider);
+            if (addedUnionSlider == null || doc == null) return;
+
+            doc.ScheduleSolution(5, d =>
             {
-                var doc = OnPingDocument();
-                if (doc != null)
+                SafeExecute(nameof(HandleDocObjectsAdded) + ".ScheduleSolution", () =>
                 {
-                    // 延迟执行以确保 Union Slider 完全初始化
-                    doc.ScheduleSolution(5, d =>
-                    {
-                        FindAndConnectTimelineSlider();
-                        ExpireSolution(true);
-                    });
-                }
-            }
+                    FindAndConnectTimelineSlider();
+                    ExpireSolution(true);
+                });
+            });
         }
 
         private void FindAndConnectTimelineSlider()
@@ -72,7 +84,7 @@ namespace Motion.Animation
         // 修正事件处理器的参数类型
         private void OnSliderValueChanged(object sender, GH_SliderEventArgs e)
         {
-            UpdateGroupVisibilityAndLock();
+            SafeExecute(nameof(OnSliderValueChanged), UpdateGroupVisibilityAndLock);
         }
 
         public void LinkToSender(MotionSender sender)
@@ -90,7 +102,8 @@ namespace Motion.Animation
             {
                 this.NickName = sender.NickName;
             }
-            UpdateMessage();  // 更Message
+
+            UpdateMessage(); // 更Message
 
             // 重新订阅事件
             sender.NickNameChanged -= OnSenderNickNameChanged; // 先取消订阅以避免重复
@@ -99,12 +112,15 @@ namespace Motion.Animation
 
         private void OnSenderNickNameChanged(IGH_DocumentObject sender, string newNickName)
         {
-            if (this.NickName != newNickName)
+            SafeExecute(nameof(OnSenderNickNameChanged), () =>
             {
-                this.NickName = newNickName;
-                UpdateMessage();
-                ExpireSolution(true);
-            }
+                if (this.NickName != newNickName)
+                {
+                    this.NickName = newNickName;
+                    UpdateMessage();
+                    ExpireSolution(true);
+                }
+            });
         }
 
         private void HandleConnectionsOnNicknameChange()
@@ -143,7 +159,7 @@ namespace Motion.Animation
 
                         // 更新linked sender
                         LinkToSender(sender);
-                        break;  // 只连接第一个匹配的sender
+                        break; // 只连接第一个匹配的sender
                     }
                 }
             });
@@ -185,29 +201,33 @@ namespace Motion.Animation
 
         private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
         {
+            SafeExecute(nameof(Document_ObjectsAdded), () => HandleDocumentObjectsAdded(e));
+        }
+
+        private void HandleDocumentObjectsAdded(GH_DocObjectEventArgs e)
+        {
+            var doc = OnPingDocument();
             // 检查是否添加了匹配 of MotionSender
             var addedSender = e.Objects
                 .OfType<MotionSender>()
                 .FirstOrDefault(s => s.NickName == this.NickName);
 
-            if (addedSender != null)
+            if (addedSender == null || doc == null) return;
+
+            // 延迟执行以确保 Sender 完全初始化
+            doc.ScheduleSolution(5, d =>
             {
-                var doc = OnPingDocument();
-                if (doc != null)
+                SafeExecute(nameof(HandleDocumentObjectsAdded), () =>
                 {
-                    // 延迟执行以确保 Sender 完全初始化
-                    doc.ScheduleSolution(5, d =>
+                    var timeInput = this.Params.Input[0];
+                    if (timeInput.SourceCount == 0) // 只在没有连接时尝试连接
                     {
-                        var timeInput = this.Params.Input[0];
-                        if (timeInput.SourceCount == 0)  // 只在没有连接时尝试连接
-                        {
-                            timeInput.AddSource(addedSender);
-                            timeInput.WireDisplay = GH_ParamWireDisplay.hidden;
-                            LinkToSender(addedSender);
-                        }
-                    });
-                }
-            }
+                        timeInput.AddSource(addedSender);
+                        timeInput.WireDisplay = GH_ParamWireDisplay.hidden;
+                        LinkToSender(addedSender);
+                    }
+                });
+            });
         }
 
         private void TryConnectToMatchingSender()
@@ -233,23 +253,27 @@ namespace Motion.Animation
             }
         }
 
+
         private void Input_ObjectChanged(IGH_DocumentObject sender, GH_ObjectChangedEventArgs e)
         {
-            var timeInput = this.Params.Input[0];
-            if (timeInput.SourceCount > 0)
+            SafeExecute(nameof(Input_ObjectChanged), () =>
             {
-                var source = timeInput.Sources[0].Attributes.GetTopLevel.DocObject;
-                if (source is MotionSender remoteSender)
+                var timeInput = this.Params.Input[0];
+                if (timeInput.SourceCount > 0)
                 {
-                    LinkToSender(remoteSender);
+                    var source = timeInput.Sources[0].Attributes.GetTopLevel.DocObject;
+                    if (source is MotionSender remoteSender)
+                    {
+                        LinkToSender(remoteSender);
+                    }
                 }
-            }
-            else if (_linkedSender != null)
-            {
-                // 断开连接时清理
-                _linkedSender.NickNameChanged -= OnSenderNickNameChanged;
-                _linkedSender = null;
-            }
+                else if (_linkedSender != null)
+                {
+                    // 断开连接时清理
+                    _linkedSender.NickNameChanged -= OnSenderNickNameChanged;
+                    _linkedSender = null;
+                }
+            });
         }
 
         public override void RemovedFromDocument(GH_Document document)
@@ -278,27 +302,28 @@ namespace Motion.Animation
         // 添加删除事件处理方法
         private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
         {
-            bool needUpdate = false;
-
-            // 检查是否有受控制的对象被删除
-            foreach (var deletedObj in e.Objects)
+            SafeExecute(nameof(Document_ObjectsDeleted), () =>
             {
-                if (affectedObjects.Contains(deletedObj))
+                bool needUpdate = false;
+
+                // 检查是否有受控制的对象被删除
+                foreach (var deletedObj in e.Objects)
                 {
+                    if (!affectedObjects.Contains(deletedObj)) continue;
                     affectedObjects.Remove(deletedObj);
                     needUpdate = true;
                 }
-            }
 
-            // 如果没有任何受控制的对象，关闭 HIDE/LOCK 开关
-            if (needUpdate && !affectedObjects.Any())
-            {
-                HideWhenEmpty = false;
-                LockWhenEmpty = false;
+                // 如果没有任何受控制的对象，关闭 HIDE/LOCK 开关
+                if (needUpdate && !affectedObjects.Any())
+                {
+                    HideWhenEmpty = false;
+                    LockWhenEmpty = false;
 
-                // 更新UI
-                ExpireSolution(true);
-            }
+                    // 更新UI
+                    ExpireSolution(true);
+                }
+            });
         }
 
         public override void DocumentContextChanged(GH_Document document, GH_DocumentContext context)
@@ -314,8 +339,10 @@ namespace Motion.Animation
                     {
                         numberSlider.Slider.ValueChanged -= OnSliderValueChanged;
                     }
+
                     _timelineSlider = null;
                 }
+
                 _isInitialized = false;
             }
         }
