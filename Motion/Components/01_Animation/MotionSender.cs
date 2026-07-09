@@ -47,17 +47,12 @@ namespace Motion.Animation
                     return;
                 }
 
-                // 尝试解析类似 "0-100" 的 NickName
-                var parts = NickName.Split('-');
-                if (parts.Length == 2 &&
-                    double.TryParse(parts[0], out double min) &&
-                    double.TryParse(parts[1], out double max))
+                if (MotilityUtils.TryParseNickNameInterval(NickName, out double min, out double max))
                 {
                     _senderRange = new Interval(min, max);
                 }
                 else
                 {
-                    // 如果解析失败，使用默认范围
                     _senderRange = new Interval(0, 100);
                 }
             }

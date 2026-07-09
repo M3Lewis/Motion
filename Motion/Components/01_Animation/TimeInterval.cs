@@ -45,11 +45,13 @@ namespace Motion.Animation
 
         // 添加 NickNameChanged 事件
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
+
         public event NickNameChangedEventHandler NickNameChanged;
 
         public TimeInterval()
             : base("Time Interval", "Time Interval", "获取时间区间", "Motion", "01_Animation")
-        { }
+        {
+        }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
@@ -89,13 +91,11 @@ namespace Motion.Animation
                 .Where(k => !string.IsNullOrEmpty(k))
                 .Select(k =>
                 {
-                    var parts = k.Split('-');
-                    if (parts.Length == 2 &&
-                        double.TryParse(parts[0], out double start) &&
-                        double.TryParse(parts[1], out double end))
+                    if (MotilityUtils.TryParseNickNameInterval(k, out double start, out double end))
                     {
                         return new { Key = k, Start = start, End = end };
                     }
+
                     return new { Key = k, Start = double.MaxValue, End = double.MaxValue };
                 })
                 .OrderBy(x => x.Start)
@@ -218,7 +218,7 @@ namespace Motion.Animation
 
                         // 更新linked sender
                         LinkToSender(sender);
-                        break;  // 只连接第一个匹配的sender
+                        break; // 只连接第一个匹配的sender
                     }
                 }
             });
@@ -274,7 +274,7 @@ namespace Motion.Animation
                     doc.ScheduleSolution(5, d =>
                     {
                         var input = this.Params.Input[0];
-                        if (input.SourceCount == 0)  // 只在没有连接时尝试连接
+                        if (input.SourceCount == 0) // 只在没有连接时尝试连接
                         {
                             input.AddSource(addedSender);
                             input.WireDisplay = GH_ParamWireDisplay.hidden;
@@ -376,23 +376,20 @@ namespace Motion.Animation
                 // 如果没有输入连接，尝试使用 NickName 或默认值
                 if (this.Params.Input[0].SourceCount == 0)
                 {
-                     // 尝试从 NickName 解析（如果之前 TryGetBaseInterval 失败）
-                     if (!string.IsNullOrEmpty(this.NickName))
-                     {
-                         string[] parts = this.NickName.Split('-');
-                         if (parts.Length == 2 &&
-                             double.TryParse(parts[0], out double min) &&
-                             double.TryParse(parts[1], out double max))
-                         {
-                             baseInterval = new Interval(min, max);
-                         }
-                     }
+                    // 尝试从 NickName 解析（如果之前 TryGetBaseInterval 失败）
+                    if (!string.IsNullOrEmpty(this.NickName))
+                    {
+                        if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
+                        {
+                            baseInterval = new Interval(min, max);
+                        }
+                    }
 
-                     // 如果 NickName 也无效，则使用默认值
-                     if (!baseInterval.HasValue)
-                     {
-                         baseInterval = new Interval(0, 100); // Default interval
-                     }
+                    // 如果 NickName 也无效，则使用默认值
+                    if (!baseInterval.HasValue)
+                    {
+                        baseInterval = new Interval(0, 100); // Default interval
+                    }
                 }
                 else // 有输入连接，但无法确定区间
                 {
@@ -424,7 +421,8 @@ namespace Motion.Animation
                 try
                 {
                     // 添加类型转换以确保安全
-                    return new Interval(Convert.ToDouble(slider.Slider.Minimum), Convert.ToDouble(slider.Slider.Maximum));
+                    return new Interval(Convert.ToDouble(slider.Slider.Minimum),
+                        Convert.ToDouble(slider.Slider.Maximum));
                 }
                 catch (InvalidCastException ex)
                 {
@@ -446,10 +444,7 @@ namespace Motion.Animation
             // 因为 SolveInstance 中会再次检查 NickName（如果 TryGetBaseInterval 返回 null 且无输入）
             if (!string.IsNullOrEmpty(this.NickName))
             {
-                string[] parts = this.NickName.Split('-');
-                if (parts.Length == 2 &&
-                    double.TryParse(parts[0], out double min) &&
-                    double.TryParse(parts[1], out double max))
+                if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
                 {
                     return new Interval(min, max);
                 }
@@ -473,27 +468,32 @@ namespace Motion.Animation
                     _associatedGroupId = null;
                     _isGroupCreated = false;
                 }
+
                 return; // 没有输入，无需管理组
             }
 
             // 尝试获取源对象的 NickName，如果源无效则使用默认名称或不处理
             IGH_DocumentObject sourceObject = null;
-            try {
-                 // 确保源存在且有效
-                 if (inputParam.Sources.Count > 0 && inputParam.Sources[0] != null && inputParam.Sources[0].Attributes != null)
-                 {
+            try
+            {
+                // 确保源存在且有效
+                if (inputParam.Sources.Count > 0 && inputParam.Sources[0] != null &&
+                    inputParam.Sources[0].Attributes != null)
+                {
                     sourceObject = inputParam.Sources[0].Attributes.GetTopLevel?.DocObject;
-                 }
-            } catch (Exception ex) {
-                 // 处理可能的异常，例如源对象已被删除但连接仍然存在
-                 this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"无法获取源对象进行组管理: {ex.Message}");
-                 return; // 无法获取源对象，跳过组管理
+                }
+            }
+            catch (Exception ex)
+            {
+                // 处理可能的异常，例如源对象已被删除但连接仍然存在
+                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"无法获取源对象进行组管理: {ex.Message}");
+                return; // 无法获取源对象，跳过组管理
             }
 
             if (sourceObject == null)
             {
-                 this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "无法获取有效的源对象进行组管理。");
-                 return; // 源对象无效
+                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "无法获取有效的源对象进行组管理。");
+                return; // 源对象无效
             }
 
             string expectedGroupName = sourceObject.NickName;
@@ -511,6 +511,7 @@ namespace Motion.Animation
                         existingGroup.NickName = expectedGroupName;
                         doc.ScheduleSolution(1); // 轻量级刷新
                     }
+
                     // 确保 _isGroupCreated 状态正确
                     _isGroupCreated = true;
                     return; // 找到并处理了关联组
@@ -536,6 +537,7 @@ namespace Motion.Animation
                         // 可能需要刷新，因为我们更改了现有组的名称
                         // doc.ScheduleSolution(1); // 取决于是否希望立即看到名称更改
                     }
+
                     _associatedGroupId = g.InstanceGuid;
                     _isGroupCreated = true;
                     return; // 找到并处理了所在组

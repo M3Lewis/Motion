@@ -235,10 +235,10 @@ namespace Motion.Animation
 
             foreach (var sender in connectedSenders)
             {
-                if (TryParseRange(sender.NickName, out decimal min, out decimal max))
+                if (MotilityUtils.TryParseNickNameInterval(sender.NickName, out double min, out double max))
                 {
-                    minValue = Math.Min(minValue, min);
-                    maxValue = Math.Max(maxValue, max);
+                    minValue = Math.Min(minValue, (decimal)min);
+                    maxValue = Math.Max(maxValue, (decimal)max);
                 }
             }
 
@@ -251,25 +251,7 @@ namespace Motion.Animation
                 ExpireSolution(true);
             }
         }
-
-        private bool TryParseRange(string nickname, out decimal min, out decimal max)
-        {
-            min = 0;
-            max = 0;
-
-            if (string.IsNullOrEmpty(nickname))
-                return false;
-
-            var parts = nickname.Split('-');
-            if (parts.Length == 2 &&
-                decimal.TryParse(parts[0], out min) &&
-                decimal.TryParse(parts[1], out max))
-            {
-                return true;
-            }
-
-            return false;
-        }
+        
         // 处理新滑块创建的事件
 
         private void SetInitialValues()
@@ -292,7 +274,6 @@ namespace Motion.Animation
             var doc = Instances.ActiveCanvas.Document;
             if (doc == null) return;
 
-            // 找到所有连接到当前 Slider 的 MotionSender
             var connectedSenders = doc.Objects
                 .OfType<MotionSender>()
                 .Where(sender => sender.Sources.Any(source => source.InstanceGuid == this.InstanceGuid))
@@ -300,23 +281,29 @@ namespace Motion.Animation
 
             if (!connectedSenders.Any()) return;
 
-            // 计算所有连接的 Sender 的最小和最大区间
-            decimal minInterval = connectedSenders.Min(sender =>
-                decimal.Parse(sender.NickName.Split('-')[0]));
-            decimal maxInterval = connectedSenders.Max(sender =>
-                decimal.Parse(sender.NickName.Split('-')[1]));
+            decimal minInterval = decimal.MaxValue;
+            decimal maxInterval = decimal.MinValue;
+            bool hasValidInterval = false;
 
-            // 更新 Slider 的区间
-            if (minInterval < maxInterval)
+            foreach (var sender in connectedSenders)
+            {
+                if (MotilityUtils.TryParseNickNameInterval(sender.NickName, out double min, out double max))
+                {
+                    minInterval = Math.Min(minInterval, (decimal)min);
+                    maxInterval = Math.Max(maxInterval, (decimal)max);
+                    hasValidInterval = true;
+                }
+            }
+
+            if (hasValidInterval && minInterval < maxInterval)
             {
                 Slider.Minimum = minInterval;
                 Slider.Maximum = maxInterval;
-                UpdateNickNameBasedOnRange(); // Update NickName when range changes
-
-                // 触发解决方案更新
+                UpdateNickNameBasedOnRange();
                 ExpireSolution(true);
             }
         }
+        
         public override bool Write(GH_IWriter writer)
         {
             if (!base.Write(writer)) return false;

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Motion.General;
 
 namespace Motion.Animation
 {
@@ -260,13 +261,8 @@ namespace Motion.Animation
                 {
                     groupNames.Add(containingGroup.NickName);
                 }
-
-                // 4. 使用 Split 的重载版本避免创建新数组
-                string[] timeDomainExtremes = eventComponent.NickName.Split(new char[] { '-' }, 2);
-                if (timeDomainExtremes.Length != 2) continue;
-
-                if (!double.TryParse(timeDomainExtremes[0], out double timeDomainStart) ||
-                    !double.TryParse(timeDomainExtremes[1], out double timeDomainEnd))
+                
+                if (!MotilityUtils.TryParseNickNameInterval(eventComponent.NickName, out double timeDomainStart, out double timeDomainEnd))
                     continue;
 
                 var timeDomain = new Interval(timeDomainStart, timeDomainEnd);

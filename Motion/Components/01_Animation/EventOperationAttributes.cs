@@ -57,7 +57,7 @@ namespace Motion.Animation
                                 break;
                         }
 
-                        if (targetEventComponent != null && TryParseIntervalFromNickname(targetEventComponent.NickName, out double minimumValue, out double maximumValue))
+                        if (targetEventComponent != null && MotilityUtils.TryParseNickNameInterval(targetEventComponent.NickName, out double minimumValue, out double maximumValue))
                         {
                             menuItems.Add((targetEventComponent, targetEventComponent.NickName, minimumValue, maximumValue));
                         }
@@ -94,16 +94,7 @@ namespace Motion.Animation
             return GH_ObjectResponse.Handled;
 
         }
-
-        private bool TryParseIntervalFromNickname(string componentNickname, out double parsedMinimum, out double parsedMaximum)
-        {
-            parsedMinimum = parsedMaximum = 0;
-            string[] nicknameParts = componentNickname.Split('-');
-
-            return nicknameParts.Length == 2
-                   && double.TryParse(nicknameParts[0], out parsedMinimum)
-                   && double.TryParse(nicknameParts[1], out parsedMaximum);
-        }
+        
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
             base.Render(canvas, graphics, channel);

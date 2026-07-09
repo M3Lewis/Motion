@@ -2,6 +2,7 @@ using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Rhino.Geometry;
 using System;
+using Motion.General;
 
 namespace Motion.Animation
 {
@@ -101,45 +102,42 @@ namespace Motion.Animation
             if (!DA.GetData(1, ref domain)) return;
             
             // 从NickName解析区间
-            string[] parts = this.NickName.Split('-');
-            if (parts.Length == 2 &&
-                double.TryParse(parts[0], out double min) &&
-                double.TryParse(parts[1], out double max))
+            if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
             {
                 // 用Timeline Slider模式
-                if (_timelineSlider != null)
+                if (_timelineSlider == null) return;
+                
+                double timelineSliderValue = (double)_timelineSlider.CurrentValue;
+                // 计算当前是否在区间内
+                bool currentInInterval = timelineSliderValue > min && timelineSliderValue < max;
+
+                // 计算比例值
+                double value;
+                if (time <= min)
+                    value = 0;
+                else if (time >= max)
+                    value = 1;
+                else
+                    value = (time - min) / (max - min);
+
+                // 输出计算得到的值
+                DA.SetData(0, value);
+
+                // 只在区间状态发生变化时更新
+                if (currentInInterval != _lastInInterval)
                 {
-                    double timelineSliderValue = (double)_timelineSlider.CurrentValue;
-                    // 计算当前是否在区间内
-                    bool currentInInterval = timelineSliderValue > min && timelineSliderValue < max;
-
-                    // 计算比例值
-                    double value;
-                    if (time <= min)
-                        value = 0;
-                    else if (time >= max)
-                        value = 1;
-                    else
-                        value = (time - min) / (max - min);
-
-                    // 输出计算得到的值
-                    DA.SetData(0, value);
-
-                    // 只在区间状态发生变化时更新
-                    if (currentInInterval != _lastInInterval)
-                    {
-                        UpdateGroupVisibilityAndLock();
-                    }
-                    // 非空值模式下的处理
-                    if (!UseEmptyValueMode)
-                    {
-                        // 更新状态
-                        _lastInInterval = currentInInterval;
-                        _lastHasData = true;
-                    }
-                    // 更新Message以显示当前时间值
-                    this.Message = $"[{min}-{max}]\n{value:F2}";
+                    UpdateGroupVisibilityAndLock();
                 }
+                // 非空值模式下的处理
+                if (!UseEmptyValueMode)
+                {
+                    // 更新状态
+                    _lastInInterval = currentInInterval;
+                    _lastHasData = true;
+                }
+                // 更新Message以显示当前时间值
+                this.Message = $"[{min}-{max}]\n{value:F2}";
+            
             }
             else
             {
