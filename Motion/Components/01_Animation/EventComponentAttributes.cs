@@ -28,6 +28,17 @@ namespace Motion.Animation
         public bool HideButtonDown;
         public bool LockButtonDown;
 
+        // 只读字段，存放共享的StringFormat实例
+        // private：这个缓存只在类内部使用，不对外暴露
+        // static：所有实例共享同一个，不需要每个 EventComponentAttributes 都建一个——因为配置完全相同
+        // readonly：防止字段被意外重新赋值
+        
+        private static readonly StringFormat CenteredStringFormat = new StringFormat()
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center
+        };
+        
         private string EmptyModeText => LanguageManager.GetString("Canvas.EmptyMode", "Empty Mode");
 
         public EventComponentAttributes(EventComponent owner) : base(owner)
@@ -103,11 +114,7 @@ namespace Motion.Animation
                             GH_FontServer.Standard,
                             Brushes.White,
                             textBounds,
-                            new StringFormat()
-                            {
-                                Alignment = StringAlignment.Center,
-                                LineAlignment = StringAlignment.Center
-                            }
+                            CenteredStringFormat
                         );
                     }
 
@@ -167,11 +174,8 @@ namespace Motion.Animation
                             GH_FontServer.StandardBold,
                             Brushes.White,
                             hideButtonBounds,
-                            new StringFormat()
-                            {
-                                Alignment = StringAlignment.Center,
-                                LineAlignment = StringAlignment.Center
-                            });
+                            CenteredStringFormat
+                            );
                     }
 
                     // Lock 按钮
@@ -184,11 +188,8 @@ namespace Motion.Animation
                             GH_FontServer.StandardBold,
                             Brushes.White,
                             lockButtonBounds,
-                            new StringFormat()
-                            {
-                                Alignment = StringAlignment.Center,
-                                LineAlignment = StringAlignment.Center
-                            });
+                            CenteredStringFormat
+                            );
                     }
                 }
             }
