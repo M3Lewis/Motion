@@ -196,8 +196,9 @@ namespace Motion.Animation
 
             var canvas = Grasshopper.Instances.ActiveCanvas;
             if (canvas == null) return;
-
-            ShowTemporaryMessage(canvas, $"已存在相同标识({NickName})的 Sender!");
+            
+            MotilityUtils.ShowTemporaryMessageAtLocation(canvas, $"已存在相同标识({NickName})的 Sender!",
+                new PointF(this.Attributes.Bounds.Right + 20, this.Attributes.Bounds.Top + 4));
         }
 
         protected override void OnVolatileDataCollected()
@@ -337,53 +338,6 @@ namespace Motion.Animation
             doc.ScheduleSolution(5);
         }
 
-        private void ShowTemporaryMessage(GH_Canvas canvas, string message)
-        {
-            // 创建一个自定义事件处理器来绘制消息
-            GH_Canvas.CanvasPrePaintObjectsEventHandler canvasRepaint = null;
-            canvasRepaint = (sender) =>
-            {
-                Graphics g = canvas.Graphics;
-                if (g == null) return;
-
-                // 设置消息位置（在组件下方）
-                PointF location = new PointF(
-                    this.Attributes.Bounds.Right+20,
-                    this.Attributes.Bounds.Top+4
-                );
-
-                // 计算文本小
-                SizeF textSize = GH_FontServer.MeasureString(message, GH_FontServer.Standard);
-                RectangleF textBounds = new RectangleF(location, textSize);
-                textBounds.Inflate(6, 3);  // 添加一些内边距
-
-                // 绘制消息
-                GH_Capsule capsule = GH_Capsule.CreateTextCapsule(
-                    textBounds,
-                    textBounds,
-                    GH_Palette.Pink,
-                    message);
-
-                capsule.Render(g, Color.LightSkyBlue);
-                capsule.Dispose();
-            };
-
-            // 添加临时事件处理器
-            canvas.CanvasPrePaintObjects += canvasRepaint;
-
-            // 设置定时器移除事件处理器
-            Timer timer = new Timer();
-            timer.Interval = 1500;
-            timer.Tick += (sender, e) =>
-            {
-                canvas.CanvasPrePaintObjects -= canvasRepaint;
-                canvas.Refresh();
-                timer.Stop();
-                timer.Dispose();
-            };
-            timer.Start();
-        }
-
         public override string NickName
         {
             get
@@ -441,7 +395,8 @@ namespace Motion.Animation
             var canvas = Grasshopper.Instances.ActiveCanvas;
             if (canvas != null)
             {
-                ShowTemporaryMessage(canvas, $"已存在相同标识({nicknameKey})的 Sender!");
+                MotilityUtils.ShowTemporaryMessageAtLocation(canvas, $"已存在相同标识({nicknameKey})的 Sender!",
+                    new PointF(this.Attributes.Bounds.Right + 20, this.Attributes.Bounds.Top + 4));
             }
         }
 

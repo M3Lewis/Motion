@@ -8,6 +8,7 @@ using System.Drawing;
 using System.Reflection;
 using System;
 using System.Runtime.CompilerServices;
+using Motion.General;
 using Rhino;
 
 namespace Motion.Toolbar
@@ -52,7 +53,7 @@ namespace Motion.Toolbar
 
         protected void ShowTemporaryMessage(GH_Canvas canvas, string message)
         {
-            MotionToolbarManager.ShowTemporaryMessage(canvas, message);
+            MotilityUtils.ShowTemporaryMessageAtTop(canvas, message);
         }
     }
 }

@@ -4,6 +4,7 @@ using Grasshopper.Kernel;
 using System.Collections.Generic;
 using System.Linq;
 using System.Drawing;
+using System.Windows.Forms;
 using Motion.Animation;
 
 namespace Motion.General
@@ -208,6 +209,55 @@ namespace Motion.General
 
             return double.TryParse(parts[0], out min)
                    && double.TryParse(parts[1], out max);
+        }
+        
+        public static void ShowTemporaryMessageAtLocation(GH_Canvas canvas, string message, PointF location)
+        {
+            GH_Canvas.CanvasPostPaintObjectsEventHandler canvasRepaint = null;
+            canvasRepaint = (sender) =>
+            {
+                Graphics g = canvas.Graphics;
+                if (g == null) return;
+
+                var originalTransform = g.Transform;
+                g.ResetTransform();
+
+                SizeF textSize = GH_FontServer.MeasureString(message, GH_FontServer.Standard);
+                RectangleF textBounds = new RectangleF(location, textSize);
+                textBounds.Inflate(6, 3);
+
+                GH_Capsule capsule = GH_Capsule.CreateTextCapsule(
+                    textBounds,
+                    textBounds,
+                    GH_Palette.Pink,
+                    message);
+
+                capsule.Render(g, Color.LightSkyBlue);
+                capsule.Dispose();
+
+                g.Transform = originalTransform;
+            };
+
+            canvas.CanvasPostPaintObjects += canvasRepaint;
+            canvas.Refresh();
+
+            Timer timer = new Timer();
+            timer.Interval = 1500;
+            timer.Tick += (s, args) =>
+            {
+                canvas.CanvasPostPaintObjects -= canvasRepaint;
+                canvas.Refresh();
+                timer.Stop();
+                timer.Dispose();
+            };
+            timer.Start();
+        }
+
+        public static void ShowTemporaryMessageAtTop(GH_Canvas canvas, string message)
+        {
+            // 固定位置：画布顶部居中，距离左边 330，顶部 50
+            var location = new PointF(330, 50);
+            ShowTemporaryMessageAtLocation(canvas, message, location);
         }
     }
 }

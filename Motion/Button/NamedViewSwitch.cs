@@ -186,50 +186,6 @@ namespace Motion.Toolbar
             }
         }
 
-        private new void ShowTemporaryMessage(GH_Canvas canvas, string message)
-        {
-            GH_Canvas.CanvasPrePaintObjectsEventHandler canvasRepaint = null;
-            canvasRepaint = (sender) =>
-            {
-                Graphics g = canvas.Graphics;
-                if (g == null) return;
-
-                var originalTransform = g.Transform;
-                g.ResetTransform();
-
-                SizeF textSize = new SizeF(30, 30);
-                float padding = 20;
-                float x = textSize.Width + 300;
-                float y = padding + 30;
-
-                RectangleF textBounds = new RectangleF(x, y, textSize.Width + 300, textSize.Height + 30);
-                textBounds.Inflate(6, 3);
-
-                GH_Capsule capsule = GH_Capsule.CreateTextCapsule(
-                    textBounds,
-                    textBounds,
-                    GH_Palette.Pink,
-                    message);
-
-                capsule.Render(g, Color.LightSkyBlue);
-                capsule.Dispose();
-
-                g.Transform = originalTransform;
-            };
-
-            canvas.CanvasPrePaintObjects += canvasRepaint;
-            Timer timer = new Timer();
-            timer.Interval = 1500;
-            timer.Tick += (sender, e) =>
-            {
-                canvas.CanvasPrePaintObjects -= canvasRepaint;
-                canvas.Refresh();
-                timer.Stop();
-                timer.Dispose();
-            };
-            timer.Start();
-        }
-
         private static void SaveSettings()
         {
             try
