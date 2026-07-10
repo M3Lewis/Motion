@@ -65,7 +65,8 @@ namespace Motion.Toolbar
             button.Size = new Size(24, 24);
             button.DisplayStyle = ToolStripItemDisplayStyle.Image;
             button.Image = Properties.Resources.ClickFinder;
-            button.ToolTipText = General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
+            button.ToolTipText =
+                General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
             button.Click += ToggleClickFinderMode;
             button.CheckOnClick = true;
         }
@@ -74,7 +75,8 @@ namespace Motion.Toolbar
         {
             if (button != null)
             {
-                button.ToolTipText = General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
+                button.ToolTipText =
+                    General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
             }
         }
 
@@ -82,169 +84,168 @@ namespace Motion.Toolbar
         {
             isActive = button.Checked;
             if (isActive)
-            {
-                CollectPreviewObjects();
-                checkTimer.Start();
-                previewMaterial = new DisplayMaterial(Color.FromArgb(128, 255, 255), 0.3);
-                previewColor = Color.FromArgb(128, 255, 255);
-                // 订阅 Rhino 显示管道事件
-                RhinoDoc.ActiveDoc.Views.Redraw();
-                foreach (var view in RhinoDoc.ActiveDoc.Views)
-                {
-                    DisplayPipeline.CalculateBoundingBox += DisplayPipeline_CalculateBoundingBox;
-                    DisplayPipeline.DrawForeground += DisplayPipeline_DrawForeground;
-                }
-            }
+                StartClickFinder();
             else
+                StopClickFinder();
+        }
+
+        private void StartClickFinder()
+        {
+            CollectPreviewObjects();
+            checkTimer.Start();
+            previewMaterial = new DisplayMaterial(Color.FromArgb(128, 255, 255), 0.3);
+            previewColor = Color.FromArgb(128, 255, 255);
+            RhinoDoc.ActiveDoc.Views.Redraw();
+            foreach (var view in RhinoDoc.ActiveDoc.Views)
             {
-                checkTimer.Stop();
-                
-                // 取消订阅显示管道事件
-                foreach (var view in RhinoDoc.ActiveDoc.Views)
-                {
-                    DisplayPipeline.CalculateBoundingBox -= DisplayPipeline_CalculateBoundingBox;
-                    DisplayPipeline.DrawForeground -= DisplayPipeline_DrawForeground;
-                }
-                
-                if (previewMesh != null)
-                {
-                    previewMesh.Dispose();
-                    previewMesh = null;
-                }
-                previewMaterial = null;
-                RhinoDoc.ActiveDoc.Views.Redraw();
+                DisplayPipeline.CalculateBoundingBox += DisplayPipeline_CalculateBoundingBox;
+                DisplayPipeline.DrawForeground += DisplayPipeline_DrawForeground;
             }
+        }
+
+        private void StopClickFinder()
+        {
+            checkTimer.Stop();
+            foreach (var view in RhinoDoc.ActiveDoc.Views)
+            {
+                DisplayPipeline.CalculateBoundingBox -= DisplayPipeline_CalculateBoundingBox;
+                DisplayPipeline.DrawForeground -= DisplayPipeline_DrawForeground;
+            }
+            if (previewMesh != null)
+            {
+                previewMesh.Dispose();
+                previewMesh = null;
+            }
+            previewMaterial = null;
+            RhinoDoc.ActiveDoc.Views.Redraw();
         }
 
         private void CheckMouseClick(object sender, EventArgs e)
         {
-            if (Control.MouseButtons == MouseButtons.Left)
+            if (Control.MouseButtons != MouseButtons.Left) return;
+            if (!TryGetClickRay(out Line clickRay)) return;
+            int index = FindNearestObject(clickRay);
+            ApplyPreviewSelection(index);
+        }
+        
+        /// <summary>
+        /// 根据索引处理预览选择：有效索引聚焦组件，无效索引更新闪烁材质。
+        /// </summary>
+        /// <param name="index">预览对象索引，-1 表示未找到有效目标。</param>
+        private void ApplyPreviewSelection(int index)
+        {
+            if (index >= 0)
             {
-                if (TryGetClickRay(out Line clickRay))
-                {
-                    int index = FindNearestObject(clickRay);
-                    if (index >= 0)
-                    {
-                        FocusOnComponent(previewObjects[index]);
-                        button.Checked = false;
-                        isActive = false;
-                        checkTimer.Stop();
-                        if (previewMesh != null)
-                        {
-                            previewMesh.Dispose();
-                            previewMesh = null;
-                        }
-                        previewMaterial = null;
-                        
-                        RhinoDoc.ActiveDoc?.Views.Redraw();
-                    }
-                }
+                FocusOnComponent(previewObjects[index]);
+                button.Checked = false;
+                isActive = false;
+                checkTimer.Stop();
+
+                if (previewMesh == null) return;
+                
+                previewMesh.Dispose();
+                previewMesh = null;
+                previewMaterial = null;
             }
             else
             {
                 int alpha = Convert.ToInt32(255 * DateTime.Now.Millisecond / 1000.0);
                 previewMaterial = new DisplayMaterial(Color.FromArgb(alpha, 255, 255), 0.95);
-                previewColor = Color.FromArgb(alpha, 128, 255,255);
-                RhinoDoc.ActiveDoc?.Views.Redraw();
+                previewColor = Color.FromArgb(alpha, 128, 255, 255);
+            }
+
+            RhinoDoc.ActiveDoc?.Views.Redraw();
+        }
+        private void ProcessPreviewObject(IGH_DocumentObject obj)
+        {
+            if (obj is not IGH_PreviewObject previewObj || previewObj.Hidden)
+                return;
+
+            previewObjects.Add(obj);
+
+            var vertices = new List<Point3d>();
+            CollectVertices(obj, vertices);
+
+            var box = vertices.Count > 0
+                ? new BoundingBox(vertices)
+                : previewObj.ClippingBox;
+
+            if (box.Volume < 0.1)
+                box.Inflate(1);
+
+            boundingBoxes.Add(box);
+
+            using (Mesh boxMesh = Mesh.CreateFromBox(box, 1, 1, 1))
+            {
+                if (boxMesh != null && boxMesh.IsValid)
+                {
+                    boxMesh.Compact();
+                    previewMesh.Append(boxMesh);
+                }
             }
         }
 
+        private static void CollectVertices(IGH_DocumentObject obj, List<Point3d> vertices)
+        {
+            switch (obj)
+            {
+                case IGH_Component component:
+                    foreach (var param in component.Params.Output)
+                    foreach (var data in param.VolatileData.AllData(true))
+                        AddGeometryVertices(data, vertices);
+                    break;
+
+                case IGH_Param param:
+                    foreach (var data in param.VolatileData.AllData(true))
+                        AddGeometryVertices(data, vertices);
+                    break;
+            }
+        }
+        
+        private static void AddGeometryVertices(IGH_Goo data, List<Point3d> vertices)
+        {
+            switch (data)
+            {
+                case GH_Point pointData when pointData.Value != Point3d.Unset:
+                    vertices.Add(pointData.Value);
+                    break;
+
+                case GH_Curve curveData when curveData.Value != null:
+                    vertices.AddRange(curveData.Value.GetBoundingBox(false).GetCorners());
+                    break;
+
+                case GH_Surface surfaceData when surfaceData.Value != null:
+                    vertices.AddRange(surfaceData.Value.GetBoundingBox(false).GetCorners());
+                    break;
+
+                case GH_Mesh meshData when meshData.Value != null:
+                    vertices.AddRange(meshData.Value.Vertices.ToPoint3dArray());
+                    break;
+
+                case GH_Brep brepData when brepData.Value != null:
+                    vertices.AddRange(brepData.Value.GetBoundingBox(false).GetCorners());
+                    break;
+            }
+        }
+        
         private void CollectPreviewObjects()
         {
             previewObjects = new List<IGH_DocumentObject>();
             boundingBoxes = new List<BoundingBox>();
             if (previewMesh != null)
-            {
                 previewMesh.Dispose();
-            }
             previewMesh = new Mesh();
-            
+
             foreach (IGH_DocumentObject obj in Instances.ActiveCanvas.Document.Objects)
-            {
-                if (obj is IGH_PreviewObject previewObj && !previewObj.Hidden)
-                {
-                    previewObjects.Add(obj);
-                    
-                    // 获取所有预览顶点
-                    var vertices = new List<Point3d>();
-                    
-                    // 处理组件
-                    if (obj is IGH_Component component)
-                    {
-                        // 遍历所有输出参数
-                        foreach (var param in component.Params.Output)
-                        {
-                            foreach (var data in param.VolatileData.AllData(true))
-                            {
-                                AddGeometryVertices(data, vertices);
-                            }
-                        }
-                    }
-                    // 处理参数
-                    else if (obj is IGH_Param param)
-                    {
-                        foreach (var data in param.VolatileData.AllData(true))
-                        {
-                            AddGeometryVertices(data, vertices);
-                        }
-                    }
-                    
-                    // 从顶点创建边界框
-                    var box = vertices.Count > 0 
-                        ? new BoundingBox(vertices) 
-                        : previewObj.ClippingBox;  // 如无法获取顶点，回退到ClippingBox
-                        
-                    if (box.Volume < 0.1) box.Inflate(1);
-                    boundingBoxes.Add(box);
-                    
-                    // 创建预览用的box mesh
-                    using (Mesh boxMesh = Mesh.CreateFromBox(box, 1, 1, 1))
-                    {
-                        if (boxMesh != null && boxMesh.IsValid)
-                        {
-                            boxMesh.Compact();
-                            previewMesh.Append(boxMesh);
-                        }
-                    }
-                }
-            }
-            
+                ProcessPreviewObject(obj);
+
             if (!previewMesh.IsValid)
             {
                 previewMesh.Weld(Math.PI);
                 previewMesh.Compact();
             }
         }
-
-        private void AddGeometryVertices(IGH_Goo data, List<Point3d> vertices)
-        {
-            if (data is GH_Point pointData)
-            {
-                if (pointData.Value != Point3d.Unset)
-                    vertices.Add(pointData.Value);
-            }
-            else if (data is GH_Curve curveData)
-            {
-                if (curveData.Value != null)
-                    vertices.AddRange(curveData.Value.GetBoundingBox(false).GetCorners());
-            }
-            else if (data is GH_Surface surfaceData)
-            {
-                if (surfaceData.Value != null)
-                    vertices.AddRange(surfaceData.Value.GetBoundingBox(false).GetCorners());
-            }
-            else if (data is GH_Mesh meshData)
-            {
-                if (meshData.Value != null)
-                    vertices.AddRange(meshData.Value.Vertices.ToPoint3dArray());
-            }
-            else if (data is GH_Brep brepData)
-            {
-                if (brepData.Value != null)
-                    vertices.AddRange(brepData.Value.GetBoundingBox(false).GetCorners());
-            }
-        }
-
+        
         private bool TryGetClickRay(out Line clickRay)
         {
             clickRay = new Line();
@@ -264,68 +265,62 @@ namespace Motion.Toolbar
                 clickRay = new Line(worldLine.PointAt(1), -worldLine.UnitTangent);
                 return true;
             }
+
             return false;
         }
 
         private int FindNearestObject(Line clickRay)
         {
-            int nearestIndex = -1;
-            double minDistance = double.MaxValue;
-            var candidateIndices = new List<(int index, double distance)>();
+            var candidates = CollectCandidates(clickRay);
+            return candidates.Count switch
+            {
+                0 => -1,
+                1 => candidates[0].index,
+                _ => SelectNearestFromCandidates(candidates)
+            };
+        }
 
-            // 首先收集所有与射线相交的boundingbox
+        private List<(int index, double distance)> CollectCandidates(Line clickRay)
+        {
+            var candidates = new List<(int index, double distance)>();
             for (int i = 0; i < boundingBoxes.Count; i++)
             {
                 if (Intersection.LineBox(clickRay, boundingBoxes[i], 0.01, out Interval collision) &&
                     collision.T0 > 0 && collision.T0 < double.MaxValue)
                 {
-                    candidateIndices.Add((i, collision.T0));
+                    candidates.Add((i, collision.T0));
                 }
             }
+            return candidates;
+        }
 
-            // 如果有多个候选对象
-            if (candidateIndices.Count > 1)
+        private int SelectNearestFromCandidates(List<(int index, double distance)> candidates)
+        {
+            var screenPoint = Cursor.Position;
+            var view = RhinoDoc.ActiveDoc.Views.ActiveView;
+            var viewport = view.ActiveViewport;
+            var viewRect = view.ScreenRectangle;
+            var mouseScreenPoint = new Point2d(screenPoint.X - viewRect.Left, screenPoint.Y - viewRect.Top);
+
+            int nearestIndex = -1;
+            double minDistance = double.MaxValue;
+
+            foreach (var candidate in candidates)
             {
-                // 获取点击点在屏幕上的位置
-                var screenPoint = Cursor.Position;
-                var view = RhinoDoc.ActiveDoc.Views.ActiveView;
-                var viewport = view.ActiveViewport;
-                var viewRect = view.ScreenRectangle;
-
-                minDistance = double.MaxValue;
-                foreach (var candidate in candidateIndices)
+                var box = boundingBoxes[candidate.index];
+                var edges = GetBoxEdges(box);
+                foreach (var edge in edges)
                 {
-                    var box = boundingBoxes[candidate.index];
-                    var edges = GetBoxEdges(box);
-                    
-                    // 计算每条边到鼠标的最短距离
-                    foreach (var edge in edges)
+                    Point2d screenPt1 = viewport.WorldToClient(edge.From);
+                    Point2d screenPt2 = viewport.WorldToClient(edge.To);
+                    double dist = DistanceToLineSegment(mouseScreenPoint, screenPt1, screenPt2);
+                    if (dist < minDistance)
                     {
-                        // 将边的端点转换为屏幕坐标
-                        Point2d screenPt1 = viewport.WorldToClient(edge.From);
-                        Point2d screenPt2 = viewport.WorldToClient(edge.To);
-                        
-                        // 计算鼠标点到线段的距离
-                        double dist = DistanceToLineSegment(
-                            new Point2d(screenPoint.X - viewRect.Left, screenPoint.Y - viewRect.Top),
-                            screenPt1,
-                            screenPt2
-                        );
-
-                        if (dist < minDistance)
-                        {
-                            minDistance = dist;
-                            nearestIndex = candidate.index;
-                        }
+                        minDistance = dist;
+                        nearestIndex = candidate.index;
                     }
                 }
             }
-            // 如果只有一个候选对象，直接返回
-            else if (candidateIndices.Count == 1)
-            {
-                nearestIndex = candidateIndices[0].index;
-            }
-
             return nearestIndex;
         }
 
@@ -356,7 +351,7 @@ namespace Motion.Toolbar
         {
             double dx = lineEnd.X - lineStart.X;
             double dy = lineEnd.Y - lineStart.Y;
-            
+
             if (dx == 0 && dy == 0) // 线段实际上是一个点
             {
                 return pt.DistanceTo(lineStart);
@@ -389,7 +384,7 @@ namespace Motion.Toolbar
             var canvas = Instances.ActiveCanvas;
             canvas.Viewport.Zoom = 2;
             canvas.Viewport.MidPoint = obj.Attributes.Pivot;
-            
+
             // 选中组件
             canvas.Document.DeselectAll();
             obj.Attributes.Selected = true;
@@ -397,21 +392,23 @@ namespace Motion.Toolbar
         }
 
         #region IGH_PreviewObject Implementation
+
         public bool Hidden { get; set; } = false;
         public bool IsPreviewCapable => true;
+
         public BoundingBox ClippingBox
         {
             get
             {
                 if (previewMesh == null) return BoundingBox.Empty;
-                
+
                 // 即使mesh无效，也尝试从顶点创建boundingbox
                 if (previewMesh.Vertices != null && previewMesh.Vertices.Count > 0)
                 {
                     Point3d[] points = previewMesh.Vertices.ToPoint3dArray();
                     return new BoundingBox(points);
                 }
-                
+
                 return BoundingBox.Empty;
             }
         }
@@ -428,6 +425,7 @@ namespace Motion.Toolbar
         {
             // 可以选择是否添加线框绘制
         }
+
         #endregion
 
         private void DisplayPipeline_CalculateBoundingBox(object sender, CalculateBoundingBoxEventArgs e)
@@ -443,7 +441,7 @@ namespace Motion.Toolbar
             if (isActive && previewMesh != null && previewMaterial != null)
             {
                 e.Display.DrawMeshShaded(previewMesh, previewMaterial);
-                e.Display.DrawMeshWires(previewMesh, previewColor,3);
+                e.Display.DrawMeshWires(previewMesh, previewColor, 3);
             }
         }
     }
