@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Motion.General;
 
 
 namespace Motion.Animation
@@ -46,6 +47,7 @@ namespace Motion.Animation
                     return;
                 }
             }
+
             base.SetupTooltip(point, e);
         }
 
@@ -53,8 +55,11 @@ namespace Motion.Animation
         {
             base.Layout();
 
-            float textWidth = (float)System.Math.Max(GH_FontServer.MeasureString(this.Owner.NickName, GH_FontServer.StandardBold).Width + 10, 50);
-            System.Drawing.RectangleF bounds = new System.Drawing.RectangleF(this.Pivot.X - 0.5f * textWidth, this.Pivot.Y - 10f, textWidth, 20f);
+            float textWidth =
+                (float)System.Math.Max(
+                    GH_FontServer.MeasureString(this.Owner.NickName, GH_FontServer.StandardBold).Width + 10, 50);
+            System.Drawing.RectangleF bounds =
+                new System.Drawing.RectangleF(this.Pivot.X - 0.5f * textWidth, this.Pivot.Y - 10f, textWidth, 20f);
             this.Bounds = bounds;
             this.Bounds = GH_Convert.ToRectangle(this.Bounds);
 
@@ -66,6 +71,7 @@ namespace Motion.Animation
             {
                 this.m_stateTags = null;
             }
+
             if (this.m_stateTags != null)
             {
                 this.m_stateTags.Layout(GH_Convert.ToRectangle(this.Bounds), GH_StateTagLayoutDirection.Left);
@@ -84,6 +90,7 @@ namespace Motion.Animation
                 this.Bounds = RectangleF.Union(this.Bounds, arrowRect);
             }
         }
+
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
             base.Render(canvas, graphics, channel);
@@ -103,9 +110,11 @@ namespace Motion.Animation
                 }
             }
         }
+
         private void RenderCapsuleAndArrow(GH_Canvas canvas, Graphics graphics, RectangleF bounds)
         {
-            using (GH_Capsule capsule = GH_Capsule.CreateTextCapsule(bounds, m_textBounds, GH_Palette.Black, Owner.NickName))
+            using (GH_Capsule capsule =
+                   GH_Capsule.CreateTextCapsule(bounds, m_textBounds, GH_Palette.Black, Owner.NickName))
             {
                 capsule.AddInputGrip(this.InputGrip.Y);
                 capsule.AddOutputGrip(this.OutputGrip.Y);
@@ -134,6 +143,7 @@ namespace Motion.Animation
                 this.m_stateTags.RenderStateTags(graphics);
             }
         }
+
         // 添加一个新的方法来绘制区间长度
         private void DrawRangeLength(GH_Canvas canvas, Graphics graphics)
         {
@@ -159,7 +169,7 @@ namespace Motion.Animation
             // 计算文本大小
             SizeF textSize = GH_FontServer.MeasureString(message, GH_FontServer.Standard);
             RectangleF textBounds = new RectangleF(location, textSize);
-            textBounds.Inflate(6, 3);  // 添加一些内边距
+            textBounds.Inflate(6, 3); // 添加一些内边距
 
             using (var brush = new SolidBrush(Color.DeepSkyBlue))
             {
@@ -180,7 +190,8 @@ namespace Motion.Animation
                 arrowColor = Color.LightSkyBlue;
             }
 
-            GH_GraphicsUtil.RenderCenteredText(graphics, "\u27aa", new Font("Arial", 10F), arrowColor, new PointF(loc.X, loc.Y));
+            GH_GraphicsUtil.RenderCenteredText(graphics, "\u27aa", new Font("Arial", 10F), arrowColor,
+                new PointF(loc.X, loc.Y));
         }
 
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
@@ -203,181 +214,35 @@ namespace Motion.Animation
                 timeParam.WireDisplay = GH_ParamWireDisplay.hidden;
 
                 eventComp.LinkToSender(senderParam);
-
-
+                
                 ghDoc.ScheduleSolution(5, doc =>
                 {
-                    switch (MotionSenderSettings.DoubleClickGraphType)
-                    { 
-                        case "Graph Mapper":
-                            var graphMapperGuid = new Guid("bc984576-7aa6-491f-a91d-e444c33675a7");
-                            var graphMapper = Grasshopper.Instances.ComponentServer.EmitObject(graphMapperGuid) as GH_GraphMapper;
-                            if (graphMapper == null) return;
+                    if (GraphTypeHandlerRegistry.Handlers.TryGetValue(
+                            MotionSenderSettings.DoubleClickGraphType, out var handler))
+                    {
+                        var graphComponent =
+                            Grasshopper.Instances.ComponentServer.EmitObject(handler.ComponentGuid) as IGH_Component;
+                        if (graphComponent == null) return;
 
-                            graphMapper.CreateAttributes();
-                            graphMapper.Attributes.Pivot = new PointF(
-                                eventComp.Attributes.Pivot.X + 100,
-                                eventComp.Attributes.Pivot.Y - 75
+                        graphComponent.CreateAttributes();
+                        graphComponent.Attributes.Pivot = new PointF(
+                                eventComp.Attributes.Pivot.X + handler.PositionOffset.X,
+                                eventComp.Attributes.Pivot.Y + handler.PositionOffset.Y
                             );
 
-                            doc.AddObject(graphMapper, false);
+                        doc.AddObject(graphComponent, false);
+                        graphComponent.Params.Input[handler.InputPortIndex].AddSource(eventComp.Params.Output[0]);
+                        handler.PostConfigure(doc, graphComponent);
+                        graphComponent.Params.Input[handler.InputPortIndex].WireDisplay = GH_ParamWireDisplay.faint;
+                        senderParam.Attributes.Selected = false;
+                        graphComponent.Attributes.Selected = true;
+                        eventComp.Attributes.Selected = true;
 
-                            graphMapper.AddSource(eventComp.Params.Output[0]);
-
-                            var bezierGraph = Grasshopper.Instances.ComponentServer.EmitGraph(new GH_BezierGraph().GraphTypeID);
-                            if (bezierGraph != null)
-                            {
-                                bezierGraph.PrepareForUse();
-                                var container = graphMapper.Container;
-                                graphMapper.Container = null;
-
-                                if (container == null)
-                                {
-                                    container = new GH_GraphContainer(bezierGraph);
-                                }
-                                else
-                                {
-                                    container.Graph = bezierGraph;
-                                }
-
-                                container.X0 = 0;
-                                container.X1 = 1;
-                                container.Y0 = 0;
-                                container.Y1 = 1;
-
-                                graphMapper.Container = container;
-                            }
-
-                            graphMapper.WireDisplay = GH_ParamWireDisplay.faint;
-
-                            senderParam.Attributes.Selected = false;
-                            graphMapper.Attributes.Selected = true;
-                            eventComp.Attributes.Selected = true;
-
-                            doc.ScheduleSolution(10, d =>
-                            {
-                                graphMapper.ExpireSolution(true);
-                                eventComp.ExpireSolution(true);
-                            });
-                            break;
-                        case "V-Ray Graph":
-                            var vrayGraphGuid = new Guid("6b30c365-2690-4d61-b2ca-8ec5f2118665");
-                            var vrayGraph = Grasshopper.Instances.ComponentServer.EmitObject(vrayGraphGuid) as GH_Component;
-                            if (vrayGraph == null) return;
-
-                            vrayGraph.CreateAttributes();
-                            vrayGraph.Attributes.Pivot = new PointF(
-                                eventComp.Attributes.Pivot.X + 100,
-                                eventComp.Attributes.Pivot.Y - 57
-                            );
-
-                            doc.AddObject(vrayGraph, false);
-
-                            vrayGraph.Params.Input[0].AddSource(eventComp.Params.Output[0]);
-
-                            vrayGraph.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
-
-                            senderParam.Attributes.Selected = false;
-                            vrayGraph.Attributes.Selected = true;
-                            eventComp.Attributes.Selected = true;
-
-                            doc.ScheduleSolution(10, d =>
-                            {
-                                vrayGraph.ExpireSolution(true);
-                                eventComp.ExpireSolution(true);
-                            });
-                            break;
-                        case "Graph-Mapper +":
-                            var graphMapperPlusGuid = new Guid("310f9597-267e-4471-a7d7-048725557528");
-                            var graphMapperPlus = Grasshopper.Instances.ComponentServer.EmitObject(graphMapperPlusGuid) as GH_Component;
-                            if (graphMapperPlus == null) return;
-
-                            graphMapperPlus.CreateAttributes();
-                            graphMapperPlus.Attributes.Pivot = new PointF(
-                                eventComp.Attributes.Pivot.X + 200,
-                                eventComp.Attributes.Pivot.Y - 25
-                            );
-
-                            doc.AddObject(graphMapperPlus, false);
-
-                            graphMapperPlus.Params.Input[2].AddSource(eventComp.Params.Output[0]);
-
-                            graphMapperPlus.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
-
-                            senderParam.Attributes.Selected = false;
-                            graphMapperPlus.Attributes.Selected = true;
-                            eventComp.Attributes.Selected = true;
-
-                            doc.ScheduleSolution(10, d =>
-                            {
-                                graphMapperPlus.ExpireSolution(true);
-                                eventComp.ExpireSolution(true);
-                            });
-                            break;
-                        case "Rich Graph Mapper":
-                            var richGraphMapperGuid = new Guid("e2996e6c-e067-42fa-8f44-2192c6763262");
-                            var richGraphMapper = Grasshopper.Instances.ComponentServer.EmitObject(richGraphMapperGuid) as GH_Component;
-                            if (richGraphMapper == null) return;
-
-                            richGraphMapper.CreateAttributes();
-                            richGraphMapper.Attributes.Pivot = new PointF(
-                                eventComp.Attributes.Pivot.X + 100,
-                                eventComp.Attributes.Pivot.Y - 15
-                            );
-
-                            doc.AddObject(richGraphMapper, false);
-
-                            richGraphMapper.Params.Input[0].AddSource(eventComp.Params.Output[0]);
-
-                            richGraphMapper.Params.Input[0].WireDisplay = GH_ParamWireDisplay.faint;
-
-                            // Set up a default graph preset (Bezier2Graph) for the Rich Graph Mapper
-                            try
-                            {
-                                var bezier2GraphGuid = new Guid("34afa8f2-fee6-4e3b-82da-b980ffeb87aa");
-                                var customGraph = Grasshopper.Instances.ComponentServer.EmitGraph(bezier2GraphGuid);
-                                if (customGraph != null)
-                                {
-                                    customGraph.PrepareForUse();
-                                    var containerProp = richGraphMapper.GetType().GetProperty("Container");
-                                    if (containerProp != null)
-                                    {
-                                        var container = containerProp.GetValue(richGraphMapper, null) as GH_GraphContainer;
-                                        containerProp.SetValue(richGraphMapper, null, null);
-
-                                        if (container == null)
-                                        {
-                                            container = new GH_GraphContainer(customGraph);
-                                        }
-                                        else
-                                        {
-                                            container.Graph = customGraph;
-                                        }
-
-                                        container.X0 = 0;
-                                        container.X1 = 1;
-                                        container.Y0 = 0;
-                                        container.Y1 = 1;
-
-                                        containerProp.SetValue(richGraphMapper, container, null);
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Rhino.RhinoApp.WriteLine($"[Motion] Failed to set default graph for Rich Graph Mapper: {ex.Message}");
-                            }
-
-                            senderParam.Attributes.Selected = false;
-                            richGraphMapper.Attributes.Selected = true;
-                            eventComp.Attributes.Selected = true;
-
-                            doc.ScheduleSolution(10, d =>
-                            {
-                                richGraphMapper.ExpireSolution(true);
-                                eventComp.ExpireSolution(true);
-                            });
-                            break;
+                        doc.ScheduleSolution(10, d =>
+                        {
+                            graphComponent.ExpireSolution(true);
+                            eventComp.ExpireSolution(true);
+                        });
                     }
                 });
 
