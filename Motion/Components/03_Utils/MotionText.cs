@@ -1,4 +1,4 @@
-﻿﻿using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Types;
@@ -7,6 +7,7 @@ using Rhino.Geometry;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using Rhino;
 using Font = Rhino.DocObjects.Font;
 
 namespace Motion.Utils
@@ -14,9 +15,9 @@ namespace Motion.Utils
     public class MotionText : GH_Component, IGH_PreviewObject
     {
         public MotionText()
-          : base("Motion Text", "Motion Text",
-              "设置文字的各种属性并输出文字的Mesh和边缘线",
-              "Motion", "03_Utils")
+            : base("Motion Text", "Motion Text",
+                "设置文字的各种属性并输出文字的Mesh和边缘线",
+                "Motion", "03_Utils")
         {
         }
 
@@ -27,11 +28,13 @@ namespace Motion.Utils
             {
                 previewCurves.Hidden = true;
             }
+
             // Hide preview for BoundingBox output (index 2)
             if (Params.Output.Count > 2 && Params.Output[2] is IGH_PreviewObject previewBox)
             {
                 previewBox.Hidden = true;
             }
+
             base.BeforeSolveInstance();
         }
 
@@ -136,32 +139,11 @@ namespace Motion.Utils
             DA.GetData(10, ref offsetDistance);
 
             // 验证字体粗细和样式值
-            Font.FontWeight fontWeight = Font.FontWeight.Normal; // Default
-            if (fontWeightInt >= (int)Font.FontWeight.Thin && fontWeightInt <= (int)Font.FontWeight.Heavy) // Check range based on known enum values
-            {
-                 // Cast to byte first, as the underlying type is byte
-                 byte fontWeightByte = (byte)fontWeightInt;
-                 if (Enum.IsDefined(typeof(Font.FontWeight), fontWeightByte))
-                 {
-                     fontWeight = (Font.FontWeight)fontWeightByte;
-                 }
-            }
-
-            Font.FontStyle fontStyle = Font.FontStyle.Upright; // Default
-            if (fontStyleInt >= (int)Font.FontStyle.Upright && fontStyleInt <= (int)Font.FontStyle.Italic) // Check range based on known enum values
-            {
-                 // Cast to byte first, as the underlying type is byte
-                 byte fontStyleByte = (byte)fontStyleInt;
-                 if (Enum.IsDefined(typeof(Font.FontStyle), fontStyleByte))
-                 {
-                     fontStyle = (Font.FontStyle)fontStyleByte;
-                 }
-            }
-
+            if (!TryParseFontWeight(fontWeightInt, out Font.FontWeight fontWeight)) return;
+            if (!TryParseFontStyle(fontStyleInt, out Font.FontStyle fontStyle)) return;
 
             // 创建字体
             Font rhinoFont = new Font(fontName, fontWeight, fontStyle, false, false);
-
 
             // 创建 TextEntity
             var textEntity = new TextEntity
@@ -173,59 +155,20 @@ namespace Motion.Utils
             };
 
             // 设置 Justification (映射输入整数到枚举)
-            TextJustification justification = TextJustification.None;
-            switch (hAlign) // Based on named values in RegisterInputParams
-            {
-                case 0: justification |= TextJustification.Left; break;
-                case 1: justification |= TextJustification.Center; break;
-                case 2: justification |= TextJustification.Right; break;
-                default: justification |= TextJustification.Center; break; // Default fallback
-            }
-            switch (vAlign) // Based on named values, map to closest TextJustification equivalent
-            {
-                case 0: justification |= TextJustification.Top; break;    // Top
-                case 1: justification |= TextJustification.Middle; break; // MiddleOfTop -> Middle
-                case 2: justification |= TextJustification.Bottom; break; // BottomOfTop -> Bottom
-                case 3: justification |= TextJustification.Middle; break; // Middle
-                case 4: justification |= TextJustification.Middle; break; // MiddleOfBottom -> Middle
-                case 5: justification |= TextJustification.Bottom; break; // Bottom
-                case 6: justification |= TextJustification.Bottom; break; // BottomOfBoundingBox -> Bottom
-                default: justification |= TextJustification.Middle; break; // Default fallback
-            }
+            TextJustification justification = MapJustification(hAlign, vAlign);
             textEntity.Justification = justification;
-
-
+            
             // 创建 DimensionStyle (用于生成几何体)
-            // DimensionStyle uses more specific alignment enums which might match inputs better
-            TextHorizontalAlignment dimHAlign = TextHorizontalAlignment.Center; // Default
-            // Check if hAlign is within the valid range for the enum (assuming values 0, 1, 2 based on RegisterInputParams)
-            if (hAlign >= 0 && hAlign <= 2)
-            {
-                byte hAlignByte = (byte)hAlign;
-                if (Enum.IsDefined(typeof(TextHorizontalAlignment), hAlignByte))
-                {
-                    dimHAlign = (TextHorizontalAlignment)hAlignByte;
-                }
-            }
+            // 验证对齐参数并创建 DimensionStyle
+            if (!TryParseHorizontalAlignment(hAlign, out TextHorizontalAlignment dimHAlign)) return;
+            if (!TryParseVerticalAlignment(vAlign, out TextVerticalAlignment dimVAlign)) return;
 
-            TextVerticalAlignment dimVAlign = TextVerticalAlignment.Middle; // Default
-            // Check if vAlign is within the valid range for the enum (assuming values 0 to 6 based on RegisterInputParams)
-             if (vAlign >= 0 && vAlign <= 6)
-            {
-                 byte vAlignByte = (byte)vAlign;
-                 if (Enum.IsDefined(typeof(TextVerticalAlignment), vAlignByte))
-                 {
-                     dimVAlign = (TextVerticalAlignment)vAlignByte;
-                 }
-            }
-
-            DimensionStyle style = new DimensionStyle
+            var style = new DimensionStyle
             {
                 TextHeight = height,
                 Font = rhinoFont,
                 TextHorizontalAlignment = dimHAlign,
                 TextVerticalAlignment = dimVAlign,
-                // Ensure other relevant DimStyle properties are set if needed
             };
 
             // 获取边缘线（使用 TextEntity.CreateCurves）
@@ -245,187 +188,278 @@ namespace Motion.Utils
             // TODO: Explore if CreateCurves result can be reliably mapped to paths matching textBreps.
 
             // 遍历每个 Brep (主要用于 Mesh 生成和保持曲线路径一致性)
-            if (textBreps != null)
+            if (textBreps == null) return;
+
+            for (int i = 0; i < textBreps.Length; i++)
             {
-                for (int i = 0; i < textBreps.Length; i++)
-                {
-                    var brep = textBreps[i];
-                    if (brep == null) continue; // Null check
+                var brep = textBreps[i];
+                if (brep == null) continue; // Null check
 
-                    var path = new GH_Path(i);
+                var path = new GH_Path(i);
 
-                    // --- 处理边缘曲线 (从 Brep 提取以匹配 Mesh 路径) ---
-                    var edges = brep.Edges;
-                    if (edges != null)
-                    {
-                        var edgeCurves = new List<Curve>();
-                        foreach (var edge in edges)
-                        {
-                            if (edge != null)
-                            {
-                                // Optimization: Try using EdgeCurve directly if it's suitable
-                                // Curve edgeCurve = edge.EdgeCurve;
-                                // if(edgeCurve != null) edgeCurves.Add(edgeCurve.DuplicateCurve()); // Duplicate if needed
-                                // else ... fallback to ToNurbsCurve
-                                var curve = edge.ToNurbsCurve(); // Can be costly
-                                if (curve != null)
-                                {
-                                    edgeCurves.Add(curve);
-                                }
-                            }
-                        }
+                // --- 处理边缘曲线 (从 Brep 提取以匹配 Mesh 路径) ---
+                ProcessBrepEdgesToCurves(brep, RhinoDoc.ActiveDoc.ModelAbsoluteTolerance * 2.1, path, curveTree);
+                // --- 边缘曲线处理结束 ---
+                
+                // --- 处理网格 (主要性能瓶颈之一) ---
+                // Consider allowing user control over MeshingParameters
+                var mp = MeshingParameters.FastRenderMesh;
+                // Example: var mp = MeshingParameters.QualityRenderMesh;
+                // Example: var mp = new MeshingParameters(0.01); // Tolerance based
 
-                        if (edgeCurves.Count > 0)
-                        {
-                            // Curve.JoinCurves can be costly too
-                            var joinedCurves = Curve.JoinCurves(edgeCurves, Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance * 2.1); // Use document tolerance
-                            if (joinedCurves != null)
-                            {
-                                foreach (var joinedCurve in joinedCurves)
-                                {
-                                    if (joinedCurve != null)
-                                        curveTree.Append(new GH_Curve(joinedCurve), path);
-                                }
-                            }
-                            else // If join fails, add individual curves
-                            {
-                                foreach (var edgeCurve in edgeCurves)
-                                {
-                                     curveTree.Append(new GH_Curve(edgeCurve), path);
-                                }
-                            }
-                        }
-                    }
-                    // --- 边缘曲线处理结束 ---
-
-
-                    // --- 处理网格 (主要性能瓶颈之一) ---
-                    // Consider allowing user control over MeshingParameters
-                    var mp = MeshingParameters.FastRenderMesh;
-                    // Example: var mp = MeshingParameters.QualityRenderMesh;
-                    // Example: var mp = new MeshingParameters(0.01); // Tolerance based
-
-                    var meshParts = Mesh.CreateFromBrep(brep, mp);
-                    if (meshParts != null && meshParts.Length > 0)
-                    {
-                        // Combine mesh parts if necessary (usually CreateFromBrep returns one mesh for simple Breps)
-                        Mesh finalMesh = meshParts[0];
-                        if (meshParts.Length > 1)
-                        {
-                            finalMesh = new Mesh();
-                            foreach (var meshPart in meshParts)
-                            {
-                                if (meshPart != null)
-                                    finalMesh.Append(meshPart);
-                            }
-                            finalMesh.Compact(); // Clean up unused components
-                        }
-
-                        if (finalMesh != null && finalMesh.Faces.Count > 0)
-                        {
-                            // 检查颜色输入参数（索引 8）是否有连接源
-                            if (Params.Input[8].SourceCount > 0||Params.Input[8].VolatileDataCount > 0)
-                            {
-                                // 设置颜色 (仅当提供了颜色输入时)
-                                Color meshColor = Color.White; // 如果列表为空但有连接，则为默认值
-                                if (colors.Count > 0)
-                                {
-                                    // 使用模数进行更清晰的颜色循环
-                                    meshColor = colors[i % colors.Count];
-                                }
-                                finalMesh.VertexColors.CreateMonotoneMesh(meshColor);
-                            }
-                            // Else: 不应用顶点颜色，保留网格默认颜色
-
-                            meshTree.Append(new GH_Mesh(finalMesh), path);
-                        }
-                    }
-                    // --- 网格处理结束 ---
-                }
+                ProcessMeshWithColor(brep, mp, colors, i, path, meshTree);
+                // --- 网格处理结束 ---
             }
-
-
+            
             // --- 计算带偏移的边界矩形 (优化并内联) ---
-            Rectangle3d boundingRect = Rectangle3d.Unset;
-            if (curves != null && curves.Length > 0) // Use curves from CreateCurves
-            {
-                // Use the input plane for bounding box calculation initially
-                Plane textPlaneForBounds = plane;
-
-                BoundingBox combinedBox = BoundingBox.Empty;
-                bool firstBox = true;
-
-                foreach (Curve curve in curves)
-                {
-                    if (curve != null)
-                    {
-                        // Get BoundingBox relative to the text plane
-                        BoundingBox curveBox = curve.GetBoundingBox(textPlaneForBounds);
-                        if (curveBox.IsValid)
-                        {
-                            if (firstBox)
-                            {
-                                combinedBox = curveBox;
-                                firstBox = false;
-                            }
-                            else
-                            {
-                                combinedBox.Union(curveBox);
-                            }
-                        }
-                    }
-                }
-
-                if (combinedBox.IsValid)
-                {
-                    // Get intervals in the plane's coordinate system
-                    Point3d[] corners = combinedBox.GetCorners();
-                    Interval boundX = Interval.Unset;
-                    Interval boundY = Interval.Unset;
-                    bool firstPoint = true;
-
-                    foreach (Point3d corner in corners)
-                    {
-                        if (textPlaneForBounds.ClosestParameter(corner, out double u, out double v))
-                        {
-                             if (firstPoint)
-                             {
-                                 boundX = new Interval(u, u);
-                                 boundY = new Interval(v, v);
-                                 firstPoint = false;
-                             }
-                             else
-                             {
-                                 boundX.Grow(u);
-                                 boundY.Grow(v);
-                             }
-                        }
-                    }
-
-
-                    if (boundX.IsValid && boundY.IsValid)
-                    {
-                        // Apply offset to the intervals
-                        boundX = new Interval(boundX.T0 - offsetDistance, boundX.T1 + offsetDistance);
-                        boundY = new Interval(boundY.T0 - offsetDistance, boundY.T1 + offsetDistance);
-
-                        // Create the final rectangle on the text plane
-                        boundingRect = new Rectangle3d(textPlaneForBounds, boundX, boundY);
-                    }
-                }
-            }
+            Rectangle3d boundingRect = ComputeBoundingRectWithOffset(curves, plane, offsetDistance);
             // --- 边界矩形计算结束 ---
-
-
+            
             // 输出结果
             DA.SetDataTree(0, meshTree);
             DA.SetDataTree(1, curveTree); // Curve tree still populated from Brep edges for path consistency
             DA.SetData(2, new GH_Rectangle(boundingRect)); // Wrap in GH_Rectangle
         }
+        
+        /// <summary>
+        /// 验证并转换水平对齐参数（0=Left, 1=Center, 2=Right）。
+        /// 无效时返回 false。
+        /// </summary>
+        private bool TryParseHorizontalAlignment(int hAlign, out TextHorizontalAlignment alignment)
+        {
+            alignment = TextHorizontalAlignment.Center;
 
-        // Removed GetTextJustification method
-        // Removed GetOffsetTextRectangle method
+            // 修正：用 || 检查范围
+            if (hAlign < 0 || hAlign > 2) return false;
 
+            byte b = (byte)hAlign;
+            if (!Enum.IsDefined(typeof(TextHorizontalAlignment), b)) return false;
+
+            alignment = (TextHorizontalAlignment)b;
+            return true;
+        }
+
+        /// <summary>
+        /// 验证并转换垂直对齐参数（0=Top, 1=MiddleOfTop, 2=BottomOfTop, 3=Middle, 4=MiddleOfBottom, 5=Bottom, 6=BottomOfBoundingBox）。
+        /// 无效时返回 false。
+        /// </summary>
+        private bool TryParseVerticalAlignment(int vAlign, out TextVerticalAlignment alignment)
+        {
+            alignment = TextVerticalAlignment.Middle;
+
+            // 修正：用 || 检查范围
+            if (vAlign < 0 || vAlign > 6) return false;
+
+            byte b = (byte)vAlign;
+            if (!Enum.IsDefined(typeof(TextVerticalAlignment), b)) return false;
+
+            alignment = (TextVerticalAlignment)b;
+            return true;
+        }
+        
+        /// <summary>
+        /// 验证并转换字体粗细参数。无效时返回 false。
+        /// </summary>
+        private bool TryParseFontWeight(int fontWeightInt, out Font.FontWeight fontWeight)
+        {
+            fontWeight = Font.FontWeight.Normal;
+
+            // 检查范围（基于已知枚举值 Thin~Heavy）
+            if (fontWeightInt < (int)Font.FontWeight.Thin && fontWeightInt > (int)Font.FontWeight.Heavy)
+                return false;
+
+            byte fontWeightByte = (byte)fontWeightInt;
+            if (!Enum.IsDefined(typeof(Font.FontWeight), fontWeightByte))
+                return false;
+
+            fontWeight = (Font.FontWeight)fontWeightByte;
+            return true;
+        }
+
+        /// <summary>
+        /// 验证并转换字体样式参数。无效时返回 false。
+        /// </summary>
+        private bool TryParseFontStyle(int fontStyleInt, out Font.FontStyle fontStyle)
+        {
+            fontStyle = Font.FontStyle.Upright;
+
+            if (fontStyleInt < (int)Font.FontStyle.Upright && fontStyleInt > (int)Font.FontStyle.Italic)
+                return false;
+
+            byte fontStyleByte = (byte)fontStyleInt;
+            if (!Enum.IsDefined(typeof(Font.FontStyle), fontStyleByte))
+                return false;
+
+            fontStyle = (Font.FontStyle)fontStyleByte;
+            return true;
+        }
+        
+        /// <summary>
+        /// 将水平/垂直对齐整数映射为 TextJustification 枚举。
+        /// </summary>
+        private TextJustification MapJustification(int hAlign, int vAlign)
+        {
+            TextJustification justification = TextJustification.None;
+
+            // 水平对齐
+            justification |= hAlign switch
+            {
+                0 => TextJustification.Left,
+                1 => TextJustification.Center,
+                2 => TextJustification.Right,
+                _ => TextJustification.Center // 默认
+            };
+
+            // 垂直对齐
+            justification |= vAlign switch
+            {
+                0 => TextJustification.Top,
+                1 => TextJustification.Middle,
+                2 => TextJustification.Bottom,
+                3 => TextJustification.Middle,
+                4 => TextJustification.Middle,
+                5 => TextJustification.Bottom,
+                6 => TextJustification.Bottom,
+                _ => TextJustification.Middle
+            };
+
+            return justification;
+        }
+
+        /// <summary>
+        /// 提取 Brep 的边缘曲线，尝试合并后添加到曲线树。合并失败则添加单独曲线。
+        /// </summary>
+        private void ProcessBrepEdgesToCurves(Brep brep, double tolerance, GH_Path path,
+            GH_Structure<GH_Curve> curveTree)
+        {
+            var edges = brep.Edges;
+            if (edges == null) return;
+
+            var edgeCurves = new List<Curve>();
+            foreach (var edge in edges)
+            {
+                if (edge == null) continue;
+                var curve = edge.ToNurbsCurve();
+                if (curve == null) continue;
+                edgeCurves.Add(curve);
+            }
+
+            if (edgeCurves.Count == 0) return;
+
+            var joinedCurves = Curve.JoinCurves(edgeCurves, tolerance);
+            if (joinedCurves != null)
+            {
+                foreach (var joinedCurve in joinedCurves)
+                {
+                    if (joinedCurve == null) continue;
+                    curveTree.Append(new GH_Curve(joinedCurve), path);
+                }
+            }
+            else
+            {
+                foreach (var edgeCurve in edgeCurves)
+                {
+                    curveTree.Append(new GH_Curve(edgeCurve), path);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 处理单个 Brep 的网格生成、合并与顶点颜色设置。
+        /// </summary>
+        private void ProcessMeshWithColor(Brep brep, MeshingParameters mp, List<Color> colors,
+            int index, GH_Path path, GH_Structure<GH_Mesh> meshTree)
+        {
+            var meshParts = Mesh.CreateFromBrep(brep, mp);
+            if (meshParts == null || meshParts.Length == 0) return;
+
+            // 合并网格
+            Mesh finalMesh = meshParts[0];
+            if (meshParts.Length > 1)
+            {
+                finalMesh = new Mesh();
+                foreach (var part in meshParts)
+                {
+                    if (part != null) finalMesh.Append(part);
+                }
+                finalMesh.Compact();
+            }
+
+            if (finalMesh == null || finalMesh.Faces.Count == 0) return;
+
+            // 顶点颜色（如果有输入）
+            if (Params.Input[8].SourceCount > 0 || Params.Input[8].VolatileDataCount > 0)
+            {
+                if (colors.Count > 0)
+                {
+                    Color meshColor = colors[index % colors.Count];
+                    finalMesh.VertexColors.CreateMonotoneMesh(meshColor);
+                }
+            }
+
+            meshTree.Append(new GH_Mesh(finalMesh), path);
+        }
+        
+        /// <summary>
+        /// 根据曲线集合、文本平面和偏移距离计算带偏移的边界矩形。
+        /// 无法计算时返回 Rectangle3d.Unset。
+        /// </summary>
+        private Rectangle3d ComputeBoundingRectWithOffset(Curve[] curves, Plane plane, double offsetDistance)
+        {
+            if (curves == null || curves.Length == 0) return Rectangle3d.Unset;
+
+            BoundingBox combinedBox = BoundingBox.Empty;
+            bool hasBox = false;
+
+            foreach (Curve curve in curves)
+            {
+                if (curve == null) continue;
+
+                BoundingBox curveBox = curve.GetBoundingBox(plane);
+                if (!curveBox.IsValid) continue;
+
+                if (hasBox)
+                    combinedBox.Union(curveBox);
+                else
+                {
+                    combinedBox = curveBox;
+                    hasBox = true;
+                }
+            }
+
+            if (!hasBox || !combinedBox.IsValid) return Rectangle3d.Unset;
+
+            // 获取角点并映射到平面 UV 区间
+            Point3d[] corners = combinedBox.GetCorners();
+            Interval boundX = Interval.Unset;
+            Interval boundY = Interval.Unset;
+            bool firstPoint = true;
+
+            foreach (Point3d corner in corners)
+            {
+                if (!plane.ClosestParameter(corner, out double u, out double v)) continue;
+
+                if (firstPoint)
+                {
+                    boundX = new Interval(u, u);
+                    boundY = new Interval(v, v);
+                    firstPoint = false;
+                }
+                else
+                {
+                    boundX.Grow(u);
+                    boundY.Grow(v);
+                }
+            }
+
+            if (!boundX.IsValid || !boundY.IsValid) return Rectangle3d.Unset;
+
+            // 应用偏移
+            boundX = new Interval(boundX.T0 - offsetDistance, boundX.T1 + offsetDistance);
+            boundY = new Interval(boundY.T0 - offsetDistance, boundY.T1 + offsetDistance);
+
+            return new Rectangle3d(plane, boundX, boundY);
+        }
         public override GH_Exposure Exposure => GH_Exposure.quarternary;
 
         protected override System.Drawing.Bitmap Icon => Properties.Resources.MotionText;
