@@ -47,9 +47,11 @@ namespace Motion.Animation
                                 break;
 
                             case GH_Component component:
-                                bool isGraphMapperPlus = component.ComponentGuid == new Guid("310f9597-267e-4471-a7d7-048725557528");
-                                IGH_Param inputParameter = component.Params.Input[isGraphMapperPlus ? 2 : 0];
-
+                                var handler = GraphTypeHandlerRegistry.Handlers.Values
+                                    .FirstOrDefault(h => h.ComponentGuid == component.ComponentGuid);
+                                int portIndex = handler?.InputPortIndex ?? 0;
+                                IGH_Param inputParameter = component.Params.Input[portIndex];
+                                
                                 if (inputParameter?.Sources.Count == 0) break;
 
                                 IGH_DocumentObject sourceObject = inputParameter.Sources[0];

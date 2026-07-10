@@ -2,6 +2,7 @@ using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Rhino.Geometry;
 using System;
+using System.Linq;
 using Motion.General;
 
 namespace Motion.Animation
@@ -25,6 +26,7 @@ namespace Motion.Animation
             {
                 InitializeAfterLoad();
             }
+
             base.BeforeSolveInstance();
         }
 
@@ -45,8 +47,10 @@ namespace Motion.Animation
                 {
                     UpdateGroupVisibilityAndLock();
                 }
+
                 return;
             }
+
             IGH_DocumentObject targetOperation = null;
 
             if (Params.Output[0].Recipients.Count == 0) return;
@@ -70,9 +74,9 @@ namespace Motion.Animation
                     var component = topLevelObj as GH_Component;
                     if (component != null && component.Params.Input.Count > 0)
                     {
-                        bool isGraphMapperPlus = component.ComponentGuid == new Guid("310f9597-267e-4471-a7d7-048725557528");
-                        IGH_Param inputParameter = component.Params.Input[isGraphMapperPlus ? 2 : 0];
-
+                        var handler = GraphTypeHandlerRegistry.FindByGuid(component.ComponentGuid);
+                        int portIndex = handler?.InputPortIndex ?? 0;
+                        IGH_Param inputParameter = component.Params.Input[portIndex];
                         if (inputParameter.Sources.Contains(this.Params.Output[0]))
                         {
                             targetOperation = component;
@@ -89,6 +93,7 @@ namespace Motion.Animation
                 _hasEventOperation = true;
                 break;
             }
+
             if (!_hasEventOperation)
             {
                 this.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "没有找到关联 of EventOperation 组件");
@@ -100,13 +105,13 @@ namespace Motion.Animation
             // 获取输入数据
             if (!DA.GetData(0, ref time)) return;
             if (!DA.GetData(1, ref domain)) return;
-            
+
             // 从NickName解析区间
             if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
             {
                 // 用Timeline Slider模式
                 if (_timelineSlider == null) return;
-                
+
                 double timelineSliderValue = (double)_timelineSlider.CurrentValue;
                 // 计算当前是否在区间内
                 bool currentInInterval = timelineSliderValue > min && timelineSliderValue < max;
@@ -128,6 +133,7 @@ namespace Motion.Animation
                 {
                     UpdateGroupVisibilityAndLock();
                 }
+
                 // 非空值模式下的处理
                 if (!UseEmptyValueMode)
                 {
@@ -135,9 +141,9 @@ namespace Motion.Animation
                     _lastInInterval = currentInInterval;
                     _lastHasData = true;
                 }
+
                 // 更新Message以显示当前时间值
                 this.Message = $"[{min}-{max}]\n{value:F2}";
-            
             }
             else
             {
@@ -146,6 +152,7 @@ namespace Motion.Animation
                 {
                     UpdateGroupVisibilityAndLock();
                 }
+
                 _lastHasData = true;
             }
         }
