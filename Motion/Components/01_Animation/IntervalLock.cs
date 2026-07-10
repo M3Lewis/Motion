@@ -13,6 +13,7 @@ namespace Motion.Animation
         private bool _previousState = false;
         private List<IGH_ActiveObject> _groupComponents = new List<IGH_ActiveObject>();
         private Guid? _currentGroupId = null;
+
         public IntervalLock()
             : base("Interval Lock", "Lock",
                 "检测时间是否在指定区间内，不在区间内时锁定同组内的组件.",
@@ -29,7 +30,8 @@ namespace Motion.Animation
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddBooleanParameter("Include?", "I", "Whether the time is within the interval", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Include?", "I", "Whether the time is within the interval",
+                GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -38,50 +40,49 @@ namespace Motion.Animation
             {
                 // 检查组内组件数量是否发生变化
                 var doc = OnPingDocument();
-                if (doc != null)
+                if (doc == null) return;
+
+                var currentGroup = doc.Objects
+                    .OfType<GH_Group>()
+                    .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
+
+                if (currentGroup == null) return;
+
+                // 获取当前组内的所有活动组件
+                var currentComponents = currentGroup.ObjectIDs
+                    .Select(id => doc.FindObject(id, true))
+                    .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
+                    .Cast<IGH_ActiveObject>()
+                    .ToList();
+
+                // 检查是否有新组件加入
+                var newComponents = currentComponents.Except(_groupComponents).ToList();
+                if (newComponents.Any())
                 {
-                    var currentGroup = doc.Objects
-                        .OfType<GH_Group>()
-                        .FirstOrDefault(g => g.ObjectIDs.Contains(this.InstanceGuid));
-
-                    if (currentGroup != null)
+                    // 更新缓存列表
+                    _groupComponents = currentComponents;
+                    // 对新加入的组件应用当前的锁定状态
+                    foreach (var component in newComponents)
                     {
-                        // 获取当前组内的所有活动组件
-                        var currentComponents = currentGroup.ObjectIDs
-                            .Select(id => doc.FindObject(id, true))
-                            .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
-                            .Cast<IGH_ActiveObject>()
-                            .ToList();
-
-                        // 检查是否有新组件加入
-                        var newComponents = currentComponents.Except(_groupComponents).ToList();
-                        if (newComponents.Any())
-                        {
-                            // 更新缓存列表
-                            _groupComponents = currentComponents;
-                            // 对新加入的组件应用当前的锁定状态
-                            foreach (var component in newComponents)
-                            {
-                                component.Locked = !_previousState;
-                                component.ExpireSolution(false);
-                            }
-                        }
-                        // 检查是否有组件被移除
-                        else if (currentComponents.Count != _groupComponents.Count)
-                        {
-                            var removedComponents = _groupComponents.Except(currentComponents).ToList();
-                            foreach (var component in removedComponents)
-                            {
-                                if (component != null)
-                                {
-                                    component.Locked = false;
-                                    component.ExpireSolution(false);
-                                }
-                            }
-                            _groupComponents = currentComponents;
-                        }
+                        component.Locked = !_previousState;
+                        component.ExpireSolution(false);
                     }
                 }
+                // 检查是否有组件被移除
+                else if (currentComponents.Count != _groupComponents.Count)
+                {
+                    var removedComponents = _groupComponents.Except(currentComponents).ToList();
+                    foreach (var component in removedComponents)
+                    {
+                        if (component == null) continue;
+
+                        component.Locked = false;
+                        component.ExpireSolution(false);
+                    }
+
+                    _groupComponents = currentComponents;
+                }
+
 
                 double time = 0;
                 var domains = new List<Interval>();
@@ -145,14 +146,8 @@ namespace Motion.Animation
         {
             try
             {
-                _groupComponents.ToList().ForEach(delegate (IGH_ActiveObject o)
-                {
-                    o.Locked = lockState;
-                });
-                _groupComponents.ToList().ForEach(delegate (IGH_ActiveObject o)
-                {
-                    o.ExpireSolution(recompute: false);
-                });
+                _groupComponents.ToList().ForEach(delegate(IGH_ActiveObject o) { o.Locked = lockState; });
+                _groupComponents.ToList().ForEach(delegate(IGH_ActiveObject o) { o.ExpireSolution(recompute: false); });
             }
             catch (Exception ex)
             {
@@ -215,14 +210,14 @@ namespace Motion.Animation
             _currentGroupId = currentGroup?.InstanceGuid;
 
             // 如果存在新组，添加新组件
-            if (currentGroup != null)
-            {
-                _groupComponents = currentGroup.ObjectIDs
-                    .Select(id => doc.FindObject(id, true))
-                    .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
-                    .Cast<IGH_ActiveObject>()
-                    .ToList();
-            }
+            if (currentGroup == null) return;
+
+            _groupComponents = currentGroup.ObjectIDs
+                .Select(id => doc.FindObject(id, true))
+                .Where(obj => obj != null && obj != this && obj is IGH_ActiveObject)
+                .Cast<IGH_ActiveObject>()
+                .ToList();
+
 
             // 根据当前状态设置新组件的锁定状态
             if (_groupComponents.Count > 0)
