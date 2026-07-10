@@ -45,7 +45,8 @@ namespace Motion.Toolbar
                 Size = new Size(24, 24),
                 DisplayStyle = ToolStripItemDisplayStyle.Image,
                 Image = Properties.Resources.ConnectToEventOperation,
-                ToolTipText = General.LanguageManager.GetString("Button.ConnectToEventOperation.Tooltip", "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组 of Event Operation")
+                ToolTipText = General.LanguageManager.GetString("Button.ConnectToEventOperation.Tooltip",
+                    "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组 of Event Operation")
             };
 
             _button.Click += OnConnectToEventOperation;
@@ -56,7 +57,8 @@ namespace Motion.Toolbar
         {
             if (_button != null)
             {
-                _button.ToolTipText = General.LanguageManager.GetString("Button.ConnectToEventOperation.Tooltip", "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组 of Event Operation");
+                _button.ToolTipText = General.LanguageManager.GetString("Button.ConnectToEventOperation.Tooltip",
+                    "将选定的Graph Mapper连接到新的Event Operation\n可选择已存在的Event Operation和Graph Mapper进行连接\n若Graph Mapper位于不同组中，将各自连接到所在组 of Event Operation");
             }
         }
 
@@ -74,7 +76,9 @@ namespace Motion.Toolbar
 
                 if (selectedConnectables.Count == 0)
                 {
-                    ShowTemporaryMessage(canvas, General.LanguageManager.GetString("Msg.SelectGraphMapperOrComponent", "请选择至少一个Graph Mapper或组件"));
+                    ShowTemporaryMessage(canvas,
+                        General.LanguageManager.GetString("Msg.SelectGraphMapperOrComponent",
+                            "请选择至少一个Graph Mapper或组件"));
                     return;
                 }
 
@@ -127,7 +131,8 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, string.Format(General.LanguageManager.GetString("Msg.ErrorOccurred", "发生错误：{0}"), ex.Message));
+                ShowTemporaryMessage(Instances.ActiveCanvas,
+                    string.Format(General.LanguageManager.GetString("Msg.ErrorOccurred", "发生错误：{0}"), ex.Message));
             }
         }
 
@@ -137,34 +142,20 @@ namespace Motion.Toolbar
             List<ConnectableObject> ungroupedConnectables,
             EventOperationConnectionManager connectionManager)
         {
-            var doc = Instances.ActiveCanvas.Document;
             bool anyConnected = false;
 
-            // 遍历每个组
             foreach (var groupEntry in connectablesByGroup)
             {
                 var group = groupEntry.Key;
                 var groupConnectables = groupEntry.Value;
 
-                // 1. 将组外的Graph Mapper和相关Event加入到组中
-                foreach (var ungrouped in ungroupedConnectables)
-                {
-                    group.AddObject(ungrouped.Object.InstanceGuid);
+                // 将组外的对象（及其关联 Event）加入组
+                AddUngroupedObjectsToGroup(group, ungroupedConnectables);
 
-                    // 添加相关的Event组件到组
-                    foreach (var evt in ungrouped.GetRelatedEventComponents())
-                    {
-                        if (!group.ObjectIDs.Contains(evt.InstanceGuid))
-                        {
-                            group.AddObject(evt.InstanceGuid);
-                        }
-                    }
-                }
-
-                // 2. 查找组内是否已有EventOperation
+                // 查找或创建组内的 EventOperation
                 var eventOp = FindOrCreateEventOperationForGroup(group, connectionManager);
 
-                // 3. 将所有Graph Mapper（包括原来组内的和新加入的）连接到EventOperation
+                // 合并组内原有对象和新加入的对象，统一连接
                 var allConnectables = new List<ConnectableObject>(groupConnectables);
                 allConnectables.AddRange(ungroupedConnectables);
 
@@ -172,13 +163,31 @@ namespace Motion.Toolbar
                 anyConnected |= connected;
             }
 
+            // 显示结果消息
+            var canvas = Instances.ActiveCanvas;
             if (anyConnected)
-            {
-                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.ConnectedGraphMapperToGroup", "已将Graph Mapper连接到组内的Event Operation"));
-            }
+                ShowTemporaryMessage(canvas,
+                    General.LanguageManager.GetString("Msg.ConnectedGraphMapperToGroup",
+                        "已将Graph Mapper连接到组内的Event Operation"));
             else
+                ShowTemporaryMessage(canvas,
+                    General.LanguageManager.GetString("Msg.CannotConnectGraphMapper",
+                        "无法连接Graph Mapper到Event Operation"));
+        }
+
+        /// <summary>
+        /// 将未分组的对象加入组，并将其关联的 Event 组件也一并加入（如果尚未在组内）。
+        /// </summary>
+        private void AddUngroupedObjectsToGroup(GH_Group group, List<ConnectableObject> ungroupedConnectables)
+        {
+            foreach (var ungrouped in ungroupedConnectables)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.CannotConnectGraphMapper", "无法连接Graph Mapper到Event Operation"));
+                group.AddObject(ungrouped.Object.InstanceGuid);
+                foreach (var evt in ungrouped.GetRelatedEventComponents())
+                {
+                    if (!group.ObjectIDs.Contains(evt.InstanceGuid))
+                        group.AddObject(evt.InstanceGuid);
+                }
             }
         }
 
@@ -214,6 +223,7 @@ namespace Motion.Toolbar
                     return connectedEventOps;
                 }
             }
+
             // 计算新组件的位置 - 使用组内对象的平均位置
             PointF avgPos = connectionManager.CalculateAveragePosition(
                 allGroupConnectables.Select(c => c.Object).ToList());
@@ -239,7 +249,6 @@ namespace Motion.Toolbar
         }
 
         // 处理不在任何组内的对象
-        // 处理不在任何组内的对象
         private void ProcessUngroupedConnectables(
             List<ConnectableObject> ungroupedConnectables,
             EventOperationConnectionManager connectionManager)
@@ -250,7 +259,9 @@ namespace Motion.Toolbar
             var connectedEventOp = connectionManager.GetCommonConnectedEventOperation(ungroupedConnectables);
             if (connectedEventOp != null)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.AlreadyConnectedToEventOperation", "选中的对象已连接至Event Operation"));
+                ShowTemporaryMessage(Instances.ActiveCanvas,
+                    General.LanguageManager.GetString("Msg.AlreadyConnectedToEventOperation",
+                        "选中的对象已连接至Event Operation"));
                 return;
             }
 
@@ -258,7 +269,7 @@ namespace Motion.Toolbar
             PointF avgPos = connectionManager.CalculateAveragePosition(
                 ungroupedConnectables.Select(c => c.Object).ToList());
             PointF finalPos = new PointF(avgPos.X + 200, avgPos.Y);
-            
+
             EventOperation eventOp = EventOperation.CreateAndAddEventOperation(doc, finalPos);
 
             // 连接对象到新的EventOperation
@@ -303,10 +314,9 @@ namespace Motion.Toolbar
         }
 
         private void ProcessMultiGroupConnectables(
-    Dictionary<GH_Group, List<ConnectableObject>> connectablesByGroup,
-    EventOperationConnectionManager connectionManager)
+            Dictionary<GH_Group, List<ConnectableObject>> connectablesByGroup,
+            EventOperationConnectionManager connectionManager)
         {
-            var doc = Instances.ActiveCanvas.Document;
             bool anyConnected = false;
 
             foreach (var groupEntry in connectablesByGroup)
@@ -314,69 +324,62 @@ namespace Motion.Toolbar
                 var group = groupEntry.Key;
                 var connectables = groupEntry.Value;
 
-                // 首先查找组内是否已有GraphMapper连接到了EventOperation
-                EventOperation existingEventOp = null;
+                var existingEventOp = FindConnectedEventOperationInGroup(group, connectables);
+                if (existingEventOp == null)
+                    existingEventOp = connectionManager.FindEventOperationInGroup(group);
 
-                // 获取组内所有对象
-                var groupObjects = doc.Objects.Where(obj => group.ObjectIDs.Contains(obj.InstanceGuid));
-                var groupConnectableSelector = new ConnectableObjectSelector(groupObjects);
-                var allGroupConnectables = groupConnectableSelector.GetConnectableObjects();
-
-                // 查找组内其他GraphMapper已连接的EventOperation
-                foreach (var groupConnectable in allGroupConnectables)
-                {
-                    if (!connectables.Contains(groupConnectable)) // 排除当前选中的对象
-                    {
-                        var connectedEventOps = groupConnectable.GetRecipients()
-                            .Select(r => r.Attributes.GetTopLevel.DocObject)
-                            .OfType<EventOperation>()
-                            .FirstOrDefault();
-
-                        if (connectedEventOps != null)
-                        {
-                            existingEventOp = connectedEventOps;
-                            break;
-                        }
-                    }
-                }
-
-                // 如果找到了已连接的EventOperation，使用它
                 if (existingEventOp != null)
                 {
-                    bool connected = connectionManager.ConnectObjectsToEventOperation(connectables, existingEventOp);
-                    anyConnected |= connected;
+                    anyConnected |= connectionManager.ConnectObjectsToEventOperation(connectables, existingEventOp);
                 }
                 else
                 {
-                    // 如果没找到已连接的EventOperation，查找组内是否有EventOperation
-                    var eventOp = connectionManager.FindEventOperationInGroup(group);
-
-                    if (eventOp != null)
-                    {
-                        // 连接到现有的EventOperation
-                        bool connected = connectionManager.ConnectObjectsToEventOperation(connectables, eventOp);
-                        anyConnected |= connected;
-                    }
-                    else
-                    {
-                        // 在组内没有找到EventOperation，创建一个新的
-                        eventOp = CreateEventOperationForGroup(connectables, group, connectionManager);
-                        if (eventOp != null)
-                        {
-                            anyConnected = true;
-                        }
-                    }
+                    var newOp = CreateEventOperationForGroup(connectables, group, connectionManager);
+                    if (newOp != null)
+                        anyConnected = true;
                 }
             }
 
+            var canvas = Instances.ActiveCanvas;
             if (anyConnected)
-            {
-                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.ConnectedGraphMapperToRespectiveGroup", "已将Graph Mapper连接到各自组内的Event Operation"));
-            }
+                ShowTemporaryMessage(canvas,
+                    General.LanguageManager.GetString("Msg.ConnectedGraphMapperToRespectiveGroup",
+                        "已将Graph Mapper连接到各自组内的Event Operation"));
             else
+                ShowTemporaryMessage(canvas,
+                    General.LanguageManager.GetString("Msg.CannotConnectGraphMapper",
+                        "无法连接Graph Mapper到Event Operation"));
+        }
+
+        /// <summary>
+        /// 查找组内其他已连接的 Graph Mapper 所使用的 EventOperation。
+        /// 排除当前选中对象自身。
+        /// </summary>
+        private EventOperation FindConnectedEventOperationInGroup(GH_Group group,
+            List<ConnectableObject> currentConnectables)
+        {
+            var doc = Instances.ActiveCanvas.Document;
+            if (doc == null) return null;
+
+            var groupObjects = doc.Objects.Where(obj => group.ObjectIDs.Contains(obj.InstanceGuid));
+            var groupConnectableSelector = new ConnectableObjectSelector(groupObjects);
+            var allGroupConnectables = groupConnectableSelector.GetConnectableObjects();
+
+            foreach (var groupConnectable in allGroupConnectables)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, General.LanguageManager.GetString("Msg.CannotConnectGraphMapper", "无法连接Graph Mapper到Event Operation"));
+                if (currentConnectables.Contains(groupConnectable))
+                    continue; // 排除当前选中的对象
+
+                var connectedEventOp = groupConnectable.GetRecipients()
+                    .Select(r => r.Attributes.GetTopLevel.DocObject)
+                    .OfType<EventOperation>()
+                    .FirstOrDefault();
+
+                if (connectedEventOp != null)
+                    return connectedEventOp;
             }
+
+            return null;
         }
 
         private EventOperation CreateEventOperationForGroup(
@@ -397,7 +400,8 @@ namespace Motion.Toolbar
             return eventOp;
         }
 
-        private void ProcessWithoutSelectedEventOperation(List<ConnectableObject> selectedConnectables, EventOperationConnectionManager connectionManager)
+        private void ProcessWithoutSelectedEventOperation(List<ConnectableObject> selectedConnectables,
+            EventOperationConnectionManager connectionManager)
         {
             var doc = Instances.ActiveCanvas.Document;
             var group = connectionManager.GetCommonGroup(selectedConnectables);
@@ -454,7 +458,7 @@ namespace Motion.Toolbar
             EventOperationConnectionManager connectionManager)
         {
             var doc = Instances.ActiveCanvas.Document;
-            
+
             // 计算新组件的位置
             var firstObject = selectedConnectables[0].Object;
             float rightmostX = firstObject.Attributes.Bounds.Right;
@@ -489,8 +493,9 @@ namespace Motion.Toolbar
         private bool IsConnectableObject(IGH_DocumentObject obj)
         {
             return obj is GH_GraphMapper ||
-                  (obj is GH_Component comp &&
-                   comp.Params.Input.Any(p => p.Sources.Any(s => s.Attributes.GetTopLevel.DocObject is EventComponent)));
+                   (obj is GH_Component comp &&
+                    comp.Params.Input.Any(p =>
+                        p.Sources.Any(s => s.Attributes.GetTopLevel.DocObject is EventComponent)));
         }
     }
 
@@ -523,30 +528,18 @@ namespace Motion.Toolbar
 
         public IEnumerable<EventComponent> GetRelatedEventComponents()
         {
+            var sources = Enumerable.Empty<IGH_Param>();
+
             if (IsComponent)
-            {
-                var component = Object as GH_Component;
-                foreach (var input in component.Params.Input)
-                {
-                    foreach (var source in input.Sources)
-                    {
-                        if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
-                        {
-                            yield return eventComp;
-                        }
-                    }
-                }
-            }
+                sources = ((GH_Component)Object).Params.Input.SelectMany(input => input.Sources);
             else if (IsGraphMapper)
+                sources = ((GH_GraphMapper)Object).Sources;
+
+            foreach (var source in sources)
             {
-                var mapper = Object as GH_GraphMapper;
-                foreach (var source in mapper.Sources)
-                {
-                    if (source.Attributes.GetTopLevel.DocObject is EventComponent eventComp)
-                    {
-                        yield return eventComp;
-                    }
-                }
+                var topLevel = source.Attributes.GetTopLevel?.DocObject;
+                if (topLevel is EventComponent ec)
+                    yield return ec;
             }
         }
     }
@@ -561,7 +554,8 @@ namespace Motion.Toolbar
             _document = document;
         }
 
-        public Dictionary<GH_Group, List<ConnectableObject>> GroupConnectablesByGroup(List<ConnectableObject> connectables)
+        public Dictionary<GH_Group, List<ConnectableObject>> GroupConnectablesByGroup(
+            List<ConnectableObject> connectables)
         {
             var result = new Dictionary<GH_Group, List<ConnectableObject>>();
             var allGroups = _document.Objects.OfType<GH_Group>().ToList();
@@ -684,45 +678,39 @@ namespace Motion.Toolbar
 
         public void AddToExistingGroupOrCreate(EventOperation eventOp, List<ConnectableObject> connectables)
         {
-            // 获取所有相关的Event组件
             var relatedEvents = connectables.SelectMany(c => c.GetRelatedEventComponents()).Distinct().ToList();
 
-            // 获取已经连接到EventOperation的所有Graph Mapper
             var existingMappers = eventOp.Params.Input[0].Sources
                 .Select(s => s.Attributes.GetTopLevel.DocObject)
                 .OfType<GH_GraphMapper>()
                 .ToList();
 
-            // 查找包含现有Graph Mapper的组
-            var existingGroup = _document.Objects.OfType<GH_Group>()
-                .FirstOrDefault(g => existingMappers.Any(m => g.ObjectIDs.Contains(m.InstanceGuid)));
-
-            // 如果没有找到包含现有Graph Mapper的组，则查找是否有组包含新的Graph Mapper或Event
-            if (existingGroup == null)
-            {
-                existingGroup = _document.Objects.OfType<GH_Group>()
-                    .FirstOrDefault(g => relatedEvents.Any(e => g.ObjectIDs.Contains(e.InstanceGuid)));
-            }
+            var existingGroup = FindMatchingGroup(existingMappers, relatedEvents);
 
             if (existingGroup != null)
             {
-                // 将新的对象添加到现有组
                 UpdateExistingGroup(existingGroup, connectables, relatedEvents);
-
-                // 确保EventOperation也添加到组中
                 if (!existingGroup.ObjectIDs.Contains(eventOp.InstanceGuid))
-                {
                     existingGroup.AddObject(eventOp.InstanceGuid);
-                }
+                return;
             }
-            else
-            {
-                // 如果没有找到现有组，创建新组
-                CreateOrUpdateGroup(eventOp, connectables);
-            }
+
+            CreateOrUpdateGroup(eventOp, connectables);
         }
 
-        private void UpdateExistingGroup(GH_Group group, List<ConnectableObject> connectables, List<EventComponent> relatedEvents)
+        /// <summary>
+        /// 查找包含现有 Graph Mapper 或相关 Event 组件的组。
+        /// </summary>
+        private GH_Group FindMatchingGroup(List<GH_GraphMapper> existingMappers, List<EventComponent> relatedEvents)
+        {
+            return _document.Objects.OfType<GH_Group>()
+                .FirstOrDefault(g =>
+                    existingMappers.Any(m => g.ObjectIDs.Contains(m.InstanceGuid)) ||
+                    relatedEvents.Any(e => g.ObjectIDs.Contains(e.InstanceGuid)));
+        }
+
+        private void UpdateExistingGroup(GH_Group group, List<ConnectableObject> connectables,
+            List<EventComponent> relatedEvents)
         {
             // 将新的连接对象添加到现有组
             foreach (var connectable in connectables)
@@ -743,7 +731,8 @@ namespace Motion.Toolbar
             }
         }
 
-        public void CreateOrUpdateGroup(EventOperation eventOp, List<ConnectableObject> connectables, bool includeEventOp = false)
+        public void CreateOrUpdateGroup(EventOperation eventOp, List<ConnectableObject> connectables,
+            bool includeEventOp = false)
         {
             // 获取所有相关的Event组件
             var relatedEvents = connectables.SelectMany(c => c.GetRelatedEventComponents()).Distinct().ToList();
@@ -757,13 +746,14 @@ namespace Motion.Toolbar
                 {
                     existingGroup.AddObject(eventOp.InstanceGuid);
                 }
+
                 return;
             }
 
             // 创建新组
             var group = new GH_Group
             {
-                NickName = "Events"  // 使用EventOperation的nickname
+                NickName = "Events" // 使用EventOperation的nickname
             };
             group.CreateAttributes();
             group.Colour = Color.FromArgb(60, 150, 150, 150);
