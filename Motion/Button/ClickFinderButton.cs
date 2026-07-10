@@ -17,28 +17,28 @@ namespace Motion.Toolbar
     public class ClickFinderButton : MotionToolbarButton, IGH_PreviewObject
     {
         public override int ToolbarOrder => 60;
-        private ToolStripButton button;
-        private bool isActive = false;
-        private List<IGH_DocumentObject> previewObjects;
-        private List<BoundingBox> boundingBoxes;
-        private Mesh previewMesh;
-        private DisplayMaterial previewMaterial;
-        private Color previewColor;
-        private Timer checkTimer;
+        private ToolStripButton _button;
+        private bool _isActive = false;
+        private List<IGH_DocumentObject> _previewObjects;
+        private List<BoundingBox> _boundingBoxes;
+        private Mesh _previewMesh;
+        private DisplayMaterial _previewMaterial;
+        private Color _previewColor;
+        private Timer _checkTimer;
 
         public ClickFinderButton()
         {
-            checkTimer = new Timer();
-            checkTimer.Interval = 100;
-            checkTimer.Tick += CheckMouseClick;
+            _checkTimer = new Timer();
+            _checkTimer.Interval = 100;
+            _checkTimer.Tick += CheckMouseClick;
         }
 
         private void AddClickFinderButton()
         {
             InitializeToolbarGroup();
-            button = new ToolStripButton();
+            _button = new ToolStripButton();
             Instantiate();
-            AddButtonToToolbars(button); // 使用基类方法添加按钮
+            AddButtonToToolbars(_button); // 使用基类方法添加按钮
         }
 
         public override GH_LoadingInstruction PriorityLoad()
@@ -61,29 +61,29 @@ namespace Motion.Toolbar
         private void Instantiate()
         {
             // 配置按钮
-            button.Name = "Click Finder";
-            button.Size = new Size(24, 24);
-            button.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            button.Image = Properties.Resources.ClickFinder;
-            button.ToolTipText =
+            _button.Name = "Click Finder";
+            _button.Size = new Size(24, 24);
+            _button.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            _button.Image = Properties.Resources.ClickFinder;
+            _button.ToolTipText =
                 General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
-            button.Click += ToggleClickFinderMode;
-            button.CheckOnClick = true;
+            _button.Click += ToggleClickFinderMode;
+            _button.CheckOnClick = true;
         }
 
         public override void UpdateLanguage()
         {
-            if (button != null)
+            if (_button != null)
             {
-                button.ToolTipText =
+                _button.ToolTipText =
                     General.LanguageManager.GetString("Button.ClickFinder.Tooltip", "单击Rhino视口中显示的GH物件以查找组件");
             }
         }
 
         public void ToggleClickFinderMode(object sender, EventArgs e)
         {
-            isActive = button.Checked;
-            if (isActive)
+            _isActive = _button.Checked;
+            if (_isActive)
                 StartClickFinder();
             else
                 StopClickFinder();
@@ -92,31 +92,29 @@ namespace Motion.Toolbar
         private void StartClickFinder()
         {
             CollectPreviewObjects();
-            checkTimer.Start();
-            previewMaterial = new DisplayMaterial(Color.FromArgb(128, 255, 255), 0.3);
-            previewColor = Color.FromArgb(128, 255, 255);
+            _checkTimer.Start();
+            _previewMaterial = new DisplayMaterial(Color.FromArgb(128, 255, 255), 0.3);
+            _previewColor = Color.FromArgb(128, 255, 255);
             RhinoDoc.ActiveDoc.Views.Redraw();
-            foreach (var view in RhinoDoc.ActiveDoc.Views)
-            {
-                DisplayPipeline.CalculateBoundingBox += DisplayPipeline_CalculateBoundingBox;
-                DisplayPipeline.DrawForeground += DisplayPipeline_DrawForeground;
-            }
+
+            DisplayPipeline.CalculateBoundingBox += DisplayPipeline_CalculateBoundingBox;
+            DisplayPipeline.DrawForeground += DisplayPipeline_DrawForeground;
         }
 
         private void StopClickFinder()
         {
-            checkTimer.Stop();
-            foreach (var view in RhinoDoc.ActiveDoc.Views)
+            _checkTimer.Stop();
+
+            DisplayPipeline.CalculateBoundingBox -= DisplayPipeline_CalculateBoundingBox;
+            DisplayPipeline.DrawForeground -= DisplayPipeline_DrawForeground;
+            
+            if (_previewMesh != null)
             {
-                DisplayPipeline.CalculateBoundingBox -= DisplayPipeline_CalculateBoundingBox;
-                DisplayPipeline.DrawForeground -= DisplayPipeline_DrawForeground;
+                _previewMesh.Dispose();
+                _previewMesh = null;
             }
-            if (previewMesh != null)
-            {
-                previewMesh.Dispose();
-                previewMesh = null;
-            }
-            previewMaterial = null;
+
+            _previewMaterial = null;
             RhinoDoc.ActiveDoc.Views.Redraw();
         }
 
@@ -127,7 +125,7 @@ namespace Motion.Toolbar
             int index = FindNearestObject(clickRay);
             ApplyPreviewSelection(index);
         }
-        
+
         /// <summary>
         /// 根据索引处理预览选择：有效索引聚焦组件，无效索引更新闪烁材质。
         /// </summary>
@@ -136,32 +134,33 @@ namespace Motion.Toolbar
         {
             if (index >= 0)
             {
-                FocusOnComponent(previewObjects[index]);
-                button.Checked = false;
-                isActive = false;
-                checkTimer.Stop();
+                FocusOnComponent(_previewObjects[index]);
+                _button.Checked = false;
+                _isActive = false;
+                _checkTimer.Stop();
 
-                if (previewMesh == null) return;
-                
-                previewMesh.Dispose();
-                previewMesh = null;
-                previewMaterial = null;
+                if (_previewMesh == null) return;
+
+                _previewMesh.Dispose();
+                _previewMesh = null;
+                _previewMaterial = null;
             }
             else
             {
                 int alpha = Convert.ToInt32(255 * DateTime.Now.Millisecond / 1000.0);
-                previewMaterial = new DisplayMaterial(Color.FromArgb(alpha, 255, 255), 0.95);
-                previewColor = Color.FromArgb(alpha, 128, 255, 255);
+                _previewMaterial = new DisplayMaterial(Color.FromArgb(alpha, 255, 255), 0.95);
+                _previewColor = Color.FromArgb(alpha, 128, 255, 255);
             }
 
             RhinoDoc.ActiveDoc?.Views.Redraw();
         }
+
         private void ProcessPreviewObject(IGH_DocumentObject obj)
         {
             if (obj is not IGH_PreviewObject previewObj || previewObj.Hidden)
                 return;
 
-            previewObjects.Add(obj);
+            _previewObjects.Add(obj);
 
             var vertices = new List<Point3d>();
             CollectVertices(obj, vertices);
@@ -173,14 +172,14 @@ namespace Motion.Toolbar
             if (box.Volume < 0.1)
                 box.Inflate(1);
 
-            boundingBoxes.Add(box);
+            _boundingBoxes.Add(box);
 
             using (Mesh boxMesh = Mesh.CreateFromBox(box, 1, 1, 1))
             {
                 if (boxMesh != null && boxMesh.IsValid)
                 {
                     boxMesh.Compact();
-                    previewMesh.Append(boxMesh);
+                    _previewMesh.Append(boxMesh);
                 }
             }
         }
@@ -201,7 +200,7 @@ namespace Motion.Toolbar
                     break;
             }
         }
-        
+
         private static void AddGeometryVertices(IGH_Goo data, List<Point3d> vertices)
         {
             switch (data)
@@ -227,25 +226,25 @@ namespace Motion.Toolbar
                     break;
             }
         }
-        
+
         private void CollectPreviewObjects()
         {
-            previewObjects = new List<IGH_DocumentObject>();
-            boundingBoxes = new List<BoundingBox>();
-            if (previewMesh != null)
-                previewMesh.Dispose();
-            previewMesh = new Mesh();
+            _previewObjects = new List<IGH_DocumentObject>();
+            _boundingBoxes = new List<BoundingBox>();
+            if (_previewMesh != null)
+                _previewMesh.Dispose();
+            _previewMesh = new Mesh();
 
             foreach (IGH_DocumentObject obj in Instances.ActiveCanvas.Document.Objects)
                 ProcessPreviewObject(obj);
 
-            if (!previewMesh.IsValid)
+            if (!_previewMesh.IsValid)
             {
-                previewMesh.Weld(Math.PI);
-                previewMesh.Compact();
+                _previewMesh.Weld(Math.PI);
+                _previewMesh.Compact();
             }
         }
-        
+
         private bool TryGetClickRay(out Line clickRay)
         {
             clickRay = new Line();
@@ -283,14 +282,15 @@ namespace Motion.Toolbar
         private List<(int index, double distance)> CollectCandidates(Line clickRay)
         {
             var candidates = new List<(int index, double distance)>();
-            for (int i = 0; i < boundingBoxes.Count; i++)
+            for (int i = 0; i < _boundingBoxes.Count; i++)
             {
-                if (Intersection.LineBox(clickRay, boundingBoxes[i], 0.01, out Interval collision) &&
+                if (Intersection.LineBox(clickRay, _boundingBoxes[i], 0.01, out Interval collision) &&
                     collision.T0 > 0 && collision.T0 < double.MaxValue)
                 {
                     candidates.Add((i, collision.T0));
                 }
             }
+
             return candidates;
         }
 
@@ -307,7 +307,7 @@ namespace Motion.Toolbar
 
             foreach (var candidate in candidates)
             {
-                var box = boundingBoxes[candidate.index];
+                var box = _boundingBoxes[candidate.index];
                 var edges = GetBoxEdges(box);
                 foreach (var edge in edges)
                 {
@@ -321,6 +321,7 @@ namespace Motion.Toolbar
                     }
                 }
             }
+
             return nearestIndex;
         }
 
@@ -400,12 +401,12 @@ namespace Motion.Toolbar
         {
             get
             {
-                if (previewMesh == null) return BoundingBox.Empty;
+                if (_previewMesh == null) return BoundingBox.Empty;
 
                 // 即使mesh无效，也尝试从顶点创建boundingbox
-                if (previewMesh.Vertices != null && previewMesh.Vertices.Count > 0)
+                if (_previewMesh.Vertices != null && _previewMesh.Vertices.Count > 0)
                 {
-                    Point3d[] points = previewMesh.Vertices.ToPoint3dArray();
+                    Point3d[] points = _previewMesh.Vertices.ToPoint3dArray();
                     return new BoundingBox(points);
                 }
 
@@ -430,18 +431,18 @@ namespace Motion.Toolbar
 
         private void DisplayPipeline_CalculateBoundingBox(object sender, CalculateBoundingBoxEventArgs e)
         {
-            if (isActive && previewMesh != null)
+            if (_isActive && _previewMesh != null)
             {
-                e.IncludeBoundingBox(previewMesh.GetBoundingBox(true));
+                e.IncludeBoundingBox(_previewMesh.GetBoundingBox(true));
             }
         }
 
         private void DisplayPipeline_DrawForeground(object sender, DrawEventArgs e)
         {
-            if (isActive && previewMesh != null && previewMaterial != null)
+            if (_isActive && _previewMesh != null && _previewMaterial != null)
             {
-                e.Display.DrawMeshShaded(previewMesh, previewMaterial);
-                e.Display.DrawMeshWires(previewMesh, previewColor, 3);
+                e.Display.DrawMeshShaded(_previewMesh, _previewMaterial);
+                e.Display.DrawMeshWires(_previewMesh, _previewColor, 3);
             }
         }
     }
