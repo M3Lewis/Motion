@@ -119,6 +119,16 @@ namespace Motion.Export
 
         private bool GetCurrentParams(RenderParameters parameters)
         {
+            var indicesToCheck = new[] { 0, 1, 2, 3, 4, 5, 6, 9 };
+            foreach (var idx in indicesToCheck)
+            {
+                if (idx >= this.Params.Input.Count || this.Params.Input[idx].VolatileDataCount == 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"获取参数失败: 缺少必需的输入参数 [{this.Params.Input[idx].Name}]");
+                    return false;
+                }
+            }
+
             try
             {
                 var inputs = new object[]
@@ -154,7 +164,7 @@ namespace Motion.Export
             }
             catch (Exception ex)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"获取参数失败: {ex.Message}");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"解析参数发生错误: {ex.Message}");
                 return false;
             }
         }

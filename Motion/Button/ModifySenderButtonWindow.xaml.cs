@@ -397,26 +397,31 @@ namespace Motion.UI
             decimal maxAdjustment = 0;
             int loopCount = 1;
 
-            try
+            if (!string.IsNullOrWhiteSpace(MinValueAdjustment.Text) && !decimal.TryParse(MinValueAdjustment.Text.Trim(), out minAdjustment))
             {
-                if (!string.IsNullOrWhiteSpace(MinValueAdjustment.Text))
-                    minAdjustment = decimal.Parse(MinValueAdjustment.Text.Trim());
-
-                if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text))
-                    maxAdjustment = decimal.Parse(MaxValueAdjustment.Text.Trim());
-
-                if (!string.IsNullOrWhiteSpace(LoopCount.Text))
-                    loopCount = int.Parse(LoopCount.Text.Trim());
-
-                if (loopCount < 1)
-                {
-                    ShowError("Msg.CycleMustBePositive", "循环次数必须至少为1！");
-                    return;
-                }
+                ShowError("Msg.InputFormatError", "输入格式错误：最小值调整量必须为有效数字");
+                UnlockSolver(true);
+                return;
             }
-            catch (Exception ex)
+
+            if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text) && !decimal.TryParse(MaxValueAdjustment.Text.Trim(), out maxAdjustment))
             {
-                ShowErrorFormat("Msg.InputFormatError", "输入格式错误：{0}", ex.Message);
+                ShowError("Msg.InputFormatError", "输入格式错误：最大值调整量必须为有效数字");
+                UnlockSolver(true);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(LoopCount.Text) && !int.TryParse(LoopCount.Text.Trim(), out loopCount))
+            {
+                ShowError("Msg.InputFormatError", "输入格式错误：循环次数必须为有效整数");
+                UnlockSolver(true);
+                return;
+            }
+
+            if (loopCount < 1)
+            {
+                ShowError("Msg.CycleMustBePositive", "循环次数必须至少为1！");
+                UnlockSolver(true);
                 return;
             }
 
@@ -569,27 +574,31 @@ namespace Motion.UI
             decimal maxAdjustment = 0;
             int loopCount = 1; // 默认不循环
 
-            try
+            if (!string.IsNullOrWhiteSpace(MinValueAdjustment.Text) && !decimal.TryParse(MinValueAdjustment.Text.Trim(), out minAdjustment))
             {
-                if (!string.IsNullOrWhiteSpace(MinValueAdjustment.Text))
-                    minAdjustment = decimal.Parse(MinValueAdjustment.Text.Trim());
-
-                if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text))
-                    maxAdjustment = decimal.Parse(MaxValueAdjustment.Text.Trim());
-
-                // 尝试解析循环次数，默认为1（不循环）
-                if (!string.IsNullOrWhiteSpace(LoopCount.Text))
-                    loopCount = int.Parse(LoopCount.Text.Trim());
-
-                if (loopCount < 1)
-                {
-                    ShowError("Msg.CycleMustBePositive", "循环次数必须至少为1！");
-                    return;
-                }
+                ShowError("Msg.InputFormatError", "输入格式错误：最小值调整量必须为有效数字");
+                UnlockSolver(true);
+                return;
             }
-            catch (Exception ex)
+
+            if (!string.IsNullOrWhiteSpace(MaxValueAdjustment.Text) && !decimal.TryParse(MaxValueAdjustment.Text.Trim(), out maxAdjustment))
             {
-                ShowErrorFormat("Msg.InputFormatError", "输入格式错误：{0}", ex.Message);
+                ShowError("Msg.InputFormatError", "输入格式错误：最大值调整量必须为有效数字");
+                UnlockSolver(true);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(LoopCount.Text) && !int.TryParse(LoopCount.Text.Trim(), out loopCount))
+            {
+                ShowError("Msg.InputFormatError", "输入格式错误：循环次数必须为有效整数");
+                UnlockSolver(true);
+                return;
+            }
+
+            if (loopCount < 1)
+            {
+                ShowError("Msg.CycleMustBePositive", "循环次数必须至少为1！");
+                UnlockSolver(true);
                 return;
             }
 

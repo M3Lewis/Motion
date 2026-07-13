@@ -44,7 +44,12 @@ namespace Motion.Export
                 StoreSettingsAsDefault();
 
                 // 验证参数
-                ValidateParameters();
+                if (!ValidateParameters(out string errorMessage))
+                {
+                    RhinoApp.WriteLine($"Parameter validation failed: {errorMessage}");
+                    wasAborted = true;
+                    return;
+                }
 
                 // 确保目标目录存在
                 EnsureDirectoryExists();
@@ -183,16 +188,30 @@ namespace Motion.Export
             return true;
         }
 
-        private void ValidateParameters()
+        private bool ValidateParameters(out string errorMessage)
         {
+            errorMessage = null;
             if (m_fileTemplate == null)
-                throw new Exception("File name mask is not valid");
+            {
+                errorMessage = "File name mask is not valid";
+                return false;
+            }
             if (m_folder == null)
-                throw new Exception("Destination folder path is not valid");
+            {
+                errorMessage = "Destination folder path is not valid";
+                return false;
+            }
             if (m_owner == null)
-                throw new Exception("Number slider reference cannot be resolved");
+            {
+                errorMessage = "Number slider reference cannot be resolved";
+                return false;
+            }
             if (m_frameCount < 1)
-                throw new Exception("Insufficient frames for animation");
+            {
+                errorMessage = "Insufficient frames for animation";
+                return false;
+            }
+            return true;
         }
 
         private void EnsureDirectoryExists()
