@@ -4,6 +4,7 @@ using Grasshopper.GUI.Base;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using Motion.General;
 
 namespace Motion.Animation
 {
@@ -27,21 +28,11 @@ namespace Motion.Animation
             UpdateGroupVisibilityAndLock();
         }
 
-        private void SafeExecute(string methodName, Action action)
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                Rhino.RhinoApp.WriteLine($"[Motion] {methodName} 出错: {ex.Message}");
-            }
-        }
+        
 
         private void Doc_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
         {
-            SafeExecute(nameof(Doc_ObjectsAdded), () => HandleDocObjectsAdded(e));
+            MotilityUtils.SafeExecute(nameof(Doc_ObjectsAdded), () => HandleDocObjectsAdded(e));
         }
 
         private void HandleDocObjectsAdded(GH_DocObjectEventArgs e)
@@ -52,7 +43,7 @@ namespace Motion.Animation
 
             doc.ScheduleSolution(5, d =>
             {
-                SafeExecute(nameof(HandleDocObjectsAdded) + ".ScheduleSolution", () =>
+                MotilityUtils.SafeExecute(nameof(HandleDocObjectsAdded) + ".ScheduleSolution", () =>
                 {
                     FindAndConnectTimelineSlider();
                     ExpireSolution(true);
@@ -84,7 +75,7 @@ namespace Motion.Animation
         // 修正事件处理器的参数类型
         private void OnSliderValueChanged(object sender, GH_SliderEventArgs e)
         {
-            SafeExecute(nameof(OnSliderValueChanged), UpdateGroupVisibilityAndLock);
+            MotilityUtils.SafeExecute(nameof(OnSliderValueChanged), UpdateGroupVisibilityAndLock);
         }
 
         public void LinkToSender(MotionSender sender)
@@ -112,7 +103,7 @@ namespace Motion.Animation
 
         private void OnSenderNickNameChanged(IGH_DocumentObject sender, string newNickName)
         {
-            SafeExecute(nameof(OnSenderNickNameChanged), () =>
+            MotilityUtils.SafeExecute(nameof(OnSenderNickNameChanged), () =>
             {
                 if (this.NickName != newNickName)
                 {
@@ -201,7 +192,7 @@ namespace Motion.Animation
 
         private void Document_ObjectsAdded(object sender, GH_DocObjectEventArgs e)
         {
-            SafeExecute(nameof(Document_ObjectsAdded), () => HandleDocumentObjectsAdded(e));
+            MotilityUtils.SafeExecute(nameof(Document_ObjectsAdded), () => HandleDocumentObjectsAdded(e));
         }
 
         private void HandleDocumentObjectsAdded(GH_DocObjectEventArgs e)
@@ -217,7 +208,7 @@ namespace Motion.Animation
             // 延迟执行以确保 Sender 完全初始化
             doc.ScheduleSolution(5, d =>
             {
-                SafeExecute(nameof(HandleDocumentObjectsAdded), () =>
+                MotilityUtils.SafeExecute(nameof(HandleDocumentObjectsAdded), () =>
                 {
                     var timeInput = this.Params.Input[0];
                     if (timeInput.SourceCount == 0) // 只在没有连接时尝试连接
@@ -256,7 +247,7 @@ namespace Motion.Animation
 
         private void Input_ObjectChanged(IGH_DocumentObject sender, GH_ObjectChangedEventArgs e)
         {
-            SafeExecute(nameof(Input_ObjectChanged), () =>
+            MotilityUtils.SafeExecute(nameof(Input_ObjectChanged), () =>
             {
                 var timeInput = this.Params.Input[0];
                 if (timeInput.SourceCount > 0)
@@ -302,7 +293,7 @@ namespace Motion.Animation
         // 添加删除事件处理方法
         private void Document_ObjectsDeleted(object sender, GH_DocObjectEventArgs e)
         {
-            SafeExecute(nameof(Document_ObjectsDeleted), () =>
+            MotilityUtils.SafeExecute(nameof(Document_ObjectsDeleted), () =>
             {
                 bool needUpdate = false;
 

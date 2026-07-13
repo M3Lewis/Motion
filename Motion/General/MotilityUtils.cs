@@ -1,4 +1,5 @@
-﻿using Grasshopper.GUI.Canvas;
+﻿using System;
+using Grasshopper.GUI.Canvas;
 using Grasshopper;
 using Grasshopper.Kernel;
 using System.Collections.Generic;
@@ -258,6 +259,18 @@ namespace Motion.General
             // 固定位置：画布顶部居中，距离左边 330，顶部 50
             var location = new PointF(330, 50);
             ShowTemporaryMessageAtLocation(canvas, message, location);
+        }
+        
+        public static void SafeExecute(string methodName, Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"[Motion] {methodName} 出错: {ex.Message}");
+            }
         }
     }
 }

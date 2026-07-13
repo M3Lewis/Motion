@@ -80,30 +80,29 @@ namespace Motion.Toolbar
 
         private void Canvas_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
         {
-            UpdateButtonState();
+            MotilityUtils.SafeExecute(nameof(Canvas_MouseDown), UpdateButtonState);
         }
 
         private void Document_SolutionEnd(object sender, GH_SolutionEventArgs e)
         {
-            UpdateButtonState();
+            MotilityUtils.SafeExecute(nameof(Document_SolutionEnd), UpdateButtonState);
         }
 
         private void Button_Click(object sender, System.EventArgs e)
         {
-            var canvas = Instances.ActiveCanvas;
-            if (canvas?.Document == null) return;
-
-            var selectedObj = canvas.Document.SelectedObjects().FirstOrDefault();
-            if (selectedObj == null) return;
-
-            if (selectedObj is EventComponent eventComponent)
+            MotilityUtils.SafeExecute(nameof(Button_Click), () =>
             {
-                HandleEventComponentJump(eventComponent, canvas);
-            }
-            else if (IsControlledByEvent(selectedObj))
-            {
-                HandleControlledComponentJump(selectedObj, canvas);
-            }
+                var canvas = Instances.ActiveCanvas;
+                if (canvas?.Document == null) return;
+
+                var selectedObj = canvas.Document.SelectedObjects().FirstOrDefault();
+                if (selectedObj == null) return;
+
+                if (selectedObj is EventComponent eventComponent)
+                    HandleEventComponentJump(eventComponent, canvas);
+                else if (IsControlledByEvent(selectedObj))
+                    HandleControlledComponentJump(selectedObj, canvas);
+            });
         }
 
         private void HandleEventComponentJump(EventComponent eventComponent, GH_Canvas canvas)
