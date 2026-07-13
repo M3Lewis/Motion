@@ -13,7 +13,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Motion.Export
@@ -24,7 +23,8 @@ namespace Motion.Export
         public override GH_Exposure Exposure => GH_Exposure.primary;
         public override Guid ComponentGuid => new Guid("7b8d5ff6-c766-4ae3-a832-95861edb9fde");
 
-        // 添加CancellationTokenSource作为类成员，便于在需要时取消和释放
+        // 类成员：渲染状态锁与取消控制器
+        private bool _isRendering = false;
         private CancellationTokenSource _cancellationTokenSource;
 
         public ExportSliderAnimation()
@@ -43,7 +43,6 @@ namespace Motion.Export
             pManager.AddIntegerParameter("Image Width", "W", "图片宽度", GH_ParamAccess.item, 1920);
             pManager.AddIntegerParameter("Image Height", "H", "图片高度", GH_ParamAccess.item, 1080);
 
-            // 添加文件路径参数
             Param_FilePath pathParam = new Param_FilePath();
             pathParam.SetPersistentData(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\Motion");
             pManager.AddParameter(pathParam, "Full Path", "P", "输出路径", GH_ParamAccess.item);
@@ -61,8 +60,7 @@ namespace Motion.Export
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            // 输出端不需要，已被注释掉
-            // pManager.AddTextParameter("Output Path", "Op", "·", GH_ParamAccess.list);
+            // 无输出端
         }
 
         public override void CreateAttributes()
@@ -71,14 +69,12 @@ namespace Motion.Export
             {
                 if (isExport)
                 {
-                    _ = ExecuteRenderingAsync();
+                    // 按钮点击时触发纯同步渲染
+                    ExecuteRendering();
                     return;
                 }
 
-                // 从输入端获取路径
                 string pathString = GetOutputPath();
-                
-                // 执行打开文件夹功能
                 if (string.IsNullOrEmpty(pathString) || !Directory.Exists(pathString))
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "找不到路径文件夹。");
@@ -102,31 +98,29 @@ namespace Motion.Export
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            // 获取所有输入参数
             if (!GetInputParams(DA, out RenderParameters parameters))
                 return;
 
             if (!parameters.Run)
                 return;
 
-            _ = ExecuteRenderingWithParams(parameters, DA);
+            // GH 解算器中触发纯同步渲染
+            ExecuteRenderingWithParams(parameters);
         }
 
-        private async Task ExecuteRenderingAsync()
+        private void ExecuteRendering()
         {
-            // 获取当前组件的参数
             var parameters = new RenderParameters();
             if (!GetCurrentParams(parameters))
                 return;
 
-            await ExecuteRenderingWithParams(parameters, null);
+            ExecuteRenderingWithParams(parameters);
         }
 
         private bool GetCurrentParams(RenderParameters parameters)
         {
             try
             {
-                // 获取并转换每个输入参数，使用索引数组简化代码
                 var inputs = new object[]
                 {
                     this.Params.Input[0].VolatileData.AllData(true).First(),
@@ -148,7 +142,6 @@ namespace Motion.Export
                 parameters.RealtimeRenderPasses = Convert.ToInt32(inputs[6].ToString());
                 parameters.Frame = Convert.ToDouble(inputs[7].ToString());
 
-                // 处理可选的区间参数
                 var rangeGoo = this.Params.Input[7].VolatileData.AllData(true).FirstOrDefault();
                 if (rangeGoo != null && rangeGoo is GH_Interval ghInterval)
                 {
@@ -156,7 +149,7 @@ namespace Motion.Export
                     parameters.IsCustomRange = true;
                 }
 
-                parameters.Run = true;  // 按钮点击时总是为 true
+                parameters.Run = true;
                 return true;
             }
             catch (Exception ex)
@@ -166,183 +159,160 @@ namespace Motion.Export
             }
         }
 
-        private async Task ExecuteRenderingWithParams(RenderParameters parameters, IGH_DataAccess DA = null)
+        // 核心执行方法：完全重构为纯同步的 void 方法
+        private void ExecuteRenderingWithParams(RenderParameters parameters)
         {
-            if (this.Params.Input[9].Sources.Count == 0)
-                return;
-
-            var source = this.Params.Input[9].Sources[0];
-            if (!(source is MotionSlider motionSlider ))
-                return;
-
-            // 检查路径盘符是否存在
-            string driveLetter = Path.GetPathRoot(parameters.FullPath);
-            if (!Directory.Exists(driveLetter))
+            // 状态锁，防止并发重入引发崩溃
+            if (_isRendering)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"找不到盘符: {driveLetter}");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "渲染已经在运行中，请先等待当前任务结束。");
                 return;
             }
 
-            var views = RhinoDoc.ActiveDoc.Views;
-            var activeView = views.ActiveView;
+            _isRendering = true;
+            var stopwatch = Stopwatch.StartNew();
+            bool wasAborted = false;
 
-            // 检查视图名称是否存在
-            var targetView = views.Find(parameters.ViewName, false);
-            if (targetView == null)
+            try
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"找不到视图: {parameters.ViewName}");
-                return;
-            }
+                // 1. 数据校验与合法性检查
+                if (this.Params.Input[9].Sources.Count == 0) return;
+                var source = this.Params.Input[9].Sources[0];
+                if (!(source is MotionSlider motionSlider)) return;
 
-            // 检查自定义区间是否在Slider范围内
-            if (parameters.IsCustomRange)
-            {
-                var sliderRange = new Interval((double)motionSlider.Slider.Minimum, (double)motionSlider.Slider.Maximum);
-                if (!sliderRange.IncludesInterval(parameters.Range))
+                string driveLetter = Path.GetPathRoot(parameters.FullPath);
+                if (string.IsNullOrEmpty(driveLetter) || !Directory.Exists(driveLetter))
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"自定义区间 [{parameters.Range.Min}-{parameters.Range.Max}] 超出Slider范围 [{sliderRange.Min}-{sliderRange.Max}]");
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"找不到盘符: {driveLetter}");
                     return;
                 }
 
-                if (parameters.Range.T0 > parameters.Range.T1)
+                var views = RhinoDoc.ActiveDoc.Views;
+                var targetView = views.Find(parameters.ViewName, false);
+                if (targetView == null)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "自定义区间最小值必须小于最大值");
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"找不到视图: {parameters.ViewName}");
                     return;
                 }
 
-                // 检查 Cycles Passes 的值
+                if (parameters.IsCustomRange)
+                {
+                    var sliderRange = new Interval((double)motionSlider.Slider.Minimum, (double)motionSlider.Slider.Maximum);
+                    if (!sliderRange.IncludesInterval(parameters.Range))
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"自定义区间 [{parameters.Range.Min}-{parameters.Range.Max}] 超出Slider范围 [{sliderRange.Min}-{sliderRange.Max}]");
+                        return;
+                    }
+
+                    if (parameters.Range.T0 > parameters.Range.T1)
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "自定义区间最小值必须小于最大值");
+                        return;
+                    }
+                }
+
                 if (parameters.IsCycles && parameters.RealtimeRenderPasses < 1)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Cycles渲染通道数必须大于0");
                     return;
                 }
-            }   
 
+                // 修复原代码中的 Bug：此处应检查用户指定的目标视图 targetView 的显示模式，而不是活跃视窗 activeView
+                var displayMode = targetView.ActiveViewport.DisplayMode;
+                string modeName = displayMode.EnglishName;
+                bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
 
-            var displayMode = activeView.ActiveViewport.DisplayMode;
-            string modeName = displayMode.EnglishName;
-            bool isRaytracedMode = modeName == "Raytraced" || modeName == "光线跟踪";
+                if (parameters.IsCycles && !isRaytracedMode)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "请将目标视图切换至光线跟踪(Raytraced)模式!");
+                    return;
+                }
 
-            views.RedrawEnabled = true;
+                views.RedrawEnabled = true;
 
-            // 添加计时器
-            var stopwatch = Stopwatch.StartNew();
-            
-            // 确保在使用之前初始化CancellationTokenSource
-            if (_cancellationTokenSource != null)
-            {
-                _cancellationTokenSource.Dispose();
-                _cancellationTokenSource = null;
-            }
-            _cancellationTokenSource = new CancellationTokenSource();
-            
-            bool wasAborted = false;
+                // 2. 初始化取消控制器（同步执行中用于监听 Esc 或外部中断）
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = new CancellationTokenSource();
+                var token = _cancellationTokenSource.Token;
 
-            try 
-            {
+                // 3. 进度与取消回调
                 Action<int, int> updateProgress = (frame, total) =>
                 {
                     this.Message = $"Rendering Frame.. {frame + 1}/{total}";
                     this.OnDisplayExpired(true);
                     
-                    // 检查ESC键
-                    if (Control.ModifierKeys == Keys.Escape && _cancellationTokenSource != null)
+                    // 检测键盘 Esc 键
+                    if (Control.ModifierKeys == Keys.Escape)
                     {
-                        _cancellationTokenSource.Cancel();
+                        _cancellationTokenSource?.Cancel();
                         wasAborted = true;
                     }
                     
-                    Application.DoEvents();
+                    // 同步执行时，利用此方法泵送 Windows 消息队列。
+                    // 它可以刷新界面、更新 this.Message 的气泡文字，并且允许用户在点击按钮时再次触发取消事件。
+                    Application.DoEvents(); 
                 };
 
-                await Task.Run(() =>
+                // 4. 执行同步阻塞渲染
+                using (var sliderAnimator = new MotionSliderAnimator(motionSlider))
                 {
-                    RhinoApp.InvokeOnUiThread(new Action(() =>
+                    sliderAnimator.Width = parameters.Width;
+                    sliderAnimator.Height = parameters.Height;
+                    sliderAnimator.Folder = parameters.FullPath;
+                    sliderAnimator.CancellationToken = token;
+
+                    if (parameters.IsCustomRange)
                     {
-                        // 检查渲染模式
-                        if (parameters.IsCycles && !isRaytracedMode)
-                        {
-                            AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "请打开光线跟踪(Raytraced)模式!");
-                            return;
-                        }
-                        
-                        using (var sliderAnimator = new MotionSliderAnimator(motionSlider))
-                        {
-                            sliderAnimator.Width = parameters.Width;
-                            sliderAnimator.Height = parameters.Height;
-                            sliderAnimator.Folder = parameters.FullPath;
-                            
-                            // 确保_cancellationTokenSource不为null再访问Token属性
-                            if (_cancellationTokenSource != null)
-                            {
-                                sliderAnimator.CancellationToken = _cancellationTokenSource.Token;
-                            }
-                            else
-                            {
-                                // 如果为null，创建一个新的CancellationTokenSource
-                                _cancellationTokenSource = new CancellationTokenSource();
-                                sliderAnimator.CancellationToken = _cancellationTokenSource.Token;
-                            }
+                        sliderAnimator.CustomRange = parameters.Range;
+                        sliderAnimator.FrameCount = (int)(parameters.Range.Length + 1);
+                        sliderAnimator.UseCustomRange = true;
+                    }
+                    else
+                    {
+                        sliderAnimator.FrameCount = (int)motionSlider.Slider.Maximum;
+                        sliderAnimator.UseCustomRange = false;
+                    }
 
-                            // 设置范围
-                            if (parameters.IsCustomRange)
-                            {
-                                sliderAnimator.CustomRange = parameters.Range;
-                                sliderAnimator.FrameCount = (int)(parameters.Range.Length + 1);
-                                sliderAnimator.UseCustomRange = true;
-                            }
-                            else
-                            {
-                                sliderAnimator.FrameCount = (int)motionSlider.Slider.Maximum;
-                                sliderAnimator.UseCustomRange = false;
-                            }
+                    if (!sliderAnimator.SetupAnimationProperties())
+                        return;
 
-                            if (!sliderAnimator.SetupAnimationProperties())
-                                return;
+                    sliderAnimator.MotionStartAnimation(
+                        parameters.IsTransparent,
+                        parameters.ViewName,
+                        parameters.IsCycles,
+                        parameters.RealtimeRenderPasses,
+                        out _,
+                        out wasAborted,
+                        updateProgress
+                    );
+                }
 
-                            sliderAnimator.MotionStartAnimation(
-                                parameters.IsTransparent,
-                                parameters.ViewName,
-                                parameters.IsCycles,
-                                parameters.RealtimeRenderPasses,
-                                out _,
-                                out wasAborted,
-                                updateProgress
-                            );
-                        }
-
-                        stopwatch.Stop();
-                        string elapsedTime = FormatTimeSpan(stopwatch.Elapsed);
-                        
-                        this.Message = wasAborted 
-                            ? $"Render Cancelled!\nTime: {elapsedTime}"
-                            : $"Render Finished!\nTime: {elapsedTime}";
-                            
-                        RhinoApp.WriteLine($"Render {(wasAborted ? "cancelled" : "finished")} at {DateTime.Now:HH:mm:ss}");
-                    }));
-                });
-            }
-            catch (OperationCanceledException)
-            {
                 stopwatch.Stop();
-                this.Message = $"Render Cancelled!\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
-                RhinoApp.WriteLine($"Render cancelled at {DateTime.Now:HH:mm:ss}");
+                string elapsedTime = FormatTimeSpan(stopwatch.Elapsed);
+                this.Message = wasAborted 
+                    ? $"Render Cancelled!\nTime: {elapsedTime}"
+                    : $"Render Finished!\nTime: {elapsedTime}";
+                    
+                RhinoApp.WriteLine($"Render {(wasAborted ? "cancelled" : "finished")} at {DateTime.Now:HH:mm:ss}");
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
                 this.Message = $"Error: {ex.Message}\nTime: {FormatTimeSpan(stopwatch.Elapsed)}";
-                RhinoApp.WriteLine($"Render error occured at {DateTime.Now:HH:mm:ss}");
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Render error occured: {ex.Message}");
+                RhinoApp.WriteLine($"Render error occurred at {DateTime.Now:HH:mm:ss}");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"渲染发生异常: {ex.Message}");
             }
             finally
             {
-                // 确保在任何情况下都释放CancellationTokenSource
+                // 清理 Token 资源
                 if (_cancellationTokenSource != null)
                 {
                     _cancellationTokenSource.Dispose();
                     _cancellationTokenSource = null;
                 }
+                // 必须释放状态锁，恢复后续的触发功能
+                _isRendering = false;
             }
         }
 
@@ -385,24 +355,17 @@ namespace Motion.Export
         {
             try
             {
-                // 检查系统是否安装了Directory Opus
                 bool hasDOpus = IsDirectoryOpusInstalled();
-                
                 if (hasDOpus)
                 {
-                    // 使用 Directory Opus 打开目录
                     Process.Start("dopus.exe", $"/cmd \"{path}\"");
                     return;
                 }
-                
-                // 使用系统默认的资源管理器打开目录
                 Process.Start("explorer.exe", path);
             }
             catch (Exception ex)
             {
                 RhinoApp.WriteLine($"无法打开目录: {ex.Message}");
-                
-                // 尝试使用最基本的方式打开目录
                 try
                 {
                     Process.Start(new ProcessStartInfo
@@ -434,29 +397,24 @@ namespace Motion.Export
         {
             base.AddedToDocument(document);
 
-            // 检查 Frame 输入端是否已有连接
             if (this.Params.Input[9].Sources.Count > 0) return;
 
             var doc = OnPingDocument();
             if (doc == null) return;
 
-            // 查找 TimeLine(Union) Slider
             var timelineSlider = doc.Objects
                 .OfType<GH_NumberSlider>()
                 .FirstOrDefault();
 
             if (timelineSlider == null) return;
             
-            // 获取 Frame 输入参数并添加数据连接
             var frameParam = Params.Input[9];
             frameParam.AddSource(timelineSlider);
             frameParam.WireDisplay = GH_ParamWireDisplay.faint;
             
-            // 强制更新组件
             ExpireSolution(true);
         }
 
-        // 格式化时间的辅助方法
         private string FormatTimeSpan(TimeSpan timeSpan)
         {
             if (timeSpan.TotalHours >= 1)
@@ -468,7 +426,6 @@ namespace Motion.Export
             return $"{timeSpan.Seconds}s";
         }
         
-        // 重写基类的析构方法，确保所有资源被释放
         protected override void Dispose()
         {
             if (_cancellationTokenSource != null)
