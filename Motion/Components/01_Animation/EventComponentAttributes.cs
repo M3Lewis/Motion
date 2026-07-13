@@ -83,163 +83,166 @@ namespace Motion.Animation
         {
             base.Render(canvas, graphics, channel);
 
-            if (channel == GH_CanvasChannel.Objects)
+            if (channel != GH_CanvasChannel.Objects) return;
+
+            var owner = Owner as EventComponent;
+            if (owner == null) return;
+
+            if (owner.IsCollapsed) return;
+
+            // 1. 如果开启了空值模式菜单，显示提示文字
+            RenderEmptyValueModeText(graphics, owner);
+
+            // 2. 只在鼠标悬停时绘制范围框
+            RenderAffectedObjectsBoundary(graphics, owner);
+
+            // 3. Hide 按钮
+            RenderHideButton(graphics, owner);
+
+            // 4. Lock 按钮
+            RenderLockButton(graphics, owner);
+        }
+
+        private void RenderEmptyValueModeText(Graphics graphics, EventComponent owner)
+        {
+            if (!owner.UseEmptyValueMode) return;
+
+            // 计算文字位置（在组件上方）
+            var textBounds = new RectangleF(
+                Bounds.X,
+                Bounds.Y - 20, // 在组件上方20个像素
+                Bounds.Width,
+                20
+            );
+
+            // 使用半透明的背景色
+            using (var brush = new SolidBrush(Color.FromArgb(80, Color.Black)))
             {
-                var owner = Owner as EventComponent;
-                if (owner == null) return;
+                graphics.FillRectangle(brush, textBounds);
+            }
 
-                // 只在未折叠时渲染按钮
-                if (!owner.IsCollapsed)
+            // 绘制文字
+            graphics.DrawString(
+                EmptyModeText,
+                GH_FontServer.Standard,
+                Brushes.White,
+                textBounds,
+                CenteredStringFormat
+            );
+        }
+
+        private void RenderAffectedObjectsBoundary(Graphics graphics, EventComponent owner)
+        {
+            if (!mouseOver || owner.affectedObjects == null || !owner.affectedObjects.Any()) return;
+
+            // 根据状态决定边框颜色
+            Color boundaryColor;
+
+            // 获取原始颜色
+            Color orange = Color.Orange;
+            Color dodgerBlue = Color.DodgerBlue;
+            Color limeGreen = Color.LimeGreen;
+
+            // 创建 Alpha 值为一半的新颜色
+            Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
+            Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
+            Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
+
+            if (owner.HideWhenEmpty && owner.LockWhenEmpty)
+            {
+                boundaryColor = orangeWithLessAlpha;
+            }
+            else if (owner.HideWhenEmpty)
+            {
+                boundaryColor = dodgerBlueWithLessAlpha;
+            }
+            else if (owner.LockWhenEmpty)
+            {
+                boundaryColor = limeGreenWithLessAlpha;
+            }
+            else
+            {
+                boundaryColor = Color.Transparent;
+            }
+
+            if (boundaryColor == Color.Transparent) return;
+
+            // 统一在循环外部创建资源，避免在 foreach 中重复分配/销毁导致 GC 压力与资源开销
+            using (var boundaryPen = new Pen(boundaryColor, 2f))
+            using (var guidePen = new Pen(boundaryColor, 1f))
+            using (var guideBrush = new SolidBrush(boundaryColor))
+            {
+                boundaryPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
+                guidePen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
+
+                foreach (var obj in owner.affectedObjects)
                 {
-                    // 如果开启了空值模式菜单，显示提示文字
-                    if (owner.UseEmptyValueMode)
-                    {
-                        // 计算文字位置（在组件上方）
-                        var textBounds = new RectangleF(
-                            Bounds.X,
-                            Bounds.Y - 20, // 在组件上方20个像素
-                            Bounds.Width,
-                            20
-                        );
+                    if (obj?.Attributes == null) continue;
 
-                        // 使用半透明的背景色
-                        using (var brush = new SolidBrush(Color.FromArgb(80, Color.Black)))
-                        {
-                            graphics.FillRectangle(brush, textBounds);
-                        }
-
-                        // 绘制文字
-                        graphics.DrawString(
-                            EmptyModeText,
-                            GH_FontServer.Standard,
-                            Brushes.White,
-                            textBounds,
-                            CenteredStringFormat
-                        );
-                    }
-
-                    // 只在鼠标悬停时绘制范围框
-                    if (mouseOver && owner?.affectedObjects != null && owner.affectedObjects.Any())
-                    {
-                        // 根据状态决定边框颜色
-                        Color boundaryColor;
-
-                        // 获取原始颜色
-                        Color orange = Color.Orange;
-                        Color dodgerBlue = Color.DodgerBlue;
-                        Color limeGreen = Color.LimeGreen;
-
-                        // 创建 Alpha 值为一半的新颜色
-                        Color orangeWithLessAlpha = Color.FromArgb(180, orange.R, orange.G, orange.B);
-                        Color dodgerBlueWithLessAlpha = Color.FromArgb(180, dodgerBlue.R, dodgerBlue.G, dodgerBlue.B);
-                        Color limeGreenWithLessAlpha = Color.FromArgb(180, limeGreen.R, limeGreen.G, limeGreen.B);
-
-                        if (owner.HideWhenEmpty && owner.LockWhenEmpty)
-                        {
-                            boundaryColor = orangeWithLessAlpha;
-                        }
-                        else if (owner.HideWhenEmpty)
-                        {
-                            boundaryColor = dodgerBlueWithLessAlpha;
-                        }
-                        else if (owner.LockWhenEmpty)
-                        {
-                            boundaryColor = limeGreenWithLessAlpha;
-                        }
-                        else
-                        {
-                            boundaryColor = Color.Transparent;
-                        }
-
-                        // 绘制范围框
-                        foreach (var obj in owner.affectedObjects)
-                        {
-                            if (obj?.Attributes != null)
-                            {
-                                var objBounds = obj.Attributes.Bounds;
-                                objBounds.Inflate(5f, 5f);
-                                DrawBoundary(graphics, objBounds, boundaryColor);
-                                DrawGuideLine(graphics, Owner.Attributes.Bounds, objBounds, boundaryColor);
-                            }
-                        }
-                    }
-
-                    // Hide 按钮
-                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(hideButtonBounds,
-                        owner.HideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                    {
-                        capsule.Render(graphics, Selected, Owner.Locked, false);
-                        graphics.DrawString(
-                            LanguageManager.GetString("Canvas.Hide", "Hide"),
-                            GH_FontServer.StandardBold,
-                            Brushes.White,
-                            hideButtonBounds,
-                            CenteredStringFormat
-                            );
-                    }
-
-                    // Lock 按钮
-                    using (GH_Capsule capsule = GH_Capsule.CreateCapsule(lockButtonBounds,
-                        owner.LockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
-                    {
-                        capsule.Render(graphics, Selected, Owner.Locked, false);
-                        graphics.DrawString(
-                            LanguageManager.GetString("Canvas.Lock", "Lock"),
-                            GH_FontServer.StandardBold,
-                            Brushes.White,
-                            lockButtonBounds,
-                            CenteredStringFormat
-                            );
-                    }
+                    var objBounds = obj.Attributes.Bounds;
+                    objBounds.Inflate(5f, 5f);
+                    DrawBoundary(graphics, objBounds, boundaryPen);
+                    DrawGuideLine(graphics, Owner.Attributes.Bounds, objBounds, guidePen, guideBrush);
                 }
             }
         }
 
-        private void DrawBoundary(Graphics graphics, RectangleF bounds, Color color)
+        private void RenderHideButton(Graphics graphics, EventComponent owner)
         {
-            using (var pen = new Pen(color, 2f))
+            using (GH_Capsule capsule = GH_Capsule.CreateCapsule(hideButtonBounds,
+                owner.HideWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
             {
-                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
-                pen.Width = 2;
-                graphics.DrawRectangle(pen, bounds.X - 3, bounds.Y - 3, bounds.Width + 6, bounds.Height + 6);
+                capsule.Render(graphics, Selected, Owner.Locked, false);
+                graphics.DrawString(
+                    LanguageManager.GetString("Canvas.Hide", "Hide"),
+                    GH_FontServer.StandardBold,
+                    Brushes.White,
+                    hideButtonBounds,
+                    CenteredStringFormat
+                );
             }
         }
 
-        private void DrawGuideLine(Graphics graphics, RectangleF eventComponentBounds, RectangleF affectComponentBounds, Color color)
+        private void RenderLockButton(Graphics graphics, EventComponent owner)
         {
-            using (var pen = new Pen(color, 1f))
+            using (GH_Capsule capsule = GH_Capsule.CreateCapsule(lockButtonBounds,
+                owner.LockWhenEmpty ? GH_Palette.Blue : GH_Palette.Black))
             {
-                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Solid;
-                pen.Width = 1;
-
-                // 计算起点（事件组件的中心点）
-                PointF startPoint = new PointF(
-                    eventComponentBounds.Left + eventComponentBounds.Width / 2,
-                    eventComponentBounds.Top + eventComponentBounds.Height / 2
+                capsule.Render(graphics, Selected, Owner.Locked, false);
+                graphics.DrawString(
+                    LanguageManager.GetString("Canvas.Lock", "Lock"),
+                    GH_FontServer.StandardBold,
+                    Brushes.White,
+                    lockButtonBounds,
+                    CenteredStringFormat
                 );
-
-
-                // 计算终点（受影响组件的中心点）
-                PointF endPoint = new PointF(
-                    affectComponentBounds.Left + affectComponentBounds.Width / 2,
-                    affectComponentBounds.Top + affectComponentBounds.Height / 2
-                );
-
-                // 绘制连接线
-                graphics.DrawLine(pen, startPoint, endPoint);
-
-                // 可选：添加一个小圆点在线的起点和终点
-                float dotSize = 4f;
-                graphics.FillEllipse(new SolidBrush(color),
-                    startPoint.X - dotSize / 2,
-                    startPoint.Y - dotSize / 2,
-                    dotSize, dotSize);
-                graphics.FillEllipse(new SolidBrush(color),
-                    endPoint.X - dotSize / 2,
-                    endPoint.Y - dotSize / 2,
-                    dotSize, dotSize);
             }
         }
+
+        private void DrawBoundary(Graphics graphics, RectangleF bounds, Pen pen)
+        {
+            graphics.DrawRectangle(pen, bounds.X - 3, bounds.Y - 3, bounds.Width + 6, bounds.Height + 6);
+        }
+
+        private void DrawGuideLine(Graphics graphics, RectangleF eventComponentBounds, RectangleF affectComponentBounds, Pen pen, Brush brush)
+        {
+            PointF startPoint = new PointF(
+                eventComponentBounds.Left + eventComponentBounds.Width / 2,
+                eventComponentBounds.Top + eventComponentBounds.Height / 2
+            );
+
+            PointF endPoint = new PointF(
+                affectComponentBounds.Left + affectComponentBounds.Width / 2,
+                affectComponentBounds.Top + affectComponentBounds.Height / 2
+            );
+
+            graphics.DrawLine(pen, startPoint, endPoint);
+
+            float dotSize = 4f;
+            graphics.FillEllipse(brush, startPoint.X - dotSize / 2, startPoint.Y - dotSize / 2, dotSize, dotSize);
+            graphics.FillEllipse(brush, endPoint.X - dotSize / 2, endPoint.Y - dotSize / 2, dotSize, dotSize);
+        }
+        
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
             if (Owner is EventComponent)
