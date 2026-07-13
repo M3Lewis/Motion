@@ -5,7 +5,7 @@ namespace Motion.Utils.MetroTile
     /// <summary>
     /// Represents one parsed tile rule.
     /// </summary>
-    public sealed class TileRule
+    public sealed record TileRule
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="TileRule"/> class.

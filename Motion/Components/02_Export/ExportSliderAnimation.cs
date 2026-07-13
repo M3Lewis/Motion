@@ -111,63 +111,67 @@ namespace Motion.Export
         private void ExecuteRendering()
         {
             var parameters = new RenderParameters();
-            if (!GetCurrentParams(parameters))
+            if (!TryGetCurrentParams(out parameters))
                 return;
 
             ExecuteRenderingWithParams(parameters);
         }
 
-        private bool GetCurrentParams(RenderParameters parameters)
+       private bool TryGetCurrentParams(out RenderParameters parameters)
+{
+    parameters = null;
+
+    var indicesToCheck = new[] { 0, 1, 2, 3, 4, 5, 6, 9 };
+    foreach (var idx in indicesToCheck)
+    {
+        if (idx >= this.Params.Input.Count || this.Params.Input[idx].VolatileDataCount == 0)
         {
-            var indicesToCheck = new[] { 0, 1, 2, 3, 4, 5, 6, 9 };
-            foreach (var idx in indicesToCheck)
-            {
-                if (idx >= this.Params.Input.Count || this.Params.Input[idx].VolatileDataCount == 0)
-                {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"获取参数失败: 缺少必需的输入参数 [{this.Params.Input[idx].Name}]");
-                    return false;
-                }
-            }
-
-            try
-            {
-                var inputs = new object[]
-                {
-                    this.Params.Input[0].VolatileData.AllData(true).First(),
-                    this.Params.Input[1].VolatileData.AllData(true).First(),
-                    this.Params.Input[2].VolatileData.AllData(true).First(),
-                    this.Params.Input[3].VolatileData.AllData(true).First(),
-                    this.Params.Input[4].VolatileData.AllData(true).First(),
-                    this.Params.Input[5].VolatileData.AllData(true).First(),
-                    this.Params.Input[6].VolatileData.AllData(true).First(),
-                    this.Params.Input[9].VolatileData.AllData(true).First()
-                };
-
-                parameters.ViewName = inputs[0].ToString();
-                parameters.Width = Convert.ToInt32(inputs[1].ToString());
-                parameters.Height = Convert.ToInt32(inputs[2].ToString());
-                parameters.FullPath = inputs[3].ToString();
-                parameters.IsTransparent = Convert.ToBoolean(inputs[4].ToString());
-                parameters.IsCycles = Convert.ToBoolean(inputs[5].ToString());
-                parameters.RealtimeRenderPasses = Convert.ToInt32(inputs[6].ToString());
-                parameters.Frame = Convert.ToDouble(inputs[7].ToString());
-
-                var rangeGoo = this.Params.Input[7].VolatileData.AllData(true).FirstOrDefault();
-                if (rangeGoo != null && rangeGoo is GH_Interval ghInterval)
-                {
-                    parameters.Range = ghInterval.Value;
-                    parameters.IsCustomRange = true;
-                }
-
-                parameters.Run = true;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"解析参数发生错误: {ex.Message}");
-                return false;
-            }
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"获取参数失败: 缺少必需的输入参数 [{this.Params.Input[idx].Name}]");
+            return false;
         }
+    }
+
+    try
+    {
+        var inputs = new object[]
+        {
+            this.Params.Input[0].VolatileData.AllData(true).First(),
+            this.Params.Input[1].VolatileData.AllData(true).First(),
+            this.Params.Input[2].VolatileData.AllData(true).First(),
+            this.Params.Input[3].VolatileData.AllData(true).First(),
+            this.Params.Input[4].VolatileData.AllData(true).First(),
+            this.Params.Input[5].VolatileData.AllData(true).First(),
+            this.Params.Input[6].VolatileData.AllData(true).First(),
+            this.Params.Input[9].VolatileData.AllData(true).First()
+        };
+
+        var rangeGoo = this.Params.Input[7].VolatileData.AllData(true).FirstOrDefault();
+        var ghInterval = rangeGoo as GH_Interval;
+        bool isCustomRange = ghInterval != null;
+
+        parameters = new RenderParameters
+        {
+            ViewName = inputs[0].ToString(),
+            Width = Convert.ToInt32(inputs[1].ToString()),
+            Height = Convert.ToInt32(inputs[2].ToString()),
+            FullPath = inputs[3].ToString(),
+            IsTransparent = Convert.ToBoolean(inputs[4].ToString()),
+            IsCycles = Convert.ToBoolean(inputs[5].ToString()),
+            RealtimeRenderPasses = Convert.ToInt32(inputs[6].ToString()),
+            Frame = Convert.ToDouble(inputs[7].ToString()),
+            Range = isCustomRange ? ghInterval.Value : new Interval(0, 0),
+            IsCustomRange = isCustomRange,
+            Run = true
+        };
+
+        return true;
+    }
+    catch (Exception ex)
+    {
+        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"解析参数发生错误: {ex.Message}");
+        return false;
+    }
+}
 
         // 核心执行方法：完全重构为纯同步的 void 方法
         private void ExecuteRenderingWithParams(RenderParameters parameters)
@@ -328,37 +332,61 @@ namespace Motion.Export
 
         private bool GetInputParams(IGH_DataAccess DA, out RenderParameters parameters)
         {
-            parameters = new RenderParameters();
+            string viewName = "";
+            int width = 1920;
+            int height = 1080;
+            string fullPath = "";
+            bool isTransparent = false;
+            bool isCycles = false;
+            int realtimeRenderPasses = 1;
+            Interval range = new Interval(0, 0);
+            bool run = false;
+            double frame = 0;
 
-            if (!DA.GetData(0, ref parameters.ViewName)) return false;
-            if (!DA.GetData(1, ref parameters.Width)) return false;
-            if (!DA.GetData(2, ref parameters.Height)) return false;
-            if (!DA.GetData(3, ref parameters.FullPath)) return false;
-            if (!DA.GetData(4, ref parameters.IsTransparent)) return false;
-            if (!DA.GetData(5, ref parameters.IsCycles)) return false;
-            if (!DA.GetData(6, ref parameters.RealtimeRenderPasses)) return false;
+            if (!DA.GetData(0, ref viewName)) { parameters = null; return false; }
+            if (!DA.GetData(1, ref width)) { parameters = null; return false; }
+            if (!DA.GetData(2, ref height)) { parameters = null; return false; }
+            if (!DA.GetData(3, ref fullPath)) { parameters = null; return false; }
+            if (!DA.GetData(4, ref isTransparent)) { parameters = null; return false; }
+            if (!DA.GetData(5, ref isCycles)) { parameters = null; return false; }
+            if (!DA.GetData(6, ref realtimeRenderPasses)) { parameters = null; return false; }
 
-            parameters.IsCustomRange = DA.GetData(7, ref parameters.Range);
+            bool isCustomRange = DA.GetData(7, ref range);
 
-            if (!DA.GetData(8, ref parameters.Run)) return false;
-            if (!DA.GetData(9, ref parameters.Frame)) return false;
+            if (!DA.GetData(8, ref run)) { parameters = null; return false; }
+            if (!DA.GetData(9, ref frame)) { parameters = null; return false; }
+
+            parameters = new RenderParameters
+            {
+                ViewName = viewName,
+                Width = width,
+                Height = height,
+                FullPath = fullPath,
+                IsTransparent = isTransparent,
+                IsCycles = isCycles,
+                RealtimeRenderPasses = realtimeRenderPasses,
+                Range = range,
+                Run = run,
+                Frame = frame,
+                IsCustomRange = isCustomRange
+            };
 
             return true;
         }
 
         private class RenderParameters
         {
-            public string ViewName = "";
-            public int Width = 1920;
-            public int Height = 1080;
-            public string FullPath = "";
-            public bool IsTransparent = false;
-            public bool IsCycles = false;
-            public int RealtimeRenderPasses = 1;
-            public Interval Range = new Interval(0, 0);
-            public bool Run = false;
-            public double Frame = 0;
-            public bool IsCustomRange = false;
+            public string ViewName { get; init; } = "";
+            public int Width { get; init; } = 1920;
+            public int Height { get; init; } = 1080;
+            public string FullPath { get; init; } = "";
+            public bool IsTransparent { get; init; } = false;
+            public bool IsCycles { get; init; } = false;
+            public int RealtimeRenderPasses { get; init; } = 1;
+            public Interval Range { get; init; } = new Interval(0, 0);
+            public bool Run { get; init; } = false;
+            public double Frame { get; init; } = 0;
+            public bool IsCustomRange { get; init; } = false;
         }
 
         private static void OpenDirectoryWithDirectoryOpus(string path)
