@@ -262,49 +262,45 @@ namespace Motion.Toolbar
 
         private List<string> InitializeMotionSenderDoubleClickGraph()
         {
-            var doc = Instances.ActiveCanvas.Document;
-            if (doc == null) return null;
-            List<string> loadedGraphPluginNameList = new List<string>();
+            // 如果 Grasshopper 的组件服务尚未初始化，直接返回空列表
+            if (Instances.ComponentServer == null) 
+                return new List<string>();
 
-            var values = new HashSet<string>();
-            GH_DocumentEditor editor = Instances.DocumentEditor;
-            Type editorType = editor.GetType();
-            PropertyInfo ribbonProperty = editorType.GetProperty("Ribbon", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
-            object ribbonObj = null;
-            if (ribbonProperty == null) return null;
-            try
+            var loadedGraphPluginNameList = new List<string>();
+
+            // 使用 HashSet 提高匹配效率（Tab 和 Panel 建议忽略大小写，名称建议精确匹配）
+            var targetCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+            { 
+                "V-Ray", "Maths", "Heteroptera", "Params" 
+            };
+    
+            var targetSubCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+            { 
+                "Render", "Input", "Util", "Maths" 
+            };
+    
+            var targetGraphNames = new HashSet<string>(StringComparer.Ordinal) 
+            { 
+                "V-Ray Graph", 
+                "Rich Graph Mapper", 
+                "Graph-Mapper +", 
+                "Graph Mapper" 
+            };
+
+            // 直接在内存的组件缓存中查找
+            foreach (var proxy in Instances.ComponentServer.ObjectProxies)
             {
-                ribbonObj = ribbonProperty.GetValue(editor);
-                GH_Ribbon ghRibbon = (GH_Ribbon)ribbonObj;
+                if (proxy?.Desc == null) continue;
+                if (proxy.Obsolete) continue; // 可选：过滤掉过期的老版本组件
 
-
-                string vrayGraphName = "V-Ray Graph";
-                string richedGraphName = "Rich Graph Mapper";
-                string graphMapperPlusName = "Graph-Mapper +";
-                string defaultGraphName = "Graph Mapper";
-
-                foreach (var tab in ghRibbon.Tabs)
+                if (targetCategories.Contains(proxy.Desc.Category) &&
+                    targetSubCategories.Contains(proxy.Desc.SubCategory) &&
+                    targetGraphNames.Contains(proxy.Desc.Name))
                 {
-                    if (tab.NameFull != "V-Ray" && tab.NameFull != "Maths" && tab.NameFull != "Heteroptera" && tab.NameFull != "Params") continue;
-                    foreach (var panel in tab.Panels)
-                    {
-                        if (panel.Name != "Render" && panel.Name != "Input" && panel.Name != "Util" && panel.Name != "Maths") continue;
-                        foreach (var item in panel.AllItems)
-                        {
-                            bool isGraphPlugin = item.Proxy.Desc.Name == vrayGraphName
-                                || item.Proxy.Desc.Name == richedGraphName
-                                || item.Proxy.Desc.Name == graphMapperPlusName
-                                || item.Proxy.Desc.Name == defaultGraphName;
-                            if (!isGraphPlugin) continue;
-                            loadedGraphPluginNameList.Add(item.Proxy.Desc.Name);
-                        }
-                    }
+                    loadedGraphPluginNameList.Add(proxy.Desc.Name);
                 }
             }
-            catch (Exception ex)
-            {
-                Rhino.RhinoApp.WriteLine($"访问GH_Ribbon时出错:{ex.Message}");
-            }
+
             return loadedGraphPluginNameList;
         }
 
