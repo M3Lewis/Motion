@@ -13,39 +13,30 @@ namespace Motion.Components
         public int InputPortIndex { get; } = 0;
         public bool NeedsBezierGraph { get; } = true;
 
-        public void PostConfigure(GH_Document doc, IGH_Component graphComponent)
+        public void PostConfigure(GH_Document doc, IGH_ActiveObject graphObject)
         {
             try
             {
                 var bezier2GraphGuid = new Guid("34afa8f2-fee6-4e3b-82da-b980ffeb87aa");
                 var customGraph = Grasshopper.Instances.ComponentServer.EmitGraph(bezier2GraphGuid);
-                if (customGraph != null)
-                {
-                    customGraph.PrepareForUse();
-                    var containerProp = graphComponent.GetType().GetProperty("Container");
-                    if (containerProp != null)
-                    {
-                        var container =
-                            containerProp.GetValue(graphComponent, null) as GH_GraphContainer;
-                        containerProp.SetValue(graphComponent, null, null);
+                if (customGraph == null) return;
 
-                        if (container == null)
-                        {
-                            container = new GH_GraphContainer(customGraph);
-                        }
-                        else
-                        {
-                            container.Graph = customGraph;
-                        }
+                customGraph.PrepareForUse();
+                
+                var containerProp = graphObject.GetType().GetProperty("Container");
+                if (containerProp == null) return;
 
-                        container.X0 = 0;
-                        container.X1 = 1;
-                        container.Y0 = 0;
-                        container.Y1 = 1;
+                var container = containerProp.GetValue(graphObject, null) as GH_GraphContainer 
+                                ?? new GH_GraphContainer(customGraph);
 
-                        containerProp.SetValue(graphComponent, container, null);
-                    }
-                }
+                container.Graph = customGraph;
+                container.X0 = 0;
+                container.X1 = 1;
+                container.Y0 = 0;
+                container.Y1 = 1;
+
+                containerProp.SetValue(graphObject, null, null);
+                containerProp.SetValue(graphObject, container, null);
             }
             catch (Exception ex)
             {

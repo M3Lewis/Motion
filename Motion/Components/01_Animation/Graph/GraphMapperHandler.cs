@@ -13,33 +13,24 @@ namespace Motion.Components
         public int InputPortIndex { get; } = 0;
         public bool NeedsBezierGraph { get; } = true;
 
-        public void PostConfigure(GH_Document doc, IGH_Component graphComponent)
+        public void PostConfigure(GH_Document doc, IGH_ActiveObject graphObject)
         {
-            if (graphComponent is not GH_GraphMapper graphMapper) return;
+            if (graphObject is not GH_GraphMapper graphMapper) return;
             
             var bezierGraph = Grasshopper.Instances.ComponentServer.EmitGraph(new GH_BezierGraph().GraphTypeID);
-            if (bezierGraph != null)
-            {
-                bezierGraph.PrepareForUse();
-                var container = graphMapper.Container;
-                graphMapper.Container = null;
+            if (bezierGraph == null) return;
 
-                if (container == null)
-                {
-                    container = new GH_GraphContainer(bezierGraph);
-                }
-                else
-                {
-                    container.Graph = bezierGraph;
-                }
+            bezierGraph.PrepareForUse();
+            
+            var container = graphMapper.Container ?? new GH_GraphContainer(bezierGraph);
+            container.Graph = bezierGraph;
+            container.X0 = 0;
+            container.X1 = 1;
+            container.Y0 = 0;
+            container.Y1 = 1;
 
-                container.X0 = 0;
-                container.X1 = 1;
-                container.Y0 = 0;
-                container.Y1 = 1;
-
-                graphMapper.Container = container;
-            }
+            graphMapper.Container = null;
+            graphMapper.Container = container;
         }
     }
 }

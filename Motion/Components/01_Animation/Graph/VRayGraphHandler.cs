@@ -13,7 +13,7 @@ namespace Motion.Components
         public int InputPortIndex { get; } = 0;
         public bool NeedsBezierGraph { get; } = false;
 
-        public void PostConfigure(GH_Document doc, IGH_Component graphComponent)
+        public void PostConfigure(GH_Document doc, IGH_ActiveObject graphObject)
         {
             
         }

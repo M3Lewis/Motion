@@ -80,7 +80,7 @@ namespace Motion.Toolbar
                 const float VERTICAL_SPACING = 120f;
                 const float HORIZONTAL_OFFSET = 300f;
 
-                var componentsToExpire = new List<(EventComponent eventComp, IGH_Component graphComp)>();
+                var componentsToExpire = new List<(EventComponent eventComp, IGH_ActiveObject graphComp)>();
 
                 for (int i = 0; i < selectedSenders.Count; i++)
                 {

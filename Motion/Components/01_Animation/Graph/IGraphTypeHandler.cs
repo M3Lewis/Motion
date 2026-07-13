@@ -10,6 +10,6 @@ namespace Motion.Components
         PointF PositionOffset { get; }        // 放在什么位置
         int InputPortIndex { get; }           // 连到哪个输入端口
         bool NeedsBezierGraph { get; }        // 是否需要默认贝塞尔图
-        void PostConfigure(GH_Document doc, IGH_Component graphComponent);  // 额外的配置
+        void PostConfigure(GH_Document doc, IGH_ActiveObject graphObject);  // 额外的配置
     }
 }
