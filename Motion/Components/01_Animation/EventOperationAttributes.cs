@@ -107,45 +107,52 @@ namespace Motion.Animation
         {
             base.Render(canvas, graphics, channel);
 
-            if (channel == GH_CanvasChannel.Objects)
+            // 1. 卫语句：如果不是绘制物体的通道，直接返回
+            if (channel != GH_CanvasChannel.Objects) 
+                return;
+
+            // 2. 卫语句：如果 Owner 为空，直接返回
+            var eventOperation = Owner;
+            if (eventOperation == null) 
+                return;
+
+            // 3. 关键修复：使用 using 包装 Font 以防止 GDI 句柄泄露
+            using (var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 8f))
             {
-                var eventOperation = Owner;
-                if (eventOperation != null)
+                // 绘制左侧数值
+                double eventValue = eventOperation.CurrentEventValue;
+                string valueLabel = $"{eventValue:F2}";
+
+                var valueLabelBounds = new RectangleF(
+                    Bounds.Left - 30,
+                    Bounds.Top - 5,
+                    30,
+                    labelFont.Height
+                );
+
+                using (var brush = new SolidBrush(Color.LightSkyBlue))
                 {
-                    var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 8);
+                    graphics.DrawString(valueLabel, labelFont, brush, valueLabelBounds);
+                }
 
-                    double eventValue = eventOperation.CurrentEventValue;
-                    string valueLabel = $"{eventValue:F2}";
+                // 绘制右侧映射数值
+                double currentMappedEventValue = eventOperation.CurrentMappedEventValue;
+        
+                // 根据数值大小决定显示格式，使用 Math.Round 进行四舍五入
+                string currentMappedEventValueLabel = currentMappedEventValue > 1000
+                    ? $"{(int)Math.Round(currentMappedEventValue)}"
+                    : $"{currentMappedEventValue:F2}";
 
-                    var valueLabelBounds = new RectangleF(
-                        Bounds.Left - 30,
-                        Bounds.Top - 5,
-                        30,
-                        labelFont.Height
-                    );
+                var currentMappedEventValueBounds = new RectangleF(
+                    Bounds.Right + 5,
+                    Bounds.Top - 5,
+                    100,
+                    labelFont.Height
+                );
 
-                    using (var brush = new SolidBrush(Color.LightSkyBlue))
-                    {
-                        graphics.DrawString(valueLabel, labelFont, brush, valueLabelBounds);
-                    }
-
-                    double currentMappedEventValue = eventOperation.CurrentMappedEventValue;
-                    // 根据数值大小决定显示格式，使用Math.Round进行四舍五入
-                    string currentMappedEventValueLabel = currentMappedEventValue > 1000
-                        ? $"{(int)Math.Round(currentMappedEventValue)}"
-                        : $"{currentMappedEventValue:F2}";
-
-                    var currentMappedEventValueBounds = new RectangleF(
-                        Bounds.Right + 5,
-                        Bounds.Top - 5,
-                        100,
-                        labelFont.Height
-                    );
-
-                    using (var brush = new SolidBrush(Color.Orange))
-                    {
-                        graphics.DrawString(currentMappedEventValueLabel, labelFont, brush, currentMappedEventValueBounds);
-                    }
+                using (var brush = new SolidBrush(Color.Orange))
+                {
+                    graphics.DrawString(currentMappedEventValueLabel, labelFont, brush, currentMappedEventValueBounds);
                 }
             }
         }
