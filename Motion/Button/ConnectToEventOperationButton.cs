@@ -4,13 +4,11 @@ using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using Motion.Animation;
-using Motion.Toolbar;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using Motion.Animation;
 
 namespace Motion.Toolbar
 {
