@@ -74,7 +74,7 @@ namespace Motion.Animation
                 int minComparison = a.minValue.CompareTo(b.minValue);
                 return minComparison != 0 ? minComparison : a.maxValue.CompareTo(b.maxValue);
             });
-
+            
             // 创建上下文菜单
             var menu = new ToolStripDropDown();
             foreach (var item in menuItems)
@@ -83,7 +83,6 @@ namespace Motion.Animation
                 var targetComponent = item.component; // 捕获目标组件
                 menuItem.Click += (s, args) =>
                 {
-                    // 使用 EventComponent 的 GoComponent 方法跳转
                     MotilityUtils.GoComponent(targetComponent);
                 };
                 menu.Items.Add(menuItem);
@@ -91,10 +90,17 @@ namespace Motion.Animation
 
             // 在组件位置显示菜单
             var screenPoint = sender.Viewport.ProjectPoint(Pivot);
+
+            // 【新增：安全延迟释放逻辑】
+            menu.Closed += (s, args) =>
+            {
+                // sender 是 GH_Canvas，通过 BeginInvoke 保证释放操作在 Click 事件彻底执行完毕后才触发
+                sender.BeginInvoke(new Action(menu.Dispose));
+            };
+
             menu.Show(sender, new System.Drawing.Point((int)screenPoint.X, (int)screenPoint.Y));
 
             return GH_ObjectResponse.Handled;
-
         }
         
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
@@ -103,7 +109,7 @@ namespace Motion.Animation
 
             if (channel == GH_CanvasChannel.Objects)
             {
-                var eventOperation = Owner as EventOperation;
+                var eventOperation = Owner;
                 if (eventOperation != null)
                 {
                     var labelFont = new Font(GH_FontServer.StandardBold.FontFamily, 8);
