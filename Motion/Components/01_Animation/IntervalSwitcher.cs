@@ -52,22 +52,14 @@ namespace Motion.Utils
             if (Params.Input[2].Sources.Count > 0)
             {
                 IGH_Param sourceParam = Params.Input[2].Sources[0];
-                if (sourceParam is GH_NumberSlider sliderComponent)
+                numberSlider = sourceParam switch
                 {
-                    numberSlider = sliderComponent;
-                }
-                else if (sourceParam.Attributes?.GetTopLevel?.DocObject is GH_NumberSlider topLevelSlider)
-                {
-                     numberSlider = topLevelSlider;
-                }
-                 else if (sliderInput is GH_NumberSlider inputAsSlider)
-                 {
-                     numberSlider = inputAsSlider;
-                 }
-                 else if (sliderInput is GH_ObjectWrapper wrapper && wrapper.Value is GH_NumberSlider wrappedSlider)
-                 {
-                     numberSlider = wrappedSlider;
-                 }
+                    GH_NumberSlider slider => slider,
+                    _ when sourceParam.Attributes?.GetTopLevel?.DocObject is GH_NumberSlider topLevel => topLevel,
+                    _ when sliderInput is GH_NumberSlider inputAsSlider => inputAsSlider,
+                    _ when sliderInput is GH_ObjectWrapper { Value: GH_NumberSlider wrapped } => wrapped,
+                    _ => null
+                };
             }
 
 
