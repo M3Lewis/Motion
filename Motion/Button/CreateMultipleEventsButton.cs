@@ -64,8 +64,9 @@ namespace Motion.Toolbar
             {
                 var canvas = Instances.ActiveCanvas;
                 if (canvas?.Document == null) return;
+                var ghDoc = canvas.Document;
 
-                var selectedSenders = canvas.Document.SelectedObjects()
+                var selectedSenders = ghDoc.SelectedObjects()
                     .Where(obj => obj is MotionSender)
                     .Cast<MotionSender>()
                     .ToList();
@@ -79,68 +80,36 @@ namespace Motion.Toolbar
                 const float VERTICAL_SPACING = 120f;
                 const float HORIZONTAL_OFFSET = 300f;
 
-                Dictionary<Guid, PointF> targetPositions = new Dictionary<Guid, PointF>();
+                var componentsToExpire = new List<(EventComponent eventComp, IGH_Component graphComp)>();
 
                 for (int i = 0; i < selectedSenders.Count; i++)
                 {
                     var senderParam = selectedSenders[i];
-                    var attributes = senderParam.Attributes as RemoteParamAttributes;
-                    if (attributes == null) continue;
-
-                    var senderPivot = attributes.Pivot;
+                    var senderPivot = senderParam.Attributes.Pivot;
                     var eventPivot = new PointF(
                         senderPivot.X + HORIZONTAL_OFFSET,
-                        senderPivot.Y + i * VERTICAL_SPACING
+                        senderPivot.Y + i * VERTICAL_SPACING + 10f
                     );
 
-                    targetPositions[senderParam.InstanceGuid] = eventPivot;
+                    var (eventComp, graphComp) = EventGraphFactory.CreateEventWithGraph(ghDoc, senderParam, eventPivot);
 
-                    var controlPoint = new Point(
-                        (int)attributes.Bounds.Left + (int)attributes.Bounds.Width / 2,
-                        (int)attributes.Bounds.Top + (int)attributes.Bounds.Height / 2
-                    );
+                    senderParam.Attributes.Selected = false;
+                    eventComp.Attributes.Selected = false;
+                    if (graphComp != null) graphComp.Attributes.Selected = false;
 
-                    var mouseEvent = new GH_CanvasMouseEvent(
-                        controlPoint,
-                        canvas.Viewport.UnprojectPoint(controlPoint),
-                        MouseButtons.Left,
-                        2
-                    );
-
-                    attributes.RespondToMouseDoubleClick(canvas, mouseEvent);
-
-                    canvas.Document.ScheduleSolution(5, doc =>
-                    {
-                        var newComponents = doc.Objects
-                            .Where(obj => obj.Attributes.Selected)
-                            .OrderByDescending(obj => obj.InstanceGuid)
-                            .ToList();
-
-                        foreach (var comp in newComponents)
-                        {
-                            if (!targetPositions.TryGetValue(senderParam.InstanceGuid, out PointF targetPos)) continue;
-                            
-                            if (comp is EventComponent eventComp)
-                            {
-                                eventComp.Attributes.Pivot = new PointF(targetPos.X,targetPos.Y+10f);
-                                eventComp.Attributes.Selected = false;
-                            }
-                            else
-                            {
-                                var handler = GraphTypeHandlerRegistry.FindByGuid(comp.ComponentGuid);
-
-                                if (handler == null) continue;
-                                comp.Attributes.Pivot = new PointF(
-                                    targetPos.X + handler.PositionOffset.X,
-                                    targetPos.Y + handler.PositionOffset.Y + 10f
-                                    );
-                                comp.Attributes.Selected = false;
-                            }
-                        }
-                        
-                        Grasshopper.Instances.ActiveCanvas.Invalidate();
-                    });
+                    componentsToExpire.Add((eventComp, graphComp));
                 }
+
+                ghDoc.ScheduleSolution(10, doc =>
+                {
+                    foreach (var (eventComp, graphComp) in componentsToExpire)
+                    {
+                        eventComp.ExpireSolution(false);
+                        graphComp?.ExpireSolution(false);
+                    }
+                });
+
+                canvas.Refresh();
             }
             catch (Exception ex)
             {

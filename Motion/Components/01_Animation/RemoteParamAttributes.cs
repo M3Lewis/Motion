@@ -201,49 +201,17 @@ namespace Motion.Animation
 
             if (Owner is MotionSender senderParam)
             {
-                var eventComp = new EventComponent();
-                eventComp.CreateAttributes();
+                var pivot = new PointF(Owner.Attributes.Pivot.X + 300, Owner.Attributes.Pivot.Y + 10);
+                var (eventComp, graphComp) = EventGraphFactory.CreateEventWithGraph(ghDoc, senderParam, pivot);
 
-                var pivot = Owner.Attributes.Pivot;
-                eventComp.Attributes.Pivot = new PointF(pivot.X + 300, pivot.Y + 10);
+                senderParam.Attributes.Selected = false;
+                eventComp.Attributes.Selected = true;
+                if (graphComp != null) graphComp.Attributes.Selected = true;
 
-                ghDoc.AddObject(eventComp, false);
-
-                var timeParam = eventComp.Params.Input[0];
-                timeParam.AddSource(senderParam);
-                timeParam.WireDisplay = GH_ParamWireDisplay.hidden;
-
-                eventComp.LinkToSender(senderParam);
-                
-                ghDoc.ScheduleSolution(5, doc =>
+                ghDoc.ScheduleSolution(10, d =>
                 {
-                    if (GraphTypeHandlerRegistry.Handlers.TryGetValue(
-                            MotionSenderSettings.DoubleClickGraphType, out var handler))
-                    {
-                        var graphComponent =
-                            Grasshopper.Instances.ComponentServer.EmitObject(handler.ComponentGuid) as IGH_Component;
-                        if (graphComponent == null) return;
-
-                        graphComponent.CreateAttributes();
-                        graphComponent.Attributes.Pivot = new PointF(
-                                eventComp.Attributes.Pivot.X + handler.PositionOffset.X,
-                                eventComp.Attributes.Pivot.Y + handler.PositionOffset.Y
-                            );
-
-                        doc.AddObject(graphComponent, false);
-                        graphComponent.Params.Input[handler.InputPortIndex].AddSource(eventComp.Params.Output[0]);
-                        handler.PostConfigure(doc, graphComponent);
-                        graphComponent.Params.Input[handler.InputPortIndex].WireDisplay = GH_ParamWireDisplay.faint;
-                        senderParam.Attributes.Selected = false;
-                        graphComponent.Attributes.Selected = true;
-                        eventComp.Attributes.Selected = true;
-
-                        doc.ScheduleSolution(10, d =>
-                        {
-                            graphComponent.ExpireSolution(true);
-                            eventComp.ExpireSolution(true);
-                        });
-                    }
+                    eventComp.ExpireSolution(true);
+                    graphComp?.ExpireSolution(true);
                 });
 
                 sender.Refresh();
