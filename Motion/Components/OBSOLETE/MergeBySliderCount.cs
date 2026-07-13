@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -141,7 +141,10 @@ namespace Motion.Components.OBSOLETE
                     sliderList.Add((GH_NumberSlider)obj);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error sorting slider objects: {ex.Message}");
+            }
             List<GH_NumberSlider> orderedSliderList = sliderList.OrderBy(s => s.Attributes.Bounds.Y).ToList();
             return orderedSliderList;
         }
@@ -155,8 +158,9 @@ namespace Motion.Components.OBSOLETE
                     Params.Input[i].Name = sliders[i].Name.ToString();
                     Params.Input[i].NickName = sliders[i].NickName.ToString();
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Rhino.RhinoApp.WriteLine($"Error maintaining variable parameters: {ex.Message}");
                 }
             }
         }

@@ -1,4 +1,4 @@
-﻿using GH_IO.Serialization;
+using GH_IO.Serialization;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
@@ -50,8 +50,9 @@ namespace Motion.Animation
             {
                 this.NickName = code;
             }
-            catch
+            catch (Exception ex)
             {
+                Rhino.RhinoApp.WriteLine($"Error setting NickName to code in RemoteParam: {ex.Message}");
             }
         }
         public override void AddedToDocument(GH_Document document)

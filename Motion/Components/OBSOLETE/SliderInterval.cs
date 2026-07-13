@@ -123,7 +123,10 @@ namespace Motion.Animation
                     nowComp.Params.Input[0].AddSource(sliderInstance);
                 }
             }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error adding SliderInterval sources: {ex.Message}");
+            }
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)

@@ -560,8 +560,9 @@ namespace Motion.Animation
                     Owner.UpdateRangeFromConnectedSenders(); // 确保这里调用了 SynchronizeSenderIntervals
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Rhino.RhinoApp.WriteLine($"Error processing text input for slider: {ex.Message}");
             }
         }
     }

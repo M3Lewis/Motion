@@ -195,7 +195,10 @@ namespace Motion.Components.OBSOLETE
                     return (slider.Slider.Minimum, slider.Slider.Maximum);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"Error getting slider values in MergeCameraBase: {ex.Message}");
+            }
             return null;
         }
 

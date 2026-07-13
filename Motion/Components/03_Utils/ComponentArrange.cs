@@ -1,6 +1,4 @@
 ﻿
-
-// Hare.ComponentArrange
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -73,7 +71,10 @@ namespace Motion.Utils
                         totalCount++;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Rhino.RhinoApp.WriteLine($"Error arranging components: {ex.Message}");
+                }
             }
 
             // 为每个subcategory创建组并布局组件
