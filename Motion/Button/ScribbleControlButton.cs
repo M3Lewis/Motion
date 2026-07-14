@@ -67,7 +67,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}");
+                MessageBox.Show(string.Format(General.LanguageManager.GetString("Msg.ErrorOccurred", "An error occurred: {0}"), ex.Message));
             }
         }
     }

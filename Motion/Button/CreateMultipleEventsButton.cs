@@ -73,7 +73,7 @@ namespace Motion.Toolbar
 
                 if (!selectedSenders.Any())
                 {
-                    ShowTemporaryMessage(canvas, "请至少选择一个Motion Sender");
+                    ShowTemporaryMessage(canvas, General.LanguageManager.GetString("Msg.SelectSenderFirst", "请至少选择一个Motion Sender"));
                     return;
                 }
 
@@ -113,7 +113,7 @@ namespace Motion.Toolbar
             }
             catch (Exception ex)
             {
-                ShowTemporaryMessage(Instances.ActiveCanvas, $"Error: {ex.Message}");
+                ShowTemporaryMessage(Instances.ActiveCanvas, string.Format(General.LanguageManager.GetString("Msg.ErrorOccurred", "An error occurred: {0}"), ex.Message));
             }
         }
     }

@@ -1,4 +1,4 @@
-using Grasshopper;
+﻿using Grasshopper;
 using Grasshopper.Kernel;
 using System;
 using System.Linq;
@@ -53,10 +53,7 @@ namespace Motion.Animation
                 .Where(k => !string.IsNullOrEmpty(k))
                 .Select(k =>
                 {
-                    var parts = k.Split('-');
-                    if (parts.Length == 2 &&
-                        double.TryParse(parts[0], out double start) &&
-                        double.TryParse(parts[1], out double end))
+                    if (MotilityUtils.TryParseNickNameInterval(k, out double start, out double end))
                     {
                         return new { Key = k, Start = start, End = end };
                     }
@@ -241,10 +238,7 @@ namespace Motion.Animation
                         else if (_timelineSlider != null)
                         {
                             double currentValue = (double)_timelineSlider.CurrentValue;
-                            string[] parts = this.NickName.Split('-');
-                            if (parts.Length == 2 &&
-                                double.TryParse(parts[0], out double min) &&
-                                double.TryParse(parts[1], out double max))
+                            if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
                             {
                                 bool shouldHideOrLock =
                                     currentValue < (min - 0.0001) || currentValue > (max + 0.0001);

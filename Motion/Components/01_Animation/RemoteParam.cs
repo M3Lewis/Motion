@@ -1,4 +1,4 @@
-using GH_IO.Serialization;
+﻿using GH_IO.Serialization;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
@@ -225,10 +225,7 @@ namespace Motion.Animation
                     double currentValue = (double)timelineSlider.Slider.Value;
 
                     // 解析当前receiver的nickname获取区间
-                    string[] parts = this.NickName.Split('-');
-                    if (parts.Length == 2 &&
-                        double.TryParse(parts[0], out double min) &&
-                        double.TryParse(parts[1], out double max))
+                    if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
                     {
                         shouldHideOrLock = currentValue < min || currentValue > max;
                     }

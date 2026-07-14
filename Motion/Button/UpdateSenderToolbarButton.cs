@@ -143,7 +143,7 @@ namespace Motion.Toolbar
                 var sliders = gH_Document.Objects
                     .Where(o => o != null && 
                                (o.GetType().ToString() == "pOd_GH_Animation.L_TimeLine.pOd_TimeLineSlider" ||
-                                o.GetType().ToString() == "Motion.Animation.MotionSlider") &&
+                                o is MotionSlider) &&
                                 o.NickName != "TimeLine(Union)")
                     .Cast<GH_NumberSlider>()
                     .ToList();

@@ -70,7 +70,7 @@ namespace Motion.Animation
                 var canvas = Grasshopper.Instances.ActiveCanvas;
                 if (canvas != null)
                 {
-                    MotilityUtils.ShowTemporaryMessageAtLocation(canvas, "每个文件只能放置一个 Motion Slider!",
+                    MotilityUtils.ShowTemporaryMessageAtLocation(canvas, General.LanguageManager.GetString("Msg.SingleSliderOnly", "每个文件只能放置一个 Motion Slider!"),
                         new PointF(this.Attributes.Bounds.Right + 20, this.Attributes.Bounds.Top + 4));
                 }
 

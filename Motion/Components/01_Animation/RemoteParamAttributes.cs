@@ -1,4 +1,4 @@
-using Grasshopper.GUI;
+﻿using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
@@ -149,9 +149,11 @@ namespace Motion.Animation
         {
             if (!this.Selected) return;
             var _sender = Owner as MotionSender;
-            Interval _senderRange = new Interval(
-                double.Parse(_sender.NickName.Split('-')[0]),
-                double.Parse(_sender.NickName.Split('-')[1]));
+            Interval _senderRange = Interval.Unset;
+            if (MotilityUtils.TryParseNickNameInterval(_sender.NickName, out double min, out double max))
+            {
+                _senderRange = new Interval(min, max);
+            }
 
             if (_senderRange == Interval.Unset || !_senderRange.IsValid) return;
 

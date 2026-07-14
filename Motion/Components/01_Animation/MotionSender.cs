@@ -1,4 +1,4 @@
-﻿using GH_IO.Serialization;
+using GH_IO.Serialization;
 using Grasshopper;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
@@ -71,7 +71,7 @@ namespace Motion.Animation
             Menu_AppendSeparator(menu);
 
             // 创建"跳转到Event"的子菜单
-            ToolStripMenuItem jumpToEventMenu = Menu_AppendItem(menu, "跳转到Event");
+            ToolStripMenuItem jumpToEventMenu = Menu_AppendItem(menu, General.LanguageManager.GetString("Msg.JumpToEvent", "跳转到Event"));
 
             // 获取所有关联的Event组件及其所在的组
             var eventGroups = new Dictionary<string, IGH_DocumentObject>();
@@ -85,7 +85,7 @@ namespace Motion.Animation
                     .OfType<GH_Group>()
                     .FirstOrDefault(g => g.ObjectIDs.Contains(eventComponent.InstanceGuid));
 
-                string groupName = group != null ? group.NickName : "未分组";
+                string groupName = group != null ? group.NickName : General.LanguageManager.GetString("Msg.Ungrouped", "未分组");
 
                 // 使用组名作为键，确保不重复
                 if (!eventGroups.ContainsKey(groupName))
@@ -130,7 +130,7 @@ namespace Motion.Animation
             if (doc == null) return;
 
             var sliders = doc.Objects
-                .Where(o => o.GetType().ToString() == "Motion.Animation.MotionSlider")
+                .OfType<MotionSlider>()
                 .Cast<GH_NumberSlider>()
                 .ToList();
 
@@ -197,7 +197,7 @@ namespace Motion.Animation
             var canvas = Grasshopper.Instances.ActiveCanvas;
             if (canvas == null) return;
             
-            MotilityUtils.ShowTemporaryMessageAtLocation(canvas, $"已存在相同标识({NickName})的 Sender!",
+            MotilityUtils.ShowTemporaryMessageAtLocation(canvas, string.Format(General.LanguageManager.GetString("Msg.DuplicateSender", "已存在相同标识({0})的 Sender!"), NickName),
                 new PointF(this.Attributes.Bounds.Right + 20, this.Attributes.Bounds.Top + 4));
         }
 
@@ -395,7 +395,7 @@ namespace Motion.Animation
             var canvas = Grasshopper.Instances.ActiveCanvas;
             if (canvas != null)
             {
-                MotilityUtils.ShowTemporaryMessageAtLocation(canvas, $"已存在相同标识({nicknameKey})的 Sender!",
+                MotilityUtils.ShowTemporaryMessageAtLocation(canvas, string.Format(General.LanguageManager.GetString("Msg.DuplicateSender", "已存在相同标识({0})的 Sender!"), nicknameKey),
                     new PointF(this.Attributes.Bounds.Right + 20, this.Attributes.Bounds.Top + 4));
             }
         }

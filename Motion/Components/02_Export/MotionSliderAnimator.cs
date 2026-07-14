@@ -46,7 +46,7 @@ namespace Motion.Export
                 // 验证参数
                 if (!ValidateParameters(out string errorMessage))
                 {
-                    RhinoApp.WriteLine($"Parameter validation failed: {errorMessage}");
+                    RhinoApp.WriteLine(string.Format(Motion.General.LanguageManager.GetString("Msg.ValidationFailed", "Parameter validation failed: {0}"), errorMessage));
                     wasAborted = true;
                     return;
                 }
@@ -76,7 +76,7 @@ namespace Motion.Export
                 var myView = doc.Views.Find(viewName, true);
                 if (myView == null)
                 {
-                    RhinoApp.WriteLine("Could not find specified view: " + viewName);
+                    RhinoApp.WriteLine(string.Format(Motion.General.LanguageManager.GetString("Msg.ViewNotFound", "Could not find specified view: {0}"), viewName));
                     wasAborted = true;
                     return;
                 }
@@ -174,14 +174,14 @@ namespace Motion.Export
             // 如果需要Cycles渲染但不是光线追踪模式
             if (isCycles && !isRaytracedMode)
             {
-                RhinoApp.WriteLine("Please open the raytraced display mode！");
+                RhinoApp.WriteLine(Motion.General.LanguageManager.GetString("Msg.OpenRaytracedMode", "Please open the raytraced display mode!"));
                 return false;
             }
 
             // 如果是光线追踪模式但没有启用Cycles
             if (!isCycles && isRaytracedMode)
             {
-                RhinoApp.WriteLine("Please enable isCycles to render！");
+                RhinoApp.WriteLine(Motion.General.LanguageManager.GetString("Msg.EnableCyclesRender", "Please enable isCycles to render!"));
                 return false;
             }
 
@@ -193,22 +193,22 @@ namespace Motion.Export
             errorMessage = null;
             if (m_fileTemplate == null)
             {
-                errorMessage = "File name mask is not valid";
+                errorMessage = Motion.General.LanguageManager.GetString("Msg.FileMaskInvalid", "File name mask is not valid");
                 return false;
             }
             if (m_folder == null)
             {
-                errorMessage = "Destination folder path is not valid";
+                errorMessage = Motion.General.LanguageManager.GetString("Msg.FolderPathInvalid", "Destination folder path is not valid");
                 return false;
             }
             if (m_owner == null)
             {
-                errorMessage = "Number slider reference cannot be resolved";
+                errorMessage = Motion.General.LanguageManager.GetString("Msg.SliderRefUnresolved", "Number slider reference cannot be resolved");
                 return false;
             }
             if (m_frameCount < 1)
             {
-                errorMessage = "Insufficient frames for animation";
+                errorMessage = Motion.General.LanguageManager.GetString("Msg.InsufficientFrames", "Insufficient frames for animation");
                 return false;
             }
             return true;
@@ -224,7 +224,7 @@ namespace Motion.Export
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception("Unable to create destination folder: " + ex.Message, ex);
+                    throw new Exception(string.Format(Motion.General.LanguageManager.GetString("Msg.UnableCreateFolder", "Unable to create destination folder: {0}"), ex.Message), ex);
                 }
             }
         }
@@ -293,10 +293,10 @@ namespace Motion.Export
             switch (true)
             {
                 case true when isCycles && !isRaytracedMode:
-                    RhinoApp.WriteLine("Please open the raytraced display mode！");
+                    RhinoApp.WriteLine(Motion.General.LanguageManager.GetString("Msg.OpenRaytracedMode", "Please open the raytraced display mode!"));
                     break;
                 case true when !isCycles && isRaytracedMode:
-                    RhinoApp.WriteLine("Please enable isCycles to render！");
+                    RhinoApp.WriteLine(Motion.General.LanguageManager.GetString("Msg.EnableCyclesRender", "Please enable isCycles to render!"));
                     break;
                 default:
                     RhinoApp.WriteLine($"Frame {m_frameIndex + (UseCustomRange ? (int)CustomRange.Min : 0)} failed to render");
@@ -381,7 +381,7 @@ namespace Motion.Export
             catch (Exception)
             {
                 // 如果计算出错，返回默认值
-                return "计算中...";
+                return Motion.General.LanguageManager.GetString("Msg.Calculating", "计算中...");
             }
         }
 

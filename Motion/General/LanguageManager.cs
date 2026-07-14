@@ -272,13 +272,34 @@ namespace Motion.General
                 if (fe.ToolTip is string tooltipStr)
                 {
                     string orig = GetOrRegisterOriginalText(fe, tooltipStr);
-                    fe.ToolTip = GetLocalizedText(orig, windowName);
+                    fe.ToolTip = GetLocalizedTooltipText(orig, windowName);
                 }
                 else if (fe.ToolTip is System.Windows.DependencyObject tooltipDobj)
                 {
                     LocalizeLogicalElement(tooltipDobj, windowName);
                 }
             }
+        }
+
+        private static string GetLocalizedTooltipText(string text, string windowName)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            // Context-specific tooltip key first (e.g., "UI.ModifySliderWindow.ToolTip.例如: 0,100,200,350")
+            string keyContext = $"UI.{windowName}.ToolTip.{text}";
+            if (Translations.ContainsKey(keyContext))
+            {
+                return GetString(keyContext, text);
+            }
+
+            // Generic tooltip key (e.g., "UI.ToolTip.例如: 0,100,200,350")
+            string keyGeneric = $"UI.ToolTip.{text}";
+            if (Translations.ContainsKey(keyGeneric))
+            {
+                return GetString(keyGeneric, text);
+            }
+
+            return GetLocalizedText(text, windowName);
         }
 
         private static string GetLocalizedText(string text, string windowName)
