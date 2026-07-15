@@ -520,23 +520,18 @@ namespace Motion.Animation
             // 绘制滑块
             Owner.Slider.Render(graphics);
 
-            // 绘制 Play / Replay 按钮
-            bool isAtEnd = Owner.Slider.Value >= Owner.Slider.Maximum;
+            // 绘制 Play / Pause 按钮 (第一个按钮)
             Color playBg = Owner.IsPlaying ? Color.FromArgb(255, 46, 204, 113) : Color.FromArgb(255, 45, 45, 45);
             DrawRoundedRect(graphics, _playButtonRect, playBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
             
             float p_cx = _playButtonRect.X + _playButtonRect.Width / 2f;
             float p_cy = _playButtonRect.Y + _playButtonRect.Height / 2f;
 
-            if (isAtEnd && !Owner.IsPlaying)
+            if (Owner.IsPlaying)
             {
-                // 绘制 Replay (重播) 图标
-                using (Pen pen = new Pen(Color.White, 1.5f))
-                {
-                    graphics.DrawArc(pen, p_cx - 4, p_cy - 4, 8, 8, 0, 270);
-                    graphics.DrawLine(pen, p_cx, p_cy - 4, p_cx - 3, p_cy - 7);
-                    graphics.DrawLine(pen, p_cx, p_cy - 4, p_cx - 3, p_cy - 2);
-                }
+                // 绘制 Pause 图标 (II)
+                graphics.FillRectangle(Brushes.White, p_cx - 3, p_cy - 5, 2, 10);
+                graphics.FillRectangle(Brushes.White, p_cx + 1, p_cy - 5, 2, 10);
             }
             else
             {
@@ -550,16 +545,25 @@ namespace Motion.Animation
                 graphics.FillPolygon(Brushes.White, p_pts);
             }
 
-            // 绘制 Pause 按钮
-            Color pauseBg = !Owner.IsPlaying ? Color.FromArgb(255, 231, 76, 60) : Color.FromArgb(255, 45, 45, 45);
-            DrawRoundedRect(graphics, _pauseButtonRect, pauseBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
+            // 绘制 Replay 按钮 (第二个按钮)
+            Color replayBg = Color.FromArgb(255, 45, 45, 45);
+            DrawRoundedRect(graphics, _pauseButtonRect, replayBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
             
-            float pa_cx = _pauseButtonRect.X + _pauseButtonRect.Width / 2f;
-            float pa_cy = _pauseButtonRect.Y + _pauseButtonRect.Height / 2f;
-            graphics.FillRectangle(Brushes.White, pa_cx - 3, pa_cy - 5, 2, 10);
-            graphics.FillRectangle(Brushes.White, pa_cx + 1, pa_cy - 5, 2, 10);
+            float rep_cx = _pauseButtonRect.X + _pauseButtonRect.Width / 2f;
+            float rep_cy = _pauseButtonRect.Y + _pauseButtonRect.Height / 2f;
+            using (Pen pen = new Pen(Color.White, 1.5f))
+            {
+                graphics.DrawArc(pen, rep_cx - 4, rep_cy - 4, 8, 8, -180, 270);
+            }
+            PointF[] arrowPts = new PointF[]
+            {
+                new PointF(rep_cx - 3, rep_cy + 4),
+                new PointF(rep_cx, rep_cy + 2),
+                new PointF(rep_cx, rep_cy + 6)
+            };
+            graphics.FillPolygon(Brushes.White, arrowPts);
 
-            // 绘制 Loop 按钮 (醒目颜色 43, 214, 255)
+            // 绘制 Loop 按钮 (第三个按钮，醒目颜色 43, 214, 255)
             Color loopBg = Owner.IsLooping ? Color.FromArgb(255, 43, 214, 255) : Color.FromArgb(255, 45, 45, 45);
             DrawRoundedRect(graphics, _loopButtonRect, loopBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
             
@@ -657,17 +661,18 @@ namespace Motion.Animation
             {
                 if (_playButtonRect.Contains(e.CanvasLocation))
                 {
-                    if (Owner.Slider.Value >= Owner.Slider.Maximum)
+                    if (!Owner.IsPlaying && Owner.Slider.Value >= Owner.Slider.Maximum)
                     {
                         Owner.TrySetSliderValue(Owner.Slider.Minimum);
                     }
-                    Owner.IsPlaying = true;
+                    Owner.IsPlaying = !Owner.IsPlaying;
                     sender.Invalidate();
                     return GH_ObjectResponse.Handled;
                 }
                 if (_pauseButtonRect.Contains(e.CanvasLocation))
                 {
-                    Owner.IsPlaying = false;
+                    Owner.TrySetSliderValue(Owner.Slider.Minimum);
+                    Owner.IsPlaying = true;
                     sender.Invalidate();
                     return GH_ObjectResponse.Handled;
                 }
