@@ -115,7 +115,7 @@ namespace Motion.Animation
 
             // 添加自动连接选项
             ToolStripMenuItem connectItem = new ToolStripMenuItem(
-                "连接到所有时间输入端",
+                LanguageManager.GetString("Menu.ConnectToAllTimeInputs", "连接到所有时间输入端"),
                 null,
                 (sender, e) => ConnectToTimeInputs()
             );

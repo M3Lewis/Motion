@@ -40,7 +40,7 @@ namespace Motion.Animation
         {
             base.AppendAdditionalComponentMenuItems(menu);
             Menu_AppendSeparator(menu);
-            ToolStripMenuItem namingCurrentGroup = Menu_AppendItem(menu, "命名当前组名称为Event名称");
+            ToolStripMenuItem namingCurrentGroup = Menu_AppendItem(menu, LanguageManager.GetString("Menu.NamingGroupToEventName", "命名当前组名称为Event名称"));
             namingCurrentGroup.Click += (sender, e) =>
             {
                 // 获取组件所在的组

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using GH_IO.Serialization;
+using Motion.General;
 
 namespace Motion.Utils
 {
@@ -340,7 +341,7 @@ namespace Motion.Utils
         {
             base.AppendAdditionalMenuItems(menu);
             Menu_AppendSeparator(menu);
-            Menu_AppendItem(menu, "清除所有连接", (s, e) =>
+            Menu_AppendItem(menu, LanguageManager.GetString("Menu.ClearAllConnections", "清除所有连接"), (s, e) =>
             {
                 var doc = Grasshopper.Instances.ActiveCanvas.Document;
                 if (doc != null)

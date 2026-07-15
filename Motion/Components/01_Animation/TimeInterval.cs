@@ -84,7 +84,7 @@ namespace Motion.Animation
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
-            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "选择区间");
+            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, LanguageManager.GetString("Menu.SelectInterval", "选择区间"));
 
             // 获取所有区间并排序
             var sortedKeys = MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
@@ -136,7 +136,7 @@ namespace Motion.Animation
 
             // 添加跳转到 Motion Sender 的选项
             Menu_AppendSeparator(menu);
-            Menu_AppendItem(menu, "跳转到 Motion Sender", OnJumpToMotionSender, true);
+            Menu_AppendItem(menu, LanguageManager.GetString("Menu.JumpToSender", "跳转到 Motion Sender"), OnJumpToMotionSender, true);
         }
 
         private void OnJumpToMotionSender(object sender, EventArgs e)

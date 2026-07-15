@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using Motion.General;
 
 namespace Motion.Utils
 {
@@ -47,7 +48,7 @@ namespace Motion.Utils
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
             base.AppendAdditionalComponentMenuItems(menu);
-            var modeItem = Menu_AppendItem(menu, "显示Surface边框线", OnModeToggle, true, IsShowSurfaceBoundary);
+            var modeItem = Menu_AppendItem(menu, LanguageManager.GetString("Menu.ShowSurfaceBoundary", "显示Surface边框线"), OnModeToggle, true, IsShowSurfaceBoundary);
         }
         private void OnModeToggle(object sender, EventArgs e)
         {

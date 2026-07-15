@@ -3,6 +3,7 @@ using Grasshopper.Kernel.Parameters;
 using System;
 using System.Drawing;
 using System.Windows.Forms; // Required for ToolStripMenuItem
+using Motion.General;
 
 namespace Motion.Utils
 {
@@ -36,7 +37,9 @@ namespace Motion.Utils
 
         private string GetAlphaInputDescription()
         {
-            return _isAlphaMode0To1 ? "透明度值 (0-1)" : "透明度值 (0-255)";
+            return _isAlphaMode0To1 
+                ? LanguageManager.GetString("Desc.Alpha0To1", "透明度值 (0-1)") 
+                : LanguageManager.GetString("Desc.Alpha0To255", "透明度值 (0-255)");
         }
 
         private void UpdateAlphaInputParamDescription()
@@ -57,7 +60,7 @@ namespace Motion.Utils
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
             base.AppendAdditionalComponentMenuItems(menu);
-            Menu_AppendItem(menu, "切换 Alpha 模式", Menu_ToggleAlphaMode_Clicked);
+            Menu_AppendItem(menu, LanguageManager.GetString("Menu.ToggleAlphaMode", "切换 Alpha 模式"), Menu_ToggleAlphaMode_Clicked);
         }
 
         private void Menu_ToggleAlphaMode_Clicked(object sender, EventArgs e)
