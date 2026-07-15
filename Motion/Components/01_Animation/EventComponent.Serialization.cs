@@ -16,7 +16,7 @@ namespace Motion.Animation
             {
                 writer.SetBoolean("HideWhenEmpty", _hideWhenEmpty);
                 writer.SetBoolean("LockWhenEmpty", _lockWhenEmpty);
-                writer.SetBoolean("UseEmptyValueMode", UseEmptyValueMode);
+                writer.SetBoolean("InvertHideAndLock", _invertHideAndLock);
                 writer.SetString("NickNameKey", nicknameKey);
 
                 WriteAffectedObjects(writer);
@@ -72,8 +72,9 @@ namespace Motion.Animation
                 _hideWhenEmpty = reader.GetBoolean("HideWhenEmpty");
             if (reader.ItemExists("LockWhenEmpty"))
                 _lockWhenEmpty = reader.GetBoolean("LockWhenEmpty");
-            if (reader.ItemExists("UseEmptyValueMode"))
-                UseEmptyValueMode = reader.GetBoolean("UseEmptyValueMode");
+            if (reader.ItemExists("InvertHideAndLock"))
+                _invertHideAndLock = reader.GetBoolean("InvertHideAndLock");
+
             if (reader.ItemExists("NickNameKey"))
             {
                 nicknameKey = reader.GetString("NickNameKey");
@@ -155,31 +156,8 @@ namespace Motion.Animation
 
         private void ApplyInitialHideLockState(GH_Document doc)
         {
-            if (!affectedObjects.Any()) return;
-
-            // 确保状态立即生效
-            if (_timelineSlider?.CurrentValue == null) return;
-
-            var currentValue = (double)_timelineSlider?.CurrentValue;
-            if (!MotilityUtils.TryParseNickNameInterval(NickName, out double min, out double max))
-                return;
-
-            bool shouldHideOrLock = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
-
-            foreach (var obj in affectedObjects)
-            {
-                if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
-                    previewObj.Hidden = shouldHideOrLock;
-                if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
-                {
-                    activeObj.Locked = shouldHideOrLock;
-                    if (shouldHideOrLock)
-                        activeObj.ClearData();
-                }
-            }
-
-            _lastHideOrLockState = shouldHideOrLock;
-            doc.ScheduleSolution(5);
+            if (affectedObjects == null || !affectedObjects.Any()) return;
+            MotilityUtils.UpdateObjectsVisibilityAndLock(doc, affectedObjects);
         }
     }
 }
