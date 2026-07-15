@@ -19,6 +19,35 @@ namespace Motion.Animation
     public class MotionSlider : GH_NumberSlider
     {
         private bool _isPositionInitialized = false;
+        private bool _isPlaying = false;
+        private bool _isLooping = false;
+        private System.Windows.Forms.Timer _playbackTimer;
+
+        public bool IsPlaying
+        {
+            get => _isPlaying;
+            set
+            {
+                if (_isPlaying != value)
+                {
+                    _isPlaying = value;
+                    if (_isPlaying)
+                    {
+                        StartPlaybackTimer();
+                    }
+                    else
+                    {
+                        StopPlaybackTimer();
+                    }
+                }
+            }
+        }
+
+        public bool IsLooping
+        {
+            get => _isLooping;
+            set => _isLooping = value;
+        }
 
         public override Guid ComponentGuid => new Guid("A6704806-4EE3-42AF-B742-3C348C5F7F38");
 
@@ -214,18 +243,89 @@ namespace Motion.Animation
         }
         // 新增方法：同步 MotionSender 的区间
         
-        
+        private void StartPlaybackTimer()
+        {
+            if (_playbackTimer == null)
+            {
+                _playbackTimer = new System.Windows.Forms.Timer();
+                _playbackTimer.Tick += PlaybackTimer_Tick;
+            }
+            int fps = MotionSenderSettings.FramesPerSecond;
+            if (fps <= 0) fps = 60;
+            _playbackTimer.Interval = Math.Max(1, 1000 / fps);
+            _playbackTimer.Start();
+        }
+
+        private void StopPlaybackTimer()
+        {
+            if (_playbackTimer != null)
+            {
+                _playbackTimer.Stop();
+                _playbackTimer.Tick -= PlaybackTimer_Tick;
+                _playbackTimer.Dispose();
+                _playbackTimer = null;
+            }
+        }
+
+        private void PlaybackTimer_Tick(object sender, EventArgs e)
+        {
+            var doc = OnPingDocument();
+            if (doc == null || doc.SolutionState == GH_ProcessStep.Process)
+            {
+                return;
+            }
+
+            if (Locked)
+            {
+                IsPlaying = false;
+                Instances.ActiveCanvas?.Invalidate();
+                return;
+            }
+
+            decimal current = Slider.Value;
+            decimal min = Slider.Minimum;
+            decimal max = Slider.Maximum;
+
+            decimal nextValue = current + 1;
+            if (current >= max)
+            {
+                if (!IsLooping)
+                {
+                    IsPlaying = false;
+                    Instances.ActiveCanvas?.Invalidate();
+                    return;
+                }
+                nextValue = min;
+            }
+
+            doc.ScheduleSolution(1, d =>
+            {
+                if (!IsPlaying) return;
+                TrySetSliderValue(nextValue);
+                ExpireSolution(false);
+            });
+        }
+
+        public override void RemovedFromDocument(GH_Document document)
+        {
+            IsPlaying = false;
+            base.RemovedFromDocument(document);
+        }
+
         public override bool Write(GH_IWriter writer)
         {
             if (!base.Write(writer)) return false;
-
+            writer.SetBoolean("IsLooping", IsLooping);
             return true;
         }
 
         public override bool Read(GH_IReader reader)
         {
             if (!base.Read(reader)) return false;
-
+            if (reader.ItemExists("IsLooping"))
+            {
+                IsLooping = reader.GetBoolean("IsLooping");
+            }
             return true;
         }
 
@@ -249,13 +349,16 @@ namespace Motion.Animation
         private int _dragMode = 0;
         protected override Size MinimumSize => new Size(
             (int)(TEXT_BOX_WIDTH + 100),  // 文本框宽度 + 最小滑块宽度
-            20
+            42
         );
-        protected override Size MaximumSize => new Size(5000, 20);
+        protected override Size MaximumSize => new Size(5000, 42);
         protected override Padding SizingBorders => new Padding(6, 0, 6, 0);
 
         // 修改文本框相关的字段
         private RectangleF _rangeTextBox;  // 只保留一个文本框
+        private RectangleF _playButtonRect;
+        private RectangleF _pauseButtonRect;
+        private RectangleF _loopButtonRect;
         public const float TEXT_BOX_WIDTH = 80;  // 增加宽度以容纳更多文本
         public const float TEXT_BOX_HEIGHT = 20;
 
@@ -267,6 +370,28 @@ namespace Motion.Animation
         public override bool HasInputGrip
         {
             get { return false; }
+        }
+
+        public override PointF OutputGrip
+        {
+            get
+            {
+                return new PointF(Bounds.Right, Pivot.Y + 10f);
+            }
+        }
+
+        private void UpdateButtonRects()
+        {
+            RectangleF sliderBounds = Owner.Slider.Bounds;
+            float totalWidth = sliderBounds.Width;
+            float gap = 4f; 
+            float btnWidth = (totalWidth - 2 * gap) / 3f;
+            float btnHeight = 16f;
+            float btnY = sliderBounds.Bottom + 5f; // boundsSlider.Bottom is Pivot.Y + 20
+
+            _playButtonRect = new RectangleF(sliderBounds.Left, btnY, btnWidth, btnHeight);
+            _pauseButtonRect = new RectangleF(sliderBounds.Left + btnWidth + gap, btnY, btnWidth, btnHeight);
+            _loopButtonRect = new RectangleF(sliderBounds.Left + 2 * (btnWidth + gap), btnY, btnWidth, btnHeight);
         }
 
         protected override void Layout()
@@ -289,7 +414,7 @@ namespace Motion.Animation
                 Pivot.X,
                 Pivot.Y,
                 TEXT_BOX_WIDTH,
-                MinimumSize.Height
+                20
             );
 
             // 设置名称区域 - 在文本框右侧
@@ -297,7 +422,7 @@ namespace Motion.Animation
                 _rangeTextBox.Right + 5,
                 Pivot.Y,
                 sizeF.Width,
-                MinimumSize.Height
+                20
             ));
 
             // 设置滑块区域 - 在名称区域右侧，确保最小宽度
@@ -325,6 +450,37 @@ namespace Motion.Animation
             base.Owner.Slider.TextColour = Color.FromArgb(255, 40, 40, 40);
             base.Owner.Slider.Padding = new Padding(6, 2, 6, 1);
             base.Owner.Slider.Bounds = boundsSlider;
+
+            UpdateButtonRects();
+        }
+
+        private void DrawRoundedRect(Graphics g, RectangleF rect, Color fillColor, Color strokeColor, float strokeWidth, int radius)
+        {
+            using (System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                float r = radius * 2f;
+                if (r > rect.Width) r = rect.Width;
+                if (r > rect.Height) r = rect.Height;
+
+                path.AddArc(rect.X, rect.Y, r, r, 180, 90);
+                path.AddArc(rect.Right - r, rect.Y, r, r, 270, 90);
+                path.AddArc(rect.Right - r, rect.Bottom - r, r, r, 0, 90);
+                path.AddArc(rect.X, rect.Bottom - r, r, r, 90, 90);
+                path.CloseFigure();
+
+                using (SolidBrush brush = new SolidBrush(fillColor))
+                {
+                    g.FillPath(brush, path);
+                }
+
+                if (strokeWidth > 0)
+                {
+                    using (Pen pen = new Pen(strokeColor, strokeWidth))
+                    {
+                        g.DrawPath(pen, path);
+                    }
+                }
+            }
         }
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
@@ -339,6 +495,8 @@ namespace Motion.Animation
                 ExpireLayout();
                 Layout();
             }
+
+            UpdateButtonRects();
 
             // 检查可见性
             GH_Viewport viewport = canvas.Viewport;
@@ -355,18 +513,58 @@ namespace Motion.Animation
                 radii2,
                 5))
             {
-                sliderCapsule.AddOutputGrip(OutputGrip.Y);
+                sliderCapsule.AddOutputGrip(Pivot.Y + 10f);
                 sliderCapsule.Render(graphics, Selected, Owner.Locked, false);
             }
 
             // 绘制滑块
             Owner.Slider.Render(graphics);
+
+            // 绘制 Play 按钮
+            Color playBg = Owner.IsPlaying ? Color.FromArgb(255, 46, 204, 113) : Color.FromArgb(255, 45, 45, 45);
+            DrawRoundedRect(graphics, _playButtonRect, playBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
+            
+            float p_cx = _playButtonRect.X + _playButtonRect.Width / 2f;
+            float p_cy = _playButtonRect.Y + _playButtonRect.Height / 2f;
+            PointF[] p_pts = new PointF[]
+            {
+                new PointF(p_cx - 3, p_cy - 5),
+                new PointF(p_cx - 3, p_cy + 5),
+                new PointF(p_cx + 5, p_cy)
+            };
+            graphics.FillPolygon(Brushes.White, p_pts);
+
+            // 绘制 Pause 按钮
+            Color pauseBg = !Owner.IsPlaying ? Color.FromArgb(255, 231, 76, 60) : Color.FromArgb(255, 45, 45, 45);
+            DrawRoundedRect(graphics, _pauseButtonRect, pauseBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
+            
+            float pa_cx = _pauseButtonRect.X + _pauseButtonRect.Width / 2f;
+            float pa_cy = _pauseButtonRect.Y + _pauseButtonRect.Height / 2f;
+            graphics.FillRectangle(Brushes.White, pa_cx - 3, pa_cy - 5, 2, 10);
+            graphics.FillRectangle(Brushes.White, pa_cx + 1, pa_cy - 5, 2, 10);
+
+            // 绘制 Loop 按钮 (醒目颜色 43, 214, 255)
+            Color loopBg = Owner.IsLooping ? Color.FromArgb(255, 43, 214, 255) : Color.FromArgb(255, 45, 45, 45);
+            DrawRoundedRect(graphics, _loopButtonRect, loopBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
+            
+            float l_cx = _loopButtonRect.X + _loopButtonRect.Width / 2f;
+            float l_cy = _loopButtonRect.Y + _loopButtonRect.Height / 2f;
+            Color loopIconColor = Owner.IsLooping ? Color.Black : Color.FromArgb(200, 200, 200);
+            using (Pen pen = new Pen(loopIconColor, 1.5f))
+            {
+                graphics.DrawLine(pen, l_cx - 5, l_cy - 2, l_cx + 5, l_cy - 2);
+                graphics.DrawLine(pen, l_cx + 5, l_cy - 2, l_cx + 2, l_cy - 5);
+
+                graphics.DrawLine(pen, l_cx + 5, l_cy + 2, l_cx - 5, l_cy + 2);
+                graphics.DrawLine(pen, l_cx - 5, l_cy + 2, l_cx - 2, l_cy + 5);
+            }
+
             // 如果处于秒数输入模式，绘制秒数文本
             if (MotionSenderSettings.IsSecondsInputMode())
             {
                 // 计算秒数文本的位置（在区间文本框左侧）
                 var secondsTextBounds = new RectangleF(
-                    _rangeTextBox.X - 100,  // 在区间文本框左侧50像素
+                    _rangeTextBox.X - 100,  // 在区间文本框左侧
                     _rangeTextBox.Y,
                     95,  // 文本宽度
                     _rangeTextBox.Height
@@ -385,7 +583,7 @@ namespace Motion.Animation
                     secondsTextBounds,
                     new StringFormat()
                     {
-                        Alignment = StringAlignment.Far,  // 右对齐，这样文本会靠近区间文本框
+                        Alignment = StringAlignment.Far,  // 右对齐
                         LineAlignment = StringAlignment.Center
                     }
                 );
@@ -410,6 +608,7 @@ namespace Motion.Animation
 
         public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            UpdateButtonRects();
             switch (_dragMode)
             {
                 case 1: // 滑块拖动开始
@@ -437,8 +636,32 @@ namespace Motion.Animation
 
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            UpdateButtonRects();
+            if (e.Button == MouseButtons.Left)
+            {
+                if (_playButtonRect.Contains(e.CanvasLocation))
+                {
+                    Owner.IsPlaying = true;
+                    sender.Invalidate();
+                    return GH_ObjectResponse.Handled;
+                }
+                if (_pauseButtonRect.Contains(e.CanvasLocation))
+                {
+                    Owner.IsPlaying = false;
+                    sender.Invalidate();
+                    return GH_ObjectResponse.Handled;
+                }
+                if (_loopButtonRect.Contains(e.CanvasLocation))
+                {
+                    Owner.IsLooping = !Owner.IsLooping;
+                    sender.Invalidate();
+                    return GH_ObjectResponse.Handled;
+                }
+            }
+
             if (Owner.Slider.MouseDown(e.WinFormsEventArgs, e.CanvasLocation))
             {
+                Owner.IsPlaying = false; // Pause playback if user manually drags the slider
                 _dragMode = 1;
                 sender.Invalidate();
 
@@ -458,6 +681,7 @@ namespace Motion.Animation
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            UpdateButtonRects();
             if (_dragMode > 0)
             {
                 if (_dragMode == 2)
@@ -473,9 +697,16 @@ namespace Motion.Animation
 
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            UpdateButtonRects();
             if (e.Button == MouseButtons.Left)
             {
                 PointF pt = e.CanvasLocation;
+
+                // 检查是否点击了播放、暂停、循环按钮，若是，则不响应双击或拦截为单击行为
+                if (_playButtonRect.Contains(pt) || _pauseButtonRect.Contains(pt) || _loopButtonRect.Contains(pt))
+                {
+                    return RespondToMouseDown(sender, e);
+                }
 
                 // 检查是否点击了区间文本框
                 if (_rangeTextBox.Contains(pt))
