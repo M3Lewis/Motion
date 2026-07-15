@@ -520,19 +520,35 @@ namespace Motion.Animation
             // 绘制滑块
             Owner.Slider.Render(graphics);
 
-            // 绘制 Play 按钮
+            // 绘制 Play / Replay 按钮
+            bool isAtEnd = Owner.Slider.Value >= Owner.Slider.Maximum;
             Color playBg = Owner.IsPlaying ? Color.FromArgb(255, 46, 204, 113) : Color.FromArgb(255, 45, 45, 45);
             DrawRoundedRect(graphics, _playButtonRect, playBg, Color.FromArgb(255, 80, 80, 80), 1f, 3);
             
             float p_cx = _playButtonRect.X + _playButtonRect.Width / 2f;
             float p_cy = _playButtonRect.Y + _playButtonRect.Height / 2f;
-            PointF[] p_pts = new PointF[]
+
+            if (isAtEnd && !Owner.IsPlaying)
             {
-                new PointF(p_cx - 3, p_cy - 5),
-                new PointF(p_cx - 3, p_cy + 5),
-                new PointF(p_cx + 5, p_cy)
-            };
-            graphics.FillPolygon(Brushes.White, p_pts);
+                // 绘制 Replay (重播) 图标
+                using (Pen pen = new Pen(Color.White, 1.5f))
+                {
+                    graphics.DrawArc(pen, p_cx - 4, p_cy - 4, 8, 8, 0, 270);
+                    graphics.DrawLine(pen, p_cx, p_cy - 4, p_cx - 3, p_cy - 7);
+                    graphics.DrawLine(pen, p_cx, p_cy - 4, p_cx - 3, p_cy - 2);
+                }
+            }
+            else
+            {
+                // 绘制 Play 图标 (三角形)
+                PointF[] p_pts = new PointF[]
+                {
+                    new PointF(p_cx - 3, p_cy - 5),
+                    new PointF(p_cx - 3, p_cy + 5),
+                    new PointF(p_cx + 5, p_cy)
+                };
+                graphics.FillPolygon(Brushes.White, p_pts);
+            }
 
             // 绘制 Pause 按钮
             Color pauseBg = !Owner.IsPlaying ? Color.FromArgb(255, 231, 76, 60) : Color.FromArgb(255, 45, 45, 45);
@@ -641,6 +657,10 @@ namespace Motion.Animation
             {
                 if (_playButtonRect.Contains(e.CanvasLocation))
                 {
+                    if (Owner.Slider.Value >= Owner.Slider.Maximum)
+                    {
+                        Owner.TrySetSliderValue(Owner.Slider.Minimum);
+                    }
                     Owner.IsPlaying = true;
                     sender.Invalidate();
                     return GH_ObjectResponse.Handled;
