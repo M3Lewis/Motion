@@ -1,4 +1,4 @@
-﻿using Grasshopper;
+using Grasshopper;
 using Grasshopper.Kernel;
 using System;
 using System.Linq;
@@ -19,34 +19,34 @@ namespace Motion.Animation
             Menu_AppendSeparator(menu);
 
             // 添加显示/隐藏按钮的菜单项
-            var showHideItem = Menu_AppendItem(menu,
-                IsCollapsed ? "显示HIDE/LOCK按钮" : "显示HIDE/LOCK按钮",
+            Menu_AppendItem(menu,
+                LanguageManager.GetString("Menu.ShowHideButtons", "显示HIDE/LOCK按钮"),
                 OnShowHideButtonsClicked,
                 true,
                 !IsCollapsed);
 
             Menu_AppendSeparator(menu);
 
-            // 添加模式切换选项
-            var modeItem = Menu_AppendItem(menu, "空值模式", OnModeToggle, true, UseEmptyValueMode);
-            modeItem.ToolTipText = "切换是否使用空值模式进行Hide/Lock控制";
-
-            if (UseEmptyValueMode)
-            {
-                // 只在空值模式下显示这些选项
-                Menu_AppendItem(menu, "Hide When Empty", OnHideToggle, true, HideWhenEmpty);
-                Menu_AppendItem(menu, "Lock When Empty", OnLockToggle, true, LockWhenEmpty);
-            }
+            var invertItem = Menu_AppendItem(menu, 
+                LanguageManager.GetString("Menu.InvertLogic", "反转隐藏/锁定逻辑"), 
+                OnInvertToggle, 
+                true, 
+                InvertHideAndLock);
+            invertItem.ToolTipText = LanguageManager.GetString("Menu.InvertLogicTooltip", "启用后：时间区间内隐藏/锁定组件。\n禁用后：时间区间外隐藏/锁定组件。");
 
             Menu_AppendSeparator(menu);
 
             // 添加跳转到 Motion Slider 的选项
-            Menu_AppendItem(menu, "跳转到 Motion Sender", OnJumpToMotionSender, true);
+            Menu_AppendItem(menu, 
+                LanguageManager.GetString("Menu.JumpToSender", "跳转到 Motion Sender"), 
+                OnJumpToMotionSender, 
+                true);
 
             // 添加分隔线和跳转选项
             Menu_AppendSeparator(menu);
 
-            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, "选择区间");
+            ToolStripMenuItem recentKeyMenu = Menu_AppendItem(menu, 
+                LanguageManager.GetString("Menu.SelectInterval", "选择区间"));
 
             // 获取所有区间并排序
             var sortedKeys = MotilityUtils.GetAllKeys(Instances.ActiveCanvas.Document)
@@ -132,141 +132,58 @@ namespace Motion.Animation
             }
         }
 
-        private void OnModeToggle(object sender, EventArgs e)
+        private void OnInvertToggle(object sender, EventArgs e)
         {
-            UseEmptyValueMode = !UseEmptyValueMode;
-            // 切换模式时重置状态
-            _lastHasData = true;
-            _lastInInterval = true;
+            InvertHideAndLock = !InvertHideAndLock;
             ExpireSolution(true);
         }
 
-        private void OnHideToggle(object sender, EventArgs e)
-        {
-            if (UseEmptyValueMode)
-            {
-                _hideWhenEmpty = !_hideWhenEmpty;
-                UpdateGroupVisibilityAndLock();
-                ExpireSolution(true);
-            }
-        }
-
-        private void OnLockToggle(object sender, EventArgs e)
-        {
-            if (UseEmptyValueMode)
-            {
-                _lockWhenEmpty = !_lockWhenEmpty;
-                UpdateGroupVisibilityAndLock();
-                ExpireSolution(true);
-            }
-        }
-
         private bool isUpdating = false;
-        private bool? lastEmptyState = null;
 
-        private void ApplyHideAndLockState(bool state, GH_Document d)
+        public void UpdateGroupVisibilityAndLock(IEnumerable<IGH_DocumentObject> extraObjectsToUpdate = null)
         {
-            var objectsToUpdate = new List<IGH_DocumentObject>(affectedObjects);
-            foreach (var obj in objectsToUpdate)
-            {
-                if (obj == null) continue;
-
-                try
-                {
-                    if (obj is IGH_PreviewObject previewObj && HideWhenEmpty)
-                    {
-                        d.ScheduleSolution(1, doc =>
-                        {
-                            previewObj.Hidden = state;
-                            doc.ExpireSolution();
-                        });
-                    }
-
-                    if (obj is IGH_ActiveObject activeObj && LockWhenEmpty)
-                    {
-                        d.ScheduleSolution(1, doc =>
-                        {
-                            activeObj.Locked = state;
-                            if (state)
-                            {
-                                activeObj.Phase = GH_SolutionPhase.Blank;
-                            }
-
-                            doc.ExpireSolution();
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    RhinoApp.WriteLine($"[Motion] ApplyHideAndLockState 出错: {ex.Message}");
-                }
-            }
-        }
-
-        public void UpdateGroupVisibilityAndLock()
-        {
-            // 添加超时机制
             if (isUpdating)
             {
-                // 如果上次更新时间超过1秒，强制重置状态
                 var doc = OnPingDocument();
-                if (doc == null) return;
-                doc.ScheduleSolution(1000, d => isUpdating = false);
+                if (doc != null)
+                {
+                    doc.ScheduleSolution(1000, d => isUpdating = false);
+                }
                 return;
             }
+
             try
             {
                 isUpdating = true;
 
                 var doc = OnPingDocument();
-                if (affectedObjects == null || !affectedObjects.Any() || doc == null) return;
+                if (doc == null) return;
 
-                // 使用 ScheduleSolution 来延迟更新状态
-                doc.ScheduleSolution(5, d =>
+                var targets = new List<IGH_DocumentObject>();
+                if (affectedObjects != null)
                 {
-                    try
-                    {
-                        // 处理两种模式
-                        if (UseEmptyValueMode)
-                        {
-                            bool isEmpty = this.Params.Input[0].VolatileData.IsEmpty;
-                            if (lastEmptyState.HasValue && lastEmptyState.Value == isEmpty) return;
+                    targets.AddRange(affectedObjects);
+                }
+                if (extraObjectsToUpdate != null)
+                {
+                    targets.AddRange(extraObjectsToUpdate);
+                }
 
-                            lastEmptyState = isEmpty;
-                            ApplyHideAndLockState(isEmpty, d);
-                        }
-                        else if (_timelineSlider != null)
-                        {
-                            double currentValue = (double)_timelineSlider.CurrentValue;
-                            if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
-                            {
-                                bool shouldHideOrLock =
-                                    currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+                var uniqueTargets = targets.Where(obj => obj != null).Distinct().ToList();
+                if (!uniqueTargets.Any()) return;
 
-                                if (_lastHideOrLockState == shouldHideOrLock) return;
+                MotilityUtils.UpdateObjectsVisibilityAndLock(doc, uniqueTargets);
 
-                                ApplyHideAndLockState(shouldHideOrLock, d);
-                                _lastHideOrLockState = shouldHideOrLock;
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        // 确保在所有操作完成后重置状态
-                        d.ScheduleSolution(10, doc => isUpdating = false);
-                    }
-                });
+                if (_timelineSlider != null && MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
+                {
+                    double currentValue = (double)_timelineSlider.CurrentValue;
+                    _lastHideOrLockState = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+                }
             }
             finally
             {
                 isUpdating = false;
             }
-        }
-
-        private void EmptyModeMenuItem_Clicked(object sender, EventArgs e)
-        {
-            UseEmptyValueMode = !UseEmptyValueMode;
-            ExpireSolution(true);
         }
 
         private void OnShowHideButtonsClicked(object sender, EventArgs e)

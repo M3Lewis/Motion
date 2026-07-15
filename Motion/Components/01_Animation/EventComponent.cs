@@ -14,7 +14,6 @@ namespace Motion.Animation
 
         // 添加受影响对象列表
         internal List<IGH_DocumentObject> affectedObjects = new List<IGH_DocumentObject>();
-        public bool UseEmptyValueMode { get; private set; } = false;  // 是否使用空值模式
 
         // 检查是否有连接的 EventOperation
         private bool _hasEventOperation = false;
@@ -39,6 +38,17 @@ namespace Motion.Animation
             {
                 _lockWhenEmpty = value;
                 // 当值改变时更新状态
+                UpdateGroupVisibilityAndLock();
+            }
+        }
+
+        private bool _invertHideAndLock = false;
+        public bool InvertHideAndLock
+        {
+            get { return _invertHideAndLock; }
+            set
+            {
+                _invertHideAndLock = value;
                 UpdateGroupVisibilityAndLock();
             }
         }
@@ -70,8 +80,6 @@ namespace Motion.Animation
         public delegate void NickNameChangedEventHandler(IGH_DocumentObject sender, string newNickName);
         public event NickNameChangedEventHandler NickNameChanged;
 
-        // 添加状态追踪变量
-        private bool _lastHasData = true;
         private bool _lastInInterval = true;
         private bool _lastHideOrLockState = false;
 

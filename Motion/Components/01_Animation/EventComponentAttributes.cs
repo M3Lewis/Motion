@@ -38,8 +38,6 @@ namespace Motion.Animation
             Alignment = StringAlignment.Center,
             LineAlignment = StringAlignment.Center
         };
-        
-        private string EmptyModeText => LanguageManager.GetString("Canvas.EmptyMode", "Empty Mode");
 
         public EventComponentAttributes(EventComponent owner) : base(owner)
         {
@@ -90,45 +88,14 @@ namespace Motion.Animation
 
             if (owner.IsCollapsed) return;
 
-            // 1. 如果开启了空值模式菜单，显示提示文字
-            RenderEmptyValueModeText(graphics, owner);
-
-            // 2. 只在鼠标悬停时绘制范围框
+            // 1. 只在鼠标悬停时绘制范围框
             RenderAffectedObjectsBoundary(graphics, owner);
 
-            // 3. Hide 按钮
+            // 2. Hide 按钮
             RenderHideButton(graphics, owner);
 
-            // 4. Lock 按钮
+            // 3. Lock 按钮
             RenderLockButton(graphics, owner);
-        }
-
-        private void RenderEmptyValueModeText(Graphics graphics, EventComponent owner)
-        {
-            if (!owner.UseEmptyValueMode) return;
-
-            // 计算文字位置（在组件上方）
-            var textBounds = new RectangleF(
-                Bounds.X,
-                Bounds.Y - 20, // 在组件上方20个像素
-                Bounds.Width,
-                20
-            );
-
-            // 使用半透明的背景色
-            using (var brush = new SolidBrush(Color.FromArgb(80, Color.Black)))
-            {
-                graphics.FillRectangle(brush, textBounds);
-            }
-
-            // 绘制文字
-            graphics.DrawString(
-                EmptyModeText,
-                GH_FontServer.Standard,
-                Brushes.White,
-                textBounds,
-                CenteredStringFormat
-            );
         }
 
         private void RenderAffectedObjectsBoundary(Graphics graphics, EventComponent owner)
@@ -317,9 +284,10 @@ namespace Motion.Animation
                 if (!hideButtonBounds.Contains(e.CanvasLocation))
                     return GH_ObjectResponse.Release;
 
+                var oldObjects = owner.affectedObjects.ToList();
                 UpdateAffectedObjects(sender, owner);
                 owner.HideWhenEmpty = !owner.HideWhenEmpty;
-                owner.UpdateGroupVisibilityAndLock();
+                owner.UpdateGroupVisibilityAndLock(oldObjects);
                 sender.Refresh();
                 return GH_ObjectResponse.Release;
             }
@@ -332,11 +300,12 @@ namespace Motion.Animation
                 if (!lockButtonBounds.Contains(e.CanvasLocation))
                     return GH_ObjectResponse.Release;
 
+                var oldObjects = owner.affectedObjects.ToList();
                 if (!UpdateAffectedObjects(sender, owner) && !owner.affectedObjects.Any())
                     return GH_ObjectResponse.Release;
 
                 owner.LockWhenEmpty = !owner.LockWhenEmpty;
-                owner.UpdateGroupVisibilityAndLock();
+                owner.UpdateGroupVisibilityAndLock(oldObjects);
                 sender.Refresh();
                 return GH_ObjectResponse.Release;
             }

@@ -72,10 +72,19 @@ namespace Motion.Animation
             }
         }
 
-        // 修正事件处理器的参数类型
         private void OnSliderValueChanged(object sender, GH_SliderEventArgs e)
         {
-            MotilityUtils.SafeExecute(nameof(OnSliderValueChanged), UpdateGroupVisibilityAndLock);
+            // 只在区间边界穿越时触发更新，避免每次滑块微移都调用 ScheduleSolution
+            if (!MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
+                return;
+
+            double currentValue = (double)e.Value;
+            bool nowInInterval = currentValue > min && currentValue < max;
+            if (nowInInterval != _lastInInterval)
+            {
+                _lastInInterval = nowInInterval;
+                MotilityUtils.SafeExecute(nameof(OnSliderValueChanged), () => UpdateGroupVisibilityAndLock());
+            }
         }
 
         public void LinkToSender(MotionSender sender)
@@ -285,6 +294,14 @@ namespace Motion.Animation
             {
                 _linkedSender.NickNameChanged -= OnSenderNickNameChanged;
                 _linkedSender = null;
+            }
+
+            // 被删除时，恢复受此 Event 控制的全部对象
+            if (affectedObjects.Any() && document != null)
+            {
+                var objectsToRestore = affectedObjects.ToList();
+                affectedObjects.Clear(); // 清空当前组件的控制权，使全局决策能够将其恢复
+                MotilityUtils.UpdateObjectsVisibilityAndLock(document, objectsToRestore);
             }
 
             base.RemovedFromDocument(document);
