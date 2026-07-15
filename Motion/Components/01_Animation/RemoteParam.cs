@@ -1,4 +1,4 @@
-﻿using GH_IO.Serialization;
+using GH_IO.Serialization;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Parameters;
@@ -17,9 +17,6 @@ namespace Motion.Animation
 {
     public abstract class RemoteParam : Param_GenericObject, IGH_InitCodeAware
     {
-        // 添加新的字段来控制模式
-        public bool UseEmptyValueMode { get; set; } = false;  // 是否使用空值模式
-
         private bool _hideWhenEmpty;
         public bool HideWhenEmpty
         {
@@ -199,61 +196,25 @@ namespace Motion.Animation
         //    return true;
         //}
 
-        public void UpdateGroupVisibilityAndLock()
+        public void UpdateGroupVisibilityAndLock(IEnumerable<IGH_DocumentObject> extraObjectsToUpdate = null)
         {
-            if (affectedObjects == null || !affectedObjects.Any()) return;
-
             var doc = OnPingDocument();
             if (doc == null) return;
 
-            bool shouldHideOrLock = false;
-
-            if (UseEmptyValueMode)
+            var targets = new List<IGH_DocumentObject>();
+            if (affectedObjects != null)
             {
-                // 使用空值模式
-                shouldHideOrLock = !this.VolatileData.AllData(true).Any();
+                targets.AddRange(affectedObjects);
             }
-            else
+            if (extraObjectsToUpdate != null)
             {
-                // 使用Timeline Slider模式
-                var timelineSlider = doc.Objects
-                    .OfType<GH_NumberSlider>()
-                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase));
-
-                if (timelineSlider != null)
-                {
-                    double currentValue = (double)timelineSlider.Slider.Value;
-
-                    // 解析当前receiver的nickname获取区间
-                    if (MotilityUtils.TryParseNickNameInterval(this.NickName, out double min, out double max))
-                    {
-                        shouldHideOrLock = currentValue < min || currentValue > max;
-                    }
-                }
+                targets.AddRange(extraObjectsToUpdate);
             }
 
-            // 应用Hide/Lock状态
-            foreach (var obj in affectedObjects)
-            {
-                if (obj is IGH_PreviewObject previewObj)
-                {
-                    if (HideWhenEmpty)
-                    {
-                        previewObj.Hidden = shouldHideOrLock;
-                    }
-                }
-                if (obj is IGH_ActiveObject activeObj)
-                {
-                    if (LockWhenEmpty)
-                    {
-                        activeObj.Locked = shouldHideOrLock;
-                        activeObj.ClearData();
-                    }
-                }
-            }
+            var uniqueTargets = targets.Where(obj => obj != null).Distinct().ToList();
+            if (!uniqueTargets.Any()) return;
 
-            // 刷新文档
-            doc.ScheduleSolution(5);
+            MotilityUtils.UpdateObjectsVisibilityAndLock(doc, uniqueTargets);
         }
     }
 }

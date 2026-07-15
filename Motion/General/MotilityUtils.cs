@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Grasshopper.GUI.Canvas;
 using Grasshopper;
 using Grasshopper.Kernel;
@@ -271,6 +271,169 @@ namespace Motion.General
             {
                 Rhino.RhinoApp.WriteLine($"[Motion] {methodName} 出错: {ex.Message}");
             }
+        }
+
+        public static void UpdateObjectsVisibilityAndLock(GH_Document doc, IEnumerable<IGH_DocumentObject> objectsToUpdate)
+        {
+            if (doc == null || objectsToUpdate == null) return;
+
+            var targets = objectsToUpdate.Where(o => o != null).Distinct().ToList();
+            if (!targets.Any()) return;
+
+            doc.ScheduleSolution(5, d =>
+            {
+                // Find all active controllers in the document
+                var eventComponents = d.Objects.OfType<EventComponent>().ToList();
+                var remoteParams = d.Objects.OfType<RemoteParam>().ToList();
+
+                // Cache the "should hide/lock" state for each controller
+                var eventStates = new Dictionary<EventComponent, bool>();
+                foreach (var ev in eventComponents)
+                {
+                    eventStates[ev] = EvaluateEventComponentShouldHideOrLock(ev, d);
+                }
+
+                var paramStates = new Dictionary<RemoteParam, bool>();
+                foreach (var rp in remoteParams)
+                {
+                    paramStates[rp] = EvaluateRemoteParamShouldHideOrLock(rp, d);
+                }
+
+                bool anyChanged = false;
+                foreach (var obj in targets)
+                {
+                    // 1. Determine targetHidden
+                    bool hasHideController = false;
+                    bool allHideControllersActive = true;
+
+                    foreach (var ev in eventComponents)
+                    {
+                        if (ev.HideWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                        {
+                            hasHideController = true;
+                            if (!eventStates[ev])
+                            {
+                                allHideControllersActive = false;
+                            }
+                        }
+                    }
+
+                    foreach (var rp in remoteParams)
+                    {
+                        if (rp.HideWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                        {
+                            hasHideController = true;
+                            if (!paramStates[rp])
+                            {
+                                allHideControllersActive = false;
+                            }
+                        }
+                    }
+
+                    bool targetHidden = hasHideController && allHideControllersActive;
+
+                    // 2. Determine targetLocked
+                    bool hasLockController = false;
+                    bool allLockControllersActive = true;
+
+                    foreach (var ev in eventComponents)
+                    {
+                        if (ev.LockWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                        {
+                            hasLockController = true;
+                            if (!eventStates[ev])
+                            {
+                                allLockControllersActive = false;
+                            }
+                        }
+                    }
+
+                    foreach (var rp in remoteParams)
+                    {
+                        if (rp.LockWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                        {
+                            hasLockController = true;
+                            if (!paramStates[rp])
+                            {
+                                allLockControllersActive = false;
+                            }
+                        }
+                    }
+
+                    bool targetLocked = hasLockController && allLockControllersActive;
+
+                    // Apply states
+                    try
+                    {
+                        if (obj is IGH_PreviewObject previewObj)
+                        {
+                            if (previewObj.Hidden != targetHidden)
+                            {
+                                previewObj.Hidden = targetHidden;
+                                anyChanged = true;
+                            }
+                        }
+
+                        if (obj is IGH_ActiveObject activeObj)
+                        {
+                            if (activeObj.Locked != targetLocked)
+                            {
+                                activeObj.Locked = targetLocked;
+                                anyChanged = true;
+                                if (targetLocked)
+                                {
+                                    activeObj.Phase = GH_SolutionPhase.Blank;
+                                    activeObj.ClearData();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Rhino.RhinoApp.WriteLine($"[Motion] UpdateObjectsVisibilityAndLock 出错: {ex.Message}");
+                    }
+                }
+
+                if (anyChanged)
+                {
+                    d.ExpireSolution();
+                }
+            });
+        }
+
+        private static bool EvaluateEventComponentShouldHideOrLock(EventComponent ev, GH_Document doc)
+        {
+            var timelineSlider = doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>()
+                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
+                ?? doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>().FirstOrDefault();
+
+            if (timelineSlider != null)
+            {
+                double currentValue = (double)timelineSlider.CurrentValue;
+                if (TryParseNickNameInterval(ev.NickName, out double min, out double max))
+                {
+                    bool outsideInterval = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+                    return ev.InvertHideAndLock ? !outsideInterval : outsideInterval;
+                }
+            }
+            return false;
+        }
+
+        private static bool EvaluateRemoteParamShouldHideOrLock(RemoteParam rp, GH_Document doc)
+        {
+            var timelineSlider = doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>()
+                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
+                ?? doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>().FirstOrDefault();
+
+            if (timelineSlider != null)
+            {
+                double currentValue = (double)timelineSlider.Slider.Value;
+                if (TryParseNickNameInterval(rp.NickName, out double min, out double max))
+                {
+                    return currentValue < min || currentValue > max;
+                }
+            }
+            return false;
         }
     }
 }
