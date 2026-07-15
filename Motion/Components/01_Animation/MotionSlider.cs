@@ -695,84 +695,85 @@ namespace Motion.Animation
             return base.RespondToMouseUp(sender, e);
         }
 
+        private void HandleRangeTextBoxDoubleClick(GH_Canvas sender)
+        {
+            string content = $"{Owner.Slider.Minimum}-{Owner.Slider.Maximum}";
+            Owner.Slider.TextInputHandlerDelegate = RangeTextInputHandler;
+
+            var originalBounds = Owner.Slider.Bounds;
+            Owner.Slider.Bounds = Rectangle.Round(_rangeTextBox);
+
+            Owner.Slider.ShowTextInputBox(
+                sender,
+                true,
+                sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl),
+                content
+            );
+
+            Owner.Slider.Bounds = originalBounds;
+        }
+
+        private void RangeTextInputHandler(GH_SliderBase slider, string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
+            string[] parts = text.Split('-');
+            if (parts.Length != 2)
+                return;
+
+            if (decimal.TryParse(parts[0], out decimal min) &&
+                decimal.TryParse(parts[1], out decimal max) &&
+                min < max)
+            {
+                Owner.Slider.Minimum = min;
+                Owner.Slider.Maximum = max;
+                Owner.ExpireSolution(true);
+
+                Owner.OnPingDocument()?.DeselectAll();
+                Instances.ActiveCanvas?.Refresh();
+            }
+        }
+
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
             UpdateButtonRects();
-            if (e.Button == MouseButtons.Left)
+            if (e.Button != MouseButtons.Left)
             {
-                PointF pt = e.CanvasLocation;
-
-                // 检查是否点击了播放、暂停、循环按钮，若是，则不响应双击或拦截为单击行为
-                if (_playButtonRect.Contains(pt) || _pauseButtonRect.Contains(pt) || _loopButtonRect.Contains(pt))
-                {
-                    return RespondToMouseDown(sender, e);
-                }
-
-                // 检查是否点击了区间文本框
-                if (_rangeTextBox.Contains(pt))
-                {
-                    string content = $"{Owner.Slider.Minimum}-{Owner.Slider.Maximum}";
-                    Owner.Slider.TextInputHandlerDelegate = (slider, text) =>
-                    {
-                        // 解析输入的区间文本
-                        string[] parts = text.Split('-');
-                        if (parts.Length == 2 &&
-                            decimal.TryParse(parts[0], out decimal min) &&
-                            decimal.TryParse(parts[1], out decimal max))
-                        {
-                            if (min < max)
-                            {
-                                Owner.Slider.Minimum = min;
-                                Owner.Slider.Maximum = max;
-                                Owner.ExpireSolution(true);
-
-                                // 取消选中状态
-                                Owner.OnPingDocument()?.DeselectAll();
-                                Instances.ActiveCanvas?.Refresh();
-                            }
-                        }
-                    };
-
-                    // 临时保存原始位置
-                    var originalBounds = Owner.Slider.Bounds;
-
-                    // 临时将滑块位置设置为文本框位置
-                    Owner.Slider.Bounds = Rectangle.Round(_rangeTextBox);
-
-                    Owner.Slider.ShowTextInputBox(
-                        sender,
-                        true,
-                        sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl),
-                        content
-                    );
-
-                    // 恢复原始位置
-                    Owner.Slider.Bounds = originalBounds;
-
-                    return GH_ObjectResponse.Handled;
-                }
-
-                // 如果不是文本框，检查是否点击了滑块
-                if ((double)sender.Viewport.Zoom >= 0.9 && Owner.Slider.Bounds.Contains(GH_Convert.ToPoint(e.CanvasLocation)))
-                {
-                    string content = base.Owner.Slider.GripTextPure;
-                    base.Owner.Slider.TextInputHandlerDelegate = TextInputHandler;
-                    base.Owner.Slider.ShowTextInputBox(
-                        sender,
-                        true,
-                        sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl),
-                        content
-                    );
-                    return GH_ObjectResponse.Handled;
-                }
-                else
-                {
-                    base.Owner.PopupEditor();
-                    return GH_ObjectResponse.Handled;
-                }
+                return GH_ObjectResponse.Ignore;
             }
 
-            return GH_ObjectResponse.Ignore;
+            PointF pt = e.CanvasLocation;
+
+            // 检查是否点击了播放、暂停、循环按钮，若是，则不响应双击或拦截为单击行为
+            if (_playButtonRect.Contains(pt) || _pauseButtonRect.Contains(pt) || _loopButtonRect.Contains(pt))
+            {
+                return RespondToMouseDown(sender, e);
+            }
+
+            // 检查是否点击了区间文本框
+            if (_rangeTextBox.Contains(pt))
+            {
+                HandleRangeTextBoxDoubleClick(sender);
+                return GH_ObjectResponse.Handled;
+            }
+
+            // 检查是否点击了滑块
+            if ((double)sender.Viewport.Zoom >= 0.9 && Owner.Slider.Bounds.Contains(GH_Convert.ToPoint(pt)))
+            {
+                string content = base.Owner.Slider.GripTextPure;
+                base.Owner.Slider.TextInputHandlerDelegate = TextInputHandler;
+                base.Owner.Slider.ShowTextInputBox(
+                    sender,
+                    true,
+                    sender.Viewport.XFormMatrix(GH_Viewport.GH_DisplayMatrix.CanvasToControl),
+                    content
+                );
+                return GH_ObjectResponse.Handled;
+            }
+
+            base.Owner.PopupEditor();
+            return GH_ObjectResponse.Handled;
         }
 
         private void TextInputHandler(GH_SliderBase slider, string text)
