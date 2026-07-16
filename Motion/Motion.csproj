@@ -91,8 +91,8 @@
 
 	<ItemGroup>
 		<None Include="Button\CreateUnionSliderButton.cs" />
-		<None Include="Components\01_Animation\MotionUnionSlider.cs" />
 		<None Include="Components\03_Utils\MotionCamera.cs" />
+		<None Include="Components\OBSOLETE\MotionUnionSlider.cs" />
 		<None Include="General\MotilityUtils.cs" />
 		<None Include="Components\OBSOLETE\FFmpegExceptions.cs" />
 		<None Include="Components\OBSOLETE\FFmpegUtil.cs" />
@@ -213,20 +213,4 @@
 
 		<Move SourceFiles="$(OutputPath)net7.0-windows\Motion.gha" DestinationFiles="$(OutputPath)net7.0-windows\Motion(Core).gha" Condition="Exists('$(OutputPath)net7.0-windows\Motion.gha')" />
 	</Target>
-	
-	<!--<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;" />
-		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" />
-	</Target>-->
-
-<!--	<Target Name="PostBuild" AfterTargets="PostBuildEvent">-->
-<!--		<Exec Command="dotNET_Reactor.Console.exe -file &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion.gha&quot; -anti_debug 1 -hide_calls 1 -control_flow_obfuscation 1 -flow_level 5" IgnoreExitCode="true" ContinueOnError="true" />-->
-<!--		<Exec Command="dotNET_Reactor.Console.exe -file &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net7.0-windows\Motion(Core).gha&quot; -anti_debug 1 -hide_calls 1 -control_flow_obfuscation 1 -flow_level 5" IgnoreExitCode="true" ContinueOnError="true" />-->
-
-<!--		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion_Secure\Motion.gha&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\$(ProjectName).gha&quot;" IgnoreExitCode="true" ContinueOnError="true" />-->
-<!--		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\System.Drawing.Common.dll&quot; &quot;C:\Users\M3\AppData\Roaming\Grasshopper\Libraries\Motion\System.Drawing.Common.dll&quot;" IgnoreExitCode="true" ContinueOnError="true" />-->
-
-<!--		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net48\Motion_Secure\Motion.gha&quot; &quot;F:\Motion插件发布\MotionLatest\net48\Motion.gha&quot;" IgnoreExitCode="true" ContinueOnError="true" />-->
-<!--		<Exec Command="Copy &quot;E:\OneDrive\VisualStudioGHLibrary\Motion\Motion\bin\Debug\net7.0-windows\Motion_Secure\Motion(Core).gha&quot; &quot;F:\Motion插件发布\MotionLatest\net7.0-windows\Motion(Core).gha&quot;" IgnoreExitCode="true" ContinueOnError="true" />-->
-<!--	</Target>-->
 </Project>

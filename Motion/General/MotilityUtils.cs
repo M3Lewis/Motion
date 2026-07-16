@@ -252,33 +252,30 @@ namespace Motion.General
             return changed;
         }
 
-        private static bool EvaluateEventComponentShouldHideOrLock(EventComponent ev, GH_Document doc)
+        private static bool EvaluateShouldHideOrLock(string nickname, bool invert, GH_Document doc)
         {
-            var timelineSlider = doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>()
-                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
+            var timelineSlider = doc.Objects.OfType<MotionSlider>().FirstOrDefault()
+                ?? doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>()
+                    .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
                 ?? doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>().FirstOrDefault();
 
             if (timelineSlider == null) return false;
 
             double currentValue = (double)timelineSlider.CurrentValue;
-            if (!TryParseNickNameInterval(ev.NickName, out double min, out double max)) return false;
+            if (!TryParseNickNameInterval(nickname, out double min, out double max)) return false;
 
             bool outsideInterval = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
-            return ev.InvertHideAndLock ? !outsideInterval : outsideInterval;
+            return invert ? !outsideInterval : outsideInterval;
+        }
+
+        private static bool EvaluateEventComponentShouldHideOrLock(EventComponent ev, GH_Document doc)
+        {
+            return EvaluateShouldHideOrLock(ev.NickName, ev.InvertHideAndLock, doc);
         }
 
         private static bool EvaluateRemoteParamShouldHideOrLock(RemoteParam rp, GH_Document doc)
         {
-            var timelineSlider = doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>()
-                .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
-                ?? doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>().FirstOrDefault();
-
-            if (timelineSlider == null) return false;
-
-            double currentValue = (double)timelineSlider.Slider.Value;
-            if (!TryParseNickNameInterval(rp.NickName, out double min, out double max)) return false;
-
-            return currentValue < min || currentValue > max;
+            return EvaluateShouldHideOrLock(rp.NickName, false, doc);
         }
     }
 }
