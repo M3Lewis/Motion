@@ -11,135 +11,7 @@ using Motion.Animation;
 namespace Motion.General
 {
     public static class MotilityUtils
-    {
-        // Special override of the method to handle expiring the solution in copy/paste scenarios.
-        // If scheduleNew is false it just does the same thing as the default method.
-        // public static void connectMatchingParams(GH_Document doc,bool scheduleNew)
-        // {
-        //     try
-        //     {
-        //         // 检查 doc 是否为 null
-        //         if (doc == null)
-        //         {
-        //             return;
-        //         }
-        //
-        //         connectMatchingParams(doc);
-        //
-        //         // 检查 ActiveCanvas 和其 Document 是否为 null
-        //         if (scheduleNew && 
-        //             Grasshopper.Instances.ActiveCanvas != null && 
-        //             Grasshopper.Instances.ActiveCanvas.Document != null)
-        //         {
-        //             Grasshopper.Instances.ActiveCanvas.Document.ScheduleSolution(10);
-        //         }
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Rhino.RhinoApp.WriteLine($"Error in connectMatchingParams: {ex.Message}");
-        //     }
-        // }
-        //
-        //
-        // the main method that does the work - checks all receivers and senders for matches,
-        // and rewires accordingly.
-        // public static void connectMatchingParams(GH_Document doc)
-        // {
-        //     try
-        //     {
-        //         // 获取活动画布和文档
-        //         var activeCanvas = Grasshopper.Instances.ActiveCanvas;
-        //         if (activeCanvas == null)
-        //         {
-        //             return;
-        //         }
-        //
-        //         var activeDoc = activeCanvas.Document;
-        //         if (activeDoc == null)
-        //         {
-        //             return;
-        //         }
-        //
-        //         var activeObjects = activeDoc.ActiveObjects();
-        //         if (activeObjects == null || !activeObjects.Any())
-        //         {
-        //             return;
-        //         }
-        //
-        //         // 获取所有接收器和发送器
-        //         var allReceivers = activeObjects
-        //             .Where(x => x is Param_RemoteReceiver)
-        //             .Cast<Param_RemoteReceiver>()
-        //             .ToList();
-        //
-        //         var allSenders = activeObjects
-        //             .Where(x => x is MotionSender)
-        //             .Cast<MotionSender>()
-        //             .ToList();
-        //
-        //         // 如果没有接收器，直接返回
-        //         if (allReceivers == null || !allReceivers.Any())
-        //         {
-        //             return;
-        //         }
-        //
-        //         // 处理每个接收器
-        //         foreach (var receiver in allReceivers)
-        //         {
-        //             if (receiver != null)
-        //             {
-        //                 ProcessReceiver(allSenders ?? new List<MotionSender>(), receiver);
-        //             }
-        //         }
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         // 可以选择记录错误或显示给用户
-        //         Rhino.RhinoApp.WriteLine($"Error in connectMatchingParams: {ex.Message}");
-        //     }
-        // }
-        //
-        //
-        //  this method wires up a receiver to all matching senders. 
-        // public static void ProcessReceiver(List<MotionSender> allSenders, Param_RemoteReceiver receiver)
-        // {
-        //     //get the key
-        //     string key = receiver.NickName;
-        //     //stop if it's empty
-        //     if (string.IsNullOrEmpty(key)) return;
-        //
-        //     //check if the existing sources match the key, throw em out otherwise
-        //     List<IGH_Param> sourcesToRemove = new List<IGH_Param>();
-        //     foreach (IGH_Param param in receiver.Sources)
-        //     {
-        //         //if the source does not match, remove it
-        //         if (!LikeOperator.LikeString(param.NickName, key, Microsoft.VisualBasic.CompareMethod.Binary))
-        //         {
-        //             sourcesToRemove.Add(param);
-        //         }
-        //     }
-        //
-        //     //a custom method to remove all sources at once - calling RemoveSource in a loop
-        //     //was giving me trouble because it kept expiring the solution repeatedly.
-        //     RemoveSources(receiver, sourcesToRemove);
-        //
-        //
-        //
-        //     //get all the senders whose nickname matches the key
-        //     var matchingSenders = allSenders.Where(s => LikeOperator.LikeString(s.NickName,key,Microsoft.VisualBasic.CompareMethod.Binary));
-        //
-        //     //for all the matching senders
-        //     foreach (MotionSender sender in matchingSenders)
-        //     {
-        //         //if the matching sender is not currently a source, add it
-        //         if (!receiver.Sources.Contains(sender))
-        //         {
-        //             receiver.AddSource(sender);
-        //
-        //         }
-        //     }
-        // }
-        
+    {   
         public static void RemoveSources(IGH_Param target, List<IGH_Param> sources)
         {
             foreach (IGH_Param source in sources)
@@ -287,110 +159,20 @@ namespace Motion.General
                 var remoteParams = d.Objects.OfType<RemoteParam>().ToList();
 
                 // Cache the "should hide/lock" state for each controller
-                var eventStates = new Dictionary<EventComponent, bool>();
-                foreach (var ev in eventComponents)
-                {
-                    eventStates[ev] = EvaluateEventComponentShouldHideOrLock(ev, d);
-                }
-
-                var paramStates = new Dictionary<RemoteParam, bool>();
-                foreach (var rp in remoteParams)
-                {
-                    paramStates[rp] = EvaluateRemoteParamShouldHideOrLock(rp, d);
-                }
+                var eventStates = eventComponents.ToDictionary(ev => ev, ev => EvaluateEventComponentShouldHideOrLock(ev, d));
+                var paramStates = remoteParams.ToDictionary(rp => rp, rp => EvaluateRemoteParamShouldHideOrLock(rp, d));
 
                 bool anyChanged = false;
                 foreach (var obj in targets)
                 {
-                    // 1. Determine targetHidden
-                    bool hasHideController = false;
-                    bool allHideControllersActive = true;
+                    if (obj == null) continue;
 
-                    foreach (var ev in eventComponents)
+                    bool targetHidden = ShouldHide(obj, eventComponents, remoteParams, eventStates, paramStates);
+                    bool targetLocked = ShouldLock(obj, eventComponents, remoteParams, eventStates, paramStates);
+
+                    if (ApplyVisibilityAndLock(obj, targetHidden, targetLocked))
                     {
-                        if (ev.HideWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                        {
-                            hasHideController = true;
-                            if (!eventStates[ev])
-                            {
-                                allHideControllersActive = false;
-                            }
-                        }
-                    }
-
-                    foreach (var rp in remoteParams)
-                    {
-                        if (rp.HideWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                        {
-                            hasHideController = true;
-                            if (!paramStates[rp])
-                            {
-                                allHideControllersActive = false;
-                            }
-                        }
-                    }
-
-                    bool targetHidden = hasHideController && allHideControllersActive;
-
-                    // 2. Determine targetLocked
-                    bool hasLockController = false;
-                    bool allLockControllersActive = true;
-
-                    foreach (var ev in eventComponents)
-                    {
-                        if (ev.LockWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                        {
-                            hasLockController = true;
-                            if (!eventStates[ev])
-                            {
-                                allLockControllersActive = false;
-                            }
-                        }
-                    }
-
-                    foreach (var rp in remoteParams)
-                    {
-                        if (rp.LockWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                        {
-                            hasLockController = true;
-                            if (!paramStates[rp])
-                            {
-                                allLockControllersActive = false;
-                            }
-                        }
-                    }
-
-                    bool targetLocked = hasLockController && allLockControllersActive;
-
-                    // Apply states
-                    try
-                    {
-                        if (obj is IGH_PreviewObject previewObj)
-                        {
-                            if (previewObj.Hidden != targetHidden)
-                            {
-                                previewObj.Hidden = targetHidden;
-                                anyChanged = true;
-                            }
-                        }
-
-                        if (obj is IGH_ActiveObject activeObj)
-                        {
-                            if (activeObj.Locked != targetLocked)
-                            {
-                                activeObj.Locked = targetLocked;
-                                anyChanged = true;
-                                if (targetLocked)
-                                {
-                                    activeObj.Phase = GH_SolutionPhase.Blank;
-                                    activeObj.ClearData();
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Rhino.RhinoApp.WriteLine($"[Motion] UpdateObjectsVisibilityAndLock 出错: {ex.Message}");
+                        anyChanged = true;
                     }
                 }
 
@@ -401,22 +183,84 @@ namespace Motion.General
             });
         }
 
+        private static bool ShouldHide(
+            IGH_DocumentObject obj,
+            List<EventComponent> eventComponents,
+            List<RemoteParam> remoteParams,
+            Dictionary<EventComponent, bool> eventStates,
+            Dictionary<RemoteParam, bool> paramStates)
+        {
+            var affectingControllers = eventComponents
+                .Where(ev => ev.HideWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                .Select(ev => eventStates[ev])
+                .Concat(remoteParams
+                    .Where(rp => rp.HideWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                    .Select(rp => paramStates[rp]))
+                .ToList();
+
+            return affectingControllers.Any() && affectingControllers.All(state => state);
+        }
+
+        private static bool ShouldLock(
+            IGH_DocumentObject obj,
+            List<EventComponent> eventComponents,
+            List<RemoteParam> remoteParams,
+            Dictionary<EventComponent, bool> eventStates,
+            Dictionary<RemoteParam, bool> paramStates)
+        {
+            var affectingControllers = eventComponents
+                .Where(ev => ev.LockWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                .Select(ev => eventStates[ev])
+                .Concat(remoteParams
+                    .Where(rp => rp.LockWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
+                    .Select(rp => paramStates[rp]))
+                .ToList();
+
+            return affectingControllers.Any() && affectingControllers.All(state => state);
+        }
+
+        private static bool ApplyVisibilityAndLock(IGH_DocumentObject obj, bool targetHidden, bool targetLocked)
+        {
+            bool changed = false;
+            try
+            {
+                if (obj is IGH_PreviewObject previewObj && previewObj.Hidden != targetHidden)
+                {
+                    previewObj.Hidden = targetHidden;
+                    changed = true;
+                }
+
+                if (obj is IGH_ActiveObject activeObj && activeObj.Locked != targetLocked)
+                {
+                    activeObj.Locked = targetLocked;
+                    changed = true;
+                    if (targetLocked)
+                    {
+                        activeObj.Phase = GH_SolutionPhase.Blank;
+                        activeObj.ClearData();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Rhino.RhinoApp.WriteLine($"[Motion] ApplyVisibilityAndLock 出错: {ex.Message}");
+            }
+            return changed;
+        }
+
         private static bool EvaluateEventComponentShouldHideOrLock(EventComponent ev, GH_Document doc)
         {
             var timelineSlider = doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>()
                 .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
                 ?? doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>().FirstOrDefault();
 
-            if (timelineSlider != null)
-            {
-                double currentValue = (double)timelineSlider.CurrentValue;
-                if (TryParseNickNameInterval(ev.NickName, out double min, out double max))
-                {
-                    bool outsideInterval = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
-                    return ev.InvertHideAndLock ? !outsideInterval : outsideInterval;
-                }
-            }
-            return false;
+            if (timelineSlider == null) return false;
+
+            double currentValue = (double)timelineSlider.CurrentValue;
+            if (!TryParseNickNameInterval(ev.NickName, out double min, out double max)) return false;
+
+            bool outsideInterval = currentValue < (min - 0.0001) || currentValue > (max + 0.0001);
+            return ev.InvertHideAndLock ? !outsideInterval : outsideInterval;
         }
 
         private static bool EvaluateRemoteParamShouldHideOrLock(RemoteParam rp, GH_Document doc)
@@ -425,15 +269,12 @@ namespace Motion.General
                 .FirstOrDefault(s => s.NickName.Equals("TimeLine(Union)", StringComparison.OrdinalIgnoreCase))
                 ?? doc.Objects.OfType<Grasshopper.Kernel.Special.GH_NumberSlider>().FirstOrDefault();
 
-            if (timelineSlider != null)
-            {
-                double currentValue = (double)timelineSlider.Slider.Value;
-                if (TryParseNickNameInterval(rp.NickName, out double min, out double max))
-                {
-                    return currentValue < min || currentValue > max;
-                }
-            }
-            return false;
+            if (timelineSlider == null) return false;
+
+            double currentValue = (double)timelineSlider.Slider.Value;
+            if (!TryParseNickNameInterval(rp.NickName, out double min, out double max)) return false;
+
+            return currentValue < min || currentValue > max;
         }
     }
 }
