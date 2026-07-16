@@ -778,11 +778,18 @@ namespace Motion.Animation
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
             UpdateButtonRects();
+            PointF pt = e.CanvasLocation;
+
+            if (e.Button == MouseButtons.Right && _playButtonRect.Contains(pt))
+            {
+                return GH_ObjectResponse.Handled;
+            }
+
             if (_dragMode > 0)
             {
                 if (_dragMode == 2)
                 {
-                    Owner.Slider.MouseUp(e.WinFormsEventArgs, e.CanvasLocation);
+                    Owner.Slider.MouseUp(e.WinFormsEventArgs, pt);
                 }
                 _dragMode = 0;
                 sender.Invalidate();
