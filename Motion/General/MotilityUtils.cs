@@ -163,14 +163,14 @@ namespace Motion.General
                 var paramStates = remoteParams.ToDictionary(rp => rp, rp => EvaluateRemoteParamShouldHideOrLock(rp, d));
 
                 bool anyChanged = false;
-                foreach (var obj in targets)
+                foreach (var target in targets)
                 {
-                    if (obj == null) continue;
+                    if (target == null) continue;
 
-                    bool targetHidden = ShouldHide(obj, eventComponents, remoteParams, eventStates, paramStates);
-                    bool targetLocked = ShouldLock(obj, eventComponents, remoteParams, eventStates, paramStates);
+                    bool targetHidden = ShouldHide(target, eventComponents, remoteParams, eventStates, paramStates);
+                    bool targetLocked = ShouldLock(target, eventComponents, remoteParams, eventStates, paramStates);
 
-                    if (ApplyVisibilityAndLock(obj, targetHidden, targetLocked))
+                    if (ApplyVisibilityAndLock(target, targetHidden, targetLocked))
                     {
                         anyChanged = true;
                     }
@@ -184,53 +184,57 @@ namespace Motion.General
         }
 
         private static bool ShouldHide(
-            IGH_DocumentObject obj,
+            IGH_DocumentObject target,
             List<EventComponent> eventComponents,
             List<RemoteParam> remoteParams,
             Dictionary<EventComponent, bool> eventStates,
             Dictionary<RemoteParam, bool> paramStates)
         {
-            var affectingControllers = eventComponents
-                .Where(ev => ev.HideWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                .Select(ev => eventStates[ev])
+            var affectingStates = eventComponents
+                .Where(eventComponent => eventComponent.HideWhenEmpty && 
+                                        eventComponent.affectedObjects.Any(affectedObj => affectedObj != null && affectedObj.InstanceGuid == target.InstanceGuid))
+                .Select(eventComponent => eventStates[eventComponent])
                 .Concat(remoteParams
-                    .Where(rp => rp.HideWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                    .Select(rp => paramStates[rp]))
+                    .Where(remoteParam => remoteParam.HideWhenEmpty && 
+                                          remoteParam.affectedObjects.Any(affectedObj => affectedObj != null && affectedObj.InstanceGuid == target.InstanceGuid))
+                    .Select(remoteParam => paramStates[remoteParam]))
                 .ToList();
 
-            return affectingControllers.Any() && affectingControllers.All(state => state);
+            return affectingStates.Any() && affectingStates.All(state => state);
         }
 
         private static bool ShouldLock(
-            IGH_DocumentObject obj,
+            IGH_DocumentObject target,
             List<EventComponent> eventComponents,
             List<RemoteParam> remoteParams,
             Dictionary<EventComponent, bool> eventStates,
             Dictionary<RemoteParam, bool> paramStates)
         {
-            var affectingControllers = eventComponents
-                .Where(ev => ev.LockWhenEmpty && ev.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                .Select(ev => eventStates[ev])
+            var affectingStates = eventComponents
+                .Where(eventComponent => eventComponent.LockWhenEmpty && 
+                                        eventComponent.affectedObjects.Any(affectedObj => affectedObj != null && affectedObj.InstanceGuid == target.InstanceGuid))
+                .Select(eventComponent => eventStates[eventComponent])
                 .Concat(remoteParams
-                    .Where(rp => rp.LockWhenEmpty && rp.affectedObjects.Any(x => x != null && x.InstanceGuid == obj.InstanceGuid))
-                    .Select(rp => paramStates[rp]))
+                    .Where(remoteParam => remoteParam.LockWhenEmpty && 
+                                          remoteParam.affectedObjects.Any(affectedObj => affectedObj != null && affectedObj.InstanceGuid == target.InstanceGuid))
+                    .Select(remoteParam => paramStates[remoteParam]))
                 .ToList();
 
-            return affectingControllers.Any() && affectingControllers.All(state => state);
+            return affectingStates.Any() && affectingStates.All(state => state);
         }
 
-        private static bool ApplyVisibilityAndLock(IGH_DocumentObject obj, bool targetHidden, bool targetLocked)
+        private static bool ApplyVisibilityAndLock(IGH_DocumentObject target, bool targetHidden, bool targetLocked)
         {
             bool changed = false;
             try
             {
-                if (obj is IGH_PreviewObject previewObj && previewObj.Hidden != targetHidden)
+                if (target is IGH_PreviewObject previewObj && previewObj.Hidden != targetHidden)
                 {
                     previewObj.Hidden = targetHidden;
                     changed = true;
                 }
 
-                if (obj is IGH_ActiveObject activeObj && activeObj.Locked != targetLocked)
+                if (target is IGH_ActiveObject activeObj && activeObj.Locked != targetLocked)
                 {
                     activeObj.Locked = targetLocked;
                     changed = true;
