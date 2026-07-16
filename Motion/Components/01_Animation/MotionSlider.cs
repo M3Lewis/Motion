@@ -20,6 +20,7 @@ namespace Motion.Animation
     {
         private bool _isPositionInitialized = false;
         private bool _isPlaying = false;
+        private bool _isPlayingInReverse = false;
         private bool _isLooping = false;
         private System.Windows.Forms.Timer _playbackTimer;
 
@@ -41,6 +42,12 @@ namespace Motion.Animation
                     }
                 }
             }
+        }
+
+        public bool IsPlayingInReverse
+        {
+            get => _isPlayingInReverse;
+            set => _isPlayingInReverse = value;
         }
 
         public bool IsLooping
@@ -286,17 +293,24 @@ namespace Motion.Animation
             decimal min = Slider.Minimum;
             decimal max = Slider.Maximum;
 
-            decimal nextValue = current + 1;
-            if (current >= max)
+            // 1. 检查停止条件
+            if (IsPlayingInReverse && current <= min && !IsLooping)
             {
-                if (!IsLooping)
-                {
-                    IsPlaying = false;
-                    Instances.ActiveCanvas?.Invalidate();
-                    return;
-                }
-                nextValue = min;
+                IsPlaying = false;
+                Instances.ActiveCanvas?.Invalidate();
+                return;
             }
+            if (!IsPlayingInReverse && current >= max && !IsLooping)
+            {
+                IsPlaying = false;
+                Instances.ActiveCanvas?.Invalidate();
+                return;
+            }
+
+            // 2. 计算下一个值
+            decimal nextValue = IsPlayingInReverse 
+                ? (current <= min ? max : current - 1)
+                : (current >= max ? min : current + 1);
 
             doc.ScheduleSolution(1, d =>
             {
@@ -654,37 +668,94 @@ namespace Motion.Animation
             return GH_ObjectResponse.Ignore;
         }
 
+        private void HandlePlayLeftClick()
+        {
+            if (Owner.IsPlaying)
+            {
+                Owner.IsPlaying = false;
+                return;
+            }
+
+            if (Owner.Slider.Value >= Owner.Slider.Maximum)
+            {
+                Owner.TrySetSliderValue(Owner.Slider.Minimum);
+            }
+            Owner.IsPlayingInReverse = false;
+            Owner.IsPlaying = true;
+        }
+
+        private void HandlePlayRightClick()
+        {
+            if (Owner.IsPlaying)
+            {
+                if (Owner.IsPlayingInReverse)
+                {
+                    Owner.IsPlaying = false;
+                }
+                else
+                {
+                    Owner.IsPlayingInReverse = true;
+                }
+                return;
+            }
+
+            if (Owner.Slider.Value <= Owner.Slider.Minimum)
+            {
+                Owner.TrySetSliderValue(Owner.Slider.Maximum);
+            }
+            Owner.IsPlayingInReverse = true;
+            Owner.IsPlaying = true;
+        }
+
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
             UpdateButtonRects();
-            if (e.Button == MouseButtons.Left)
+            PointF pt = e.CanvasLocation;
+
+            if (_playButtonRect.Contains(pt))
             {
-                if (_playButtonRect.Contains(e.CanvasLocation))
+                if (e.Button == MouseButtons.Left)
                 {
-                    if (!Owner.IsPlaying && Owner.Slider.Value >= Owner.Slider.Maximum)
-                    {
-                        Owner.TrySetSliderValue(Owner.Slider.Minimum);
-                    }
-                    Owner.IsPlaying = !Owner.IsPlaying;
+                    HandlePlayLeftClick();
                     sender.Invalidate();
                     return GH_ObjectResponse.Handled;
                 }
-                if (_pauseButtonRect.Contains(e.CanvasLocation))
+                if (e.Button == MouseButtons.Right)
                 {
-                    Owner.TrySetSliderValue(Owner.Slider.Minimum);
-                    Owner.IsPlaying = true;
+                    HandlePlayRightClick();
                     sender.Invalidate();
                     return GH_ObjectResponse.Handled;
                 }
-                if (_loopButtonRect.Contains(e.CanvasLocation))
-                {
-                    Owner.IsLooping = !Owner.IsLooping;
-                    sender.Invalidate();
-                    return GH_ObjectResponse.Handled;
-                }
+                return GH_ObjectResponse.Ignore;
             }
 
-            if (Owner.Slider.MouseDown(e.WinFormsEventArgs, e.CanvasLocation))
+            if (_pauseButtonRect.Contains(pt))
+            {
+                if (e.Button != MouseButtons.Left)
+                {
+                    return GH_ObjectResponse.Ignore;
+                }
+
+                Owner.TrySetSliderValue(Owner.Slider.Minimum);
+                Owner.IsPlayingInReverse = false;
+                Owner.IsPlaying = true;
+                sender.Invalidate();
+                return GH_ObjectResponse.Handled;
+            }
+
+            if (_loopButtonRect.Contains(pt))
+            {
+                if (e.Button != MouseButtons.Left)
+                {
+                    return GH_ObjectResponse.Ignore;
+                }
+
+                Owner.IsLooping = !Owner.IsLooping;
+                sender.Invalidate();
+                return GH_ObjectResponse.Handled;
+            }
+
+            if (Owner.Slider.MouseDown(e.WinFormsEventArgs, pt))
             {
                 Owner.IsPlaying = false; // Pause playback if user manually drags the slider
                 _dragMode = 1;
